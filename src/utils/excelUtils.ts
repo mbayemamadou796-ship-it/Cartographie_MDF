@@ -40,15 +40,19 @@ export async function parseExcelFile(file: File): Promise<{ members: Member[]; e
 
           const nom = mappedRow['nom'] || mappedRow['lastname'] || '';
           const prenom = mappedRow['prenom'] || mappedRow['firstname'] || '';
-          const fonction = mappedRow['fonction'] || mappedRow['post'] || mappedRow['role'] || 'Membre MDF';
-          const organisation = mappedRow['organisation'] || mappedRow['organisme'] || mappedRow['structure'] || 'MDF';
+          const zone = mappedRow['zone'] || mappedRow['region'] || 'Île-de-France';
+          const situationProfessionnelle = mappedRow['situationprofessionnelle'] || mappedRow['situation'] || mappedRow['profession'] || mappedRow['fonction'] || 'Salarié';
+          const domaineEtude = mappedRow['domaineetude'] || mappedRow['domaine'] || mappedRow['specialite'] || mappedRow['organisation'] || 'Général';
+          const anneeArriveeFrance = mappedRow['anneearriveefrance'] || mappedRow['anneearrivee'] || mappedRow['anneefrance'] || mappedRow['annee'] || '';
+          const fonction = mappedRow['fonction'] || mappedRow['post'] || mappedRow['role'] || situationProfessionnelle;
+          const organisation = mappedRow['organisation'] || mappedRow['organisme'] || mappedRow['structure'] || domaineEtude;
           const email = mappedRow['email'] || mappedRow['mail'] || '';
           const telephone = mappedRow['telephone'] || mappedRow['tel'] || mappedRow['phone'] || '';
           const adresse = mappedRow['adresse'] || mappedRow['address'] || '';
           const ville = mappedRow['ville'] || mappedRow['city'] || '';
           const codePostal = mappedRow['codepostal'] || mappedRow['cp'] || mappedRow['postalcode'] || '';
           const departement = mappedRow['departement'] || mappedRow['dept'] || '';
-          const region = mappedRow['region'] || '';
+          const region = mappedRow['region'] || zone;
           const pays = mappedRow['pays'] || mappedRow['country'] || 'France';
           const photo = mappedRow['photo'] || mappedRow['avatar'] || mappedRow['photourl'] || '';
 
@@ -76,6 +80,10 @@ export async function parseExcelFile(file: File): Promise<{ members: Member[]; e
             id: `mdf-imp-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 5)}`,
             nom,
             prenom,
+            zone,
+            situationProfessionnelle,
+            domaineEtude,
+            anneeArriveeFrance,
             fonction,
             organisation,
             email,
@@ -84,7 +92,7 @@ export async function parseExcelFile(file: File): Promise<{ members: Member[]; e
             codePostal,
             ville: ville || 'Non spécifiée',
             departement: departement || (ville ? `Dép. (${ville.slice(0, 2)})` : 'France'),
-            region: region || 'France',
+            region: region || zone,
             pays,
             latitude: lat,
             longitude: lng,
@@ -106,30 +114,42 @@ export async function parseExcelFile(file: File): Promise<{ members: Member[]; e
 }
 
 export function exportToExcel(members: Member[], filename: string = 'Membres_MDF_Export.xlsx') {
-  const exportData = members.map((m) => ({
-    'Nom': m.nom,
-    'Prénom': m.prenom,
-    'Fonction': m.fonction,
-    'Organisation': m.organisation,
-    'Email': m.email,
-    'Téléphone': m.telephone,
-    'Adresse': m.adresse,
-    'Code Postal': m.codePostal,
-    'Ville': m.ville,
-    'Département': m.departement,
-    'Région': m.region,
-    'Pays': m.pays,
-    'Latitude': m.latitude,
-    'Longitude': m.longitude,
-    'Photo URL': m.photo || ''
-  }));
+  const exportData = members.map((m) => {
+    const row: Record<string, any> = {
+      'Prénom': m.prenom,
+      'Nom': m.nom,
+      'Numéro téléphone': m.telephone,
+      'Adresse e-mail': m.email,
+      'Zone': m.zone || m.region || '',
+      'Situation professionnelle': m.situationProfessionnelle || m.fonction || '',
+      'Domaine d\'étude': m.domaineEtude || m.organisation || '',
+      'Année d\'arrivée en France': m.anneeArriveeFrance || '',
+      'Adresse': m.adresse || '',
+      'Code Postal': m.codePostal || '',
+      'Ville': m.ville || '',
+      'Département': m.departement || '',
+      'Pays': m.pays || 'France',
+      'Latitude': m.latitude,
+      'Longitude': m.longitude
+    };
+
+    if (m.champsPersonnalises && m.champsPersonnalises.length > 0) {
+      m.champsPersonnalises.forEach((cp) => {
+        if (cp.label) {
+          row[`[Champ Perso] ${cp.label}`] = cp.value;
+        }
+      });
+    }
+
+    return row;
+  });
 
   const worksheet = XLSX.utils.json_to_sheet(exportData);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Membres MDF');
 
   // Auto-fit column widths
-  const max_widths = [15, 15, 25, 25, 28, 15, 30, 12, 18, 22, 20, 10, 12, 12, 30];
+  const max_widths = [15, 15, 18, 28, 20, 25, 25, 18, 30, 12, 18, 22, 10, 12, 12];
   worksheet['!cols'] = max_widths.map((w) => ({ wch: w }));
 
   XLSX.writeFile(workbook, filename);

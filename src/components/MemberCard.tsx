@@ -1,6 +1,6 @@
 import React from 'react';
 import { Member, UserRole } from '../types';
-import { MapPin, Phone, Mail, Eye, Edit3, Trash2, Navigation, Building2 } from 'lucide-react';
+import { MapPin, Phone, Mail, Eye, Edit3, Trash2, Navigation, Briefcase, GraduationCap, Compass } from 'lucide-react';
 
 interface MemberCardProps {
   member: Member;
@@ -21,6 +21,10 @@ export const MemberCard: React.FC<MemberCardProps> = ({
   onEdit,
   onDelete
 }) => {
+  const zoneLabel = member.zone || member.region || 'Île-de-France';
+  const situation = member.situationProfessionnelle || member.fonction || 'Membre MDF';
+  const domaine = member.domaineEtude || member.organisation || 'Mbok de France';
+
   return (
     <div
       onClick={() => onSelect(member)}
@@ -48,15 +52,23 @@ export const MemberCard: React.FC<MemberCardProps> = ({
 
           {/* Identity */}
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-slate-800 truncate leading-tight group-hover:text-emerald-700 transition-colors">
-              {member.prenom} {member.nom}
-            </h3>
-            <p className="text-xs font-semibold text-emerald-800 truncate mt-0.5">
-              {member.fonction}
-            </p>
+            <div className="flex items-center justify-between gap-1">
+              <h3 className="text-sm font-bold text-slate-800 truncate leading-tight group-hover:text-emerald-700 transition-colors">
+                {member.prenom} {member.nom}
+              </h3>
+              <span className="shrink-0 text-[10px] font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                {zoneLabel}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-900 truncate mt-1">
+              <Briefcase className="w-3 h-3 text-emerald-600 shrink-0" />
+              <span className="truncate">{situation}</span>
+            </div>
+
             <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5 truncate">
-              <Building2 className="w-3 h-3 text-emerald-600 shrink-0" />
-              <span className="truncate">{member.organisation}</span>
+              <GraduationCap className="w-3 h-3 text-emerald-600 shrink-0" />
+              <span className="truncate">{domaine}</span>
             </div>
           </div>
         </div>
@@ -65,16 +77,16 @@ export const MemberCard: React.FC<MemberCardProps> = ({
         <div className="space-y-1.5 text-xs text-slate-600 bg-emerald-50/60 rounded-xl p-2.5 border border-emerald-100/80">
           <div className="flex items-center gap-2 text-slate-800 font-medium">
             <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span className="truncate">{member.ville} ({member.codePostal || member.departement || ''})</span>
+            <span className="truncate">{member.ville || member.adresse || 'Ville non spécifiée'} {member.codePostal ? `(${member.codePostal})` : ''}</span>
           </div>
 
           {member.telephone && (
             <div className="flex items-center gap-2">
-              <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <a
                 href={`tel:${member.telephone}`}
                 onClick={(e) => e.stopPropagation()}
-                className="hover:text-emerald-700 hover:underline truncate"
+                className="hover:text-emerald-700 hover:underline truncate font-medium text-slate-700"
               >
                 {member.telephone}
               </a>
@@ -83,14 +95,36 @@ export const MemberCard: React.FC<MemberCardProps> = ({
 
           {member.email && (
             <div className="flex items-center gap-2">
-              <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <Mail className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <a
                 href={`mailto:${member.email}`}
                 onClick={(e) => e.stopPropagation()}
-                className="hover:text-emerald-700 hover:underline truncate"
+                className="hover:text-emerald-700 hover:underline truncate text-slate-700"
               >
                 {member.email}
               </a>
+            </div>
+          )}
+
+          {member.anneeArriveeFrance && (
+            <div className="flex items-center justify-between pt-1 border-t border-emerald-100/60 text-[11px] text-slate-500">
+              <span>Arrivée en France :</span>
+              <span className="font-bold text-emerald-900">{member.anneeArriveeFrance}</span>
+            </div>
+          )}
+
+          {member.champsPersonnalises && member.champsPersonnalises.length > 0 && (
+            <div className="pt-1 border-t border-emerald-100/60 flex items-center gap-1.5 flex-wrap">
+              {member.champsPersonnalises.slice(0, 2).map((f) => (
+                <span key={f.id} className="text-[10px] bg-white border border-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded-md font-medium truncate max-w-[140px]">
+                  <strong>{f.label}:</strong> {f.value}
+                </span>
+              ))}
+              {member.champsPersonnalises.length > 2 && (
+                <span className="text-[10px] text-emerald-700 font-bold">
+                  +{member.champsPersonnalises.length - 2}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -107,7 +141,7 @@ export const MemberCard: React.FC<MemberCardProps> = ({
             className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-100/70 hover:bg-emerald-200/80 text-emerald-900 text-xs font-semibold rounded-lg border border-emerald-200 transition-colors"
           >
             <Eye className="w-3.5 h-3.5" />
-            <span>Voir la fiche</span>
+            <span>Fiche</span>
           </button>
 
           <button

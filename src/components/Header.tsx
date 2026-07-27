@@ -51,8 +51,8 @@ export const Header: React.FC<HeaderProps> = ({
               size="md"
               showText={true}
               logoUrl={logoUrl}
-              editable={true}
-              onEditClick={onEditLogoClick}
+              editable={userRole === 'admin'}
+              onEditClick={userRole === 'admin' ? onEditLogoClick : undefined}
               associationName={associationName}
               tagline={tagline}
             />

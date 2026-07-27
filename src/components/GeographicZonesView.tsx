@@ -431,16 +431,18 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
 
                     {/* Bottom Action Buttons */}
                     <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5 flex-wrap">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenAddMemberInZone(zone.id, zone.name);
-                        }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-[#2be39d] to-[#48c92a] hover:brightness-105 text-emerald-950 rounded-xl font-black text-xs transition-all shadow-2xs"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        <span>+ Nouveau membre</span>
-                      </button>
+                      {userRole === 'admin' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenAddMemberInZone(zone.id, zone.name);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-[#2be39d] to-[#48c92a] hover:brightness-105 text-emerald-950 rounded-xl font-black text-xs transition-all shadow-2xs"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>+ Nouveau membre</span>
+                        </button>
+                      )}
 
                       <button
                         onClick={(e) => handleOpenCustomZoneDetails(zone, e)}

@@ -195,14 +195,16 @@ export const ZoneDetailsModal: React.FC<ZoneDetailsModalProps> = ({
           {/* Quick Action Buttons */}
           <div className="flex items-center flex-wrap gap-2 w-full md:w-auto justify-end">
             
-            {/* Primary Action: Add New Member directly in this zone */}
-            <button
-              onClick={handleAddNewMemberClick}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#2be39d] via-[#48c92a] to-[#8de02d] hover:brightness-105 text-emerald-950 font-black text-xs rounded-xl shadow-xs transition-all active:scale-95 shrink-0"
-            >
-              <UserPlus className="w-4 h-4 stroke-[2.5]" />
-              <span>+ Nouveau membre dans cette zone</span>
-            </button>
+            {/* Primary Action: Add New Member directly in this zone (Admin only) */}
+            {userRole === 'admin' && (
+              <button
+                onClick={handleAddNewMemberClick}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#2be39d] via-[#48c92a] to-[#8de02d] hover:brightness-105 text-emerald-950 font-black text-xs rounded-xl shadow-xs transition-all active:scale-95 shrink-0"
+              >
+                <UserPlus className="w-4 h-4 stroke-[2.5]" />
+                <span>+ Nouveau membre dans cette zone</span>
+              </button>
+            )}
 
             {/* Associate Existing Members (if custom zone) */}
             {zone.isCustom && zone.id && onManageZoneMembers && userRole === 'admin' && (
@@ -248,7 +250,7 @@ export const ZoneDetailsModal: React.FC<ZoneDetailsModalProps> = ({
                 </p>
               </div>
 
-              {!searchQuery && (
+              {!searchQuery && userRole === 'admin' && (
                 <button
                   onClick={handleAddNewMemberClick}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-sm transition-all"

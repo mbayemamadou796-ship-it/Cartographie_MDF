@@ -28,7 +28,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     const map = L.map(mapContainerRef.current, {
       center: [46.603354, 1.888334],
       zoom: 6,
-      zoomControl: false
+      zoomControl: false,
+      attributionControl: false
     });
 
     // Custom Zoom control at top right

@@ -503,6 +503,10 @@ export default function App() {
 
   // Add / Edit Member Handler
   const handleSaveMember = (memberData: Omit<Member, 'id'> & { id?: string }) => {
+    if (userRole !== 'admin') {
+      showToast("Action réservée aux administrateurs.");
+      return;
+    }
     if (memberData.id) {
       // Edit
       setMembers((prev) =>
@@ -544,6 +548,10 @@ export default function App() {
 
   // Delete Member Handler
   const handleDeleteMember = (memberId: string) => {
+    if (userRole !== 'admin') {
+      showToast("Action réservée aux administrateurs.");
+      return;
+    }
     const target = members.find((m) => m.id === memberId);
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
     if (selectedMemberId === memberId) setSelectedMemberId(null);
@@ -849,6 +857,7 @@ export default function App() {
       {/* Admin Member Form Modal (Add / Edit) */}
       <AdminMemberFormModal
         isOpen={isFormModalOpen}
+        userRole={userRole}
         memberToEdit={memberToEdit}
         targetZoneName={targetZoneNameForNewMember}
         defaultGeo={defaultGeoForNewMember}

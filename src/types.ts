@@ -1,20 +1,35 @@
+export interface CustomField {
+  id: string;
+  label: string;
+  value: string;
+}
+
 export interface Member {
   id: string;
   nom: string;
   prenom: string;
-  fonction: string;
-  organisation: string;
-  email: string;
   telephone: string;
-  adresse: string;
-  codePostal: string;
-  ville: string;
-  departement: string;
-  region: string;
-  pays: string;
-  latitude: number;
-  longitude: number;
+  email: string;
+  zone?: string; // Ex: Bretagne, Île-de-France, Grand Ouest, etc.
+  situationProfessionnelle?: string; // Ex: Salarié, Étudiant, Indépendant, Cadre...
+  domaineEtude?: string; // Ex: Informatique, Droit, Commerce, Santé...
+  anneeArriveeFrance?: string; // Ex: 2018, 2020...
+  
+  // Champs de localisation & rétrocompatibilité
+  fonction?: string;
+  organisation?: string;
+  adresse?: string;
+  codePostal?: string;
+  ville?: string;
+  departement?: string;
+  region?: string;
+  pays?: string;
+  latitude?: number;
+  longitude?: number;
   photo?: string;
+
+  // Champs personnalisés dynamiques
+  champsPersonnalises?: CustomField[];
 }
 
 export type SortOption = 'nom_asc' | 'nom_desc' | 'ville_asc' | 'organisation_asc';
@@ -46,6 +61,10 @@ export interface FilterState {
   ville: string;
   departement: string;
   region: string;
+  zone: string;
+  situationProfessionnelle: string;
+  domaineEtude: string;
+  anneeArriveeFrance: string;
   organisation: string;
   fonction: string;
   zoneId?: string;

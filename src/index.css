@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 /* Leaflet Light Popup Customization */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
 .leaflet-popup-content-wrapper {
   background-color: #ffffff !important;
   color: #1e293b !important;
