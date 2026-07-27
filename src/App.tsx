@@ -23,6 +23,7 @@ import { UserManagementView, AppUser } from './components/UserManagementView';
 import { ImportExportView } from './components/ImportExportView';
 import { SettingsView } from './components/SettingsView';
 import { EditLogoModal } from './components/EditLogoModal';
+import { LoginScreen } from './components/LoginScreen';
 import { exportToExcel, exportToCsv } from './utils/excelUtils';
 import { CheckCircle2, MapPin, Users, ArrowRight } from 'lucide-react';
 
@@ -31,12 +32,14 @@ const LOCAL_STORAGE_UPDATE_KEY = 'mbok_de_france_last_update_v1';
 const LOCAL_STORAGE_SETTINGS_KEY = 'mbok_de_france_app_settings_v1';
 const LOCAL_STORAGE_ZONES_KEY = 'mbok_de_france_custom_zones_v1';
 const LOCAL_STORAGE_USERS_KEY = 'mbok_de_france_users_v1';
+const LOCAL_STORAGE_SESSION_KEY = 'mbok_de_france_session_user_v1';
 
 const INITIAL_USERS: AppUser[] = [
-  { id: 'usr-1', name: 'Administrateur MDF', email: 'admin@mbokdefrance.org', role: 'admin', active: true, lastLogin: 'Aujourd\'hui 09:12' },
-  { id: 'usr-2', name: 'Mamady Camara', email: 'mamady.camara@mbokdefrance.org', role: 'admin', active: true, lastLogin: 'Hier 18:45' },
-  { id: 'usr-3', name: 'Aïssatou Diallo', email: 'aissatou.diallo@mbokdefrance.org', role: 'user', active: true, lastLogin: '24/07/2026' },
-  { id: 'usr-4', name: 'Mamadou Mbaye', email: 'mbayemamadou796@gmail.com', role: 'admin', active: true, lastLogin: 'En ligne' }
+  { id: 'usr-admin', name: 'Administrateur MDF', email: 'admin@mbokdefrance.org', username: 'admin', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' },
+  { id: 'usr-user', name: 'Membre Utilisateur', email: 'utilisateur@mbokdefrance.org', username: 'utilisateur', password: 'utilisateur123', role: 'user', active: true, lastLogin: 'En ligne' },
+  { id: 'usr-2', name: 'Mamady Camara', email: 'mamady.camara@mbokdefrance.org', username: 'mamady', password: 'admin123', role: 'admin', active: true, lastLogin: 'Hier 18:45' },
+  { id: 'usr-3', name: 'Aïssatou Diallo', email: 'aissatou.diallo@mbokdefrance.org', username: 'aissatou', password: 'utilisateur123', role: 'user', active: true, lastLogin: '24/07/2026' },
+  { id: 'usr-4', name: 'Mamadou Mbaye', email: 'mbayemamadou796@gmail.com', username: 'mbaye', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' }
 ];
 
 const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
@@ -199,8 +202,24 @@ export default function App() {
     } catch {}
   }, [customZones]);
 
-  // Role State (Default: User consultation mode)
-  const [userRole, setUserRole] = useState<UserRole>('user');
+  // Current Logged In User State with Session Persistence
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_SESSION_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
+
+  // Role State (Derived from currentUser or defaulted to 'user')
+  const [userRole, setUserRole] = useState<UserRole>(() => currentUser?.role || 'user');
+
+  // Keep role in sync with currentUser
+  useEffect(() => {
+    if (currentUser) {
+      setUserRole(currentUser.role);
+    }
+  }, [currentUser]);
 
   // Users Management State with LocalStorage Persistence
   const [users, setUsers] = useState<AppUser[]>(() => {
@@ -219,6 +238,87 @@ export default function App() {
       localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
     } catch {}
   }, [users]);
+
+  // Authentication Handlers
+  const handleLogin = (inputUsername: string, inputPassword: string): boolean => {
+    const normInput = inputUsername.trim().toLowerCase();
+
+    // 1. Search in users list
+    let matchedUser = users.find((u) => {
+      const normName = u.username ? u.username.toLowerCase() : '';
+      const normEmail = u.email ? u.email.toLowerCase() : '';
+      const normId = u.id ? u.id.toLowerCase() : '';
+      return normName === normInput || normEmail === normInput || normId === normInput;
+    });
+
+    // 2. Fallback check for default MVP accounts if not found by user list
+    if (!matchedUser) {
+      if (normInput === 'admin' && inputPassword === 'admin123') {
+        matchedUser = {
+          id: 'usr-admin',
+          name: 'Administrateur MDF',
+          email: 'admin@mbokdefrance.org',
+          username: 'admin',
+          password: 'admin123',
+          role: 'admin',
+          active: true,
+          lastLogin: 'En ligne'
+        };
+      } else if (normInput === 'utilisateur' && inputPassword === 'utilisateur123') {
+        matchedUser = {
+          id: 'usr-user',
+          name: 'Membre Utilisateur',
+          email: 'utilisateur@mbokdefrance.org',
+          username: 'utilisateur',
+          password: 'utilisateur123',
+          role: 'user',
+          active: true,
+          lastLogin: 'En ligne'
+        };
+      }
+    }
+
+    if (!matchedUser) return false;
+
+    // Check if account active
+    if (!matchedUser.active) {
+      showToast('Ce compte d\'accès est désactivé. Veuillez contacter l\'administrateur.');
+      return false;
+    }
+
+    // Check password
+    const expectedPassword = matchedUser.password || (matchedUser.role === 'admin' ? 'admin123' : 'utilisateur123');
+    if (inputPassword !== expectedPassword) {
+      return false;
+    }
+
+    // Success login
+    const timeStr = 'Aujourd\'hui ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const loggedUser = { ...matchedUser, lastLogin: timeStr };
+
+    setCurrentUser(loggedUser);
+    setUserRole(loggedUser.role);
+
+    try {
+      localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(loggedUser));
+    } catch {}
+
+    setUsers((prev) =>
+      prev.map((u) => (u.id === loggedUser.id ? { ...u, lastLogin: timeStr } : u))
+    );
+
+    showToast(`Bienvenue ${loggedUser.name} ! Connexion réussie.`);
+    return true;
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setUserRole('user');
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
+    } catch {}
+    showToast('Vous avez été déconnecté.');
+  };
 
   const handleAddUser = (user: Omit<AppUser, 'id' | 'lastLogin'>) => {
     const newUser: AppUser = {
@@ -597,6 +697,17 @@ export default function App() {
     showToast(`Filtre appliqué : ${zoneName}`);
   };
 
+  if (!currentUser) {
+    return (
+      <LoginScreen
+        onLogin={handleLogin}
+        logoUrl={appSettings.logoUrl}
+        associationName={appSettings.associationName}
+        tagline={appSettings.tagline}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#f0f8f3] text-slate-800 font-['Plus_Jakarta_Sans',sans-serif]">
       
@@ -620,6 +731,8 @@ export default function App() {
         associationName={appSettings.associationName}
         tagline={appSettings.tagline}
         onEditLogoClick={() => setIsEditLogoModalOpen(true)}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Navigation Tabs Bar */}

@@ -6,6 +6,8 @@ export interface AppUser {
   id: string;
   name: string;
   email: string;
+  username?: string;
+  password?: string;
   role: UserRole;
   active: boolean;
   lastLogin: string;
@@ -35,6 +37,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   // Form state
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
+  const [formUsername, setFormUsername] = useState('');
+  const [formPassword, setFormPassword] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('user');
   const [formActive, setFormActive] = useState(true);
 
@@ -42,6 +46,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setEditingUser(null);
     setFormName('');
     setFormEmail('');
+    setFormUsername('');
+    setFormPassword('');
     setFormRole('user');
     setFormActive(true);
     setIsModalOpen(true);
@@ -51,6 +57,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setEditingUser(user);
     setFormName(user.name);
     setFormEmail(user.email);
+    setFormUsername(user.username || '');
+    setFormPassword(user.password || '');
     setFormRole(user.role);
     setFormActive(user.active);
     setIsModalOpen(true);
@@ -64,6 +72,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
       onUpdateUser(editingUser.id, {
         name: formName,
         email: formEmail,
+        username: formUsername.trim() || undefined,
+        password: formPassword.trim() || undefined,
         role: formRole,
         active: formActive
       });
@@ -71,6 +81,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
       onAddUser({
         name: formName,
         email: formEmail,
+        username: formUsername.trim() || undefined,
+        password: formPassword.trim() || undefined,
         role: formRole,
         active: formActive
       });
@@ -299,6 +311,29 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                   placeholder="Ex: jean.dupont@mbokdefrance.org"
                   className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Identifiant</label>
+                  <input
+                    type="text"
+                    value={formUsername}
+                    onChange={(e) => setFormUsername(e.target.value)}
+                    placeholder="Ex: jdupont"
+                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Mot de passe</label>
+                  <input
+                    type="password"
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    placeholder="Ex: ••••••••"
+                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
+                  />
+                </div>
               </div>
 
               <div>

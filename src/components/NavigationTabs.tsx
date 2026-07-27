@@ -61,11 +61,15 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
     }
   ];
 
+  const visibleTabs = userRole === 'admin'
+    ? tabs
+    : tabs.filter((t) => ['dashboard', 'directory', 'zones'].includes(t.id));
+
   return (
     <div className="bg-white border-b border-emerald-200 sticky top-[61px] z-20 shadow-2xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <nav className="flex items-center gap-1 overflow-x-auto py-2 no-scrollbar">
-          {tabs.map((tab) => {
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
 
