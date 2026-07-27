@@ -160,43 +160,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </button>
         </form>
 
-        {/* Demo Account Quick Fill Box */}
-        <div className="mt-6 pt-5 border-t border-slate-100 space-y-2.5">
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-            <span>Compte Administrateur Initial</span>
-            <span className="text-emerald-600 font-semibold">Remplissage Rapide</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => handleQuickFill('admin', 'admin123')}
-            className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between hover:scale-[1.01] cursor-pointer ${
-              username === 'admin'
-                ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-400/30'
-                : 'bg-slate-50/80 hover:bg-emerald-50/50 border-slate-200'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-emerald-950 block">
-                  Administrateur Principal
-                </span>
-                <span className="font-mono text-[11px] text-slate-500">
-                  Identifiant: <strong className="text-slate-800">admin</strong> • Mot de passe: <strong className="text-slate-800">admin123</strong>
-                </span>
-              </div>
-            </div>
-            {username === 'admin' && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
-          </button>
-
-          <p className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 leading-relaxed">
-            💡 <strong>Note :</strong> L'administrateur peut ensuite créer d'autres comptes (Utilisateurs ou Administrateurs) depuis la section <em>« Gestion des utilisateurs »</em>. Tout compte créé est instantanément opérationnel pour la connexion.
-          </p>
-        </div>
-
         {/* Footer info */}
         <p className="mt-5 text-[11px] text-center text-slate-400">
           Système sécurisé Mbok de France • v1.0 MVP

@@ -709,13 +709,7 @@ export default function App() {
       
       {/* Top Header */}
       <Header
-        searchQuery={filters.searchQuery}
-        onSearchChange={(q) => handleFilterChange({ searchQuery: q })}
         userRole={userRole}
-        onToggleRole={handleToggleRole}
-        activeFilterCount={activeFilterCount}
-        onToggleFiltersPanel={() => setIsFiltersOpen(!isFiltersOpen)}
-        isFiltersOpen={isFiltersOpen}
         onOpenAddMember={() => {
           setMemberToEdit(null);
           setIsFormModalOpen(true);
@@ -816,7 +810,7 @@ export default function App() {
               />
             </section>
 
-            {/* Info Bar (Counters, Filter Chips, Sort Dropdown) */}
+            {/* Info Bar (Search, Filters, Counters, Filter Chips, Sort Dropdown) */}
             <InfoBar
               totalCount={members.length}
               filteredCount={filteredAndSortedMembers.length}
@@ -824,6 +818,9 @@ export default function App() {
               customZones={customZones}
               onFilterChange={handleFilterChange}
               onResetFilters={handleResetFilters}
+              activeFilterCount={activeFilterCount}
+              onToggleFiltersPanel={() => setIsFiltersOpen(!isFiltersOpen)}
+              isFiltersOpen={isFiltersOpen}
             />
 
             {/* Member Directory List Grid */}
