@@ -56,6 +56,29 @@ export interface CustomZone {
   createdAt: string;
 }
 
+export interface ImportLog {
+  id: string;
+  filename: string;
+  date: string;
+  importedBy: string;
+  totalRows: number;
+  addedCount: number;
+  updatedCount: number;
+  locationChangesCount: number;
+  errors: string[];
+}
+
+export interface LocationChangeAlert {
+  memberId: string;
+  memberName: string;
+  oldVille: string;
+  newVille: string;
+  zoneId: string;
+  zoneName: string;
+  actionTaken?: 'keep' | 'change' | 'remove' | 'later';
+  targetZoneId?: string;
+}
+
 export interface FilterState {
   searchQuery: string;
   ville: string;

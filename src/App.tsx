@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Member, FilterState, UserRole, ActiveTab, AppSettings, CustomZone, AppUser } from './types';
+import { Member, FilterState, UserRole, ActiveTab, AppSettings, CustomZone, AppUser, ImportLog, LocationChangeAlert } from './types';
 import { INITIAL_MEMBERS } from './data/initialMembers';
 import { Header } from './components/Header';
 import { NavigationTabs } from './components/NavigationTabs';
@@ -16,6 +16,7 @@ import { FiltersPanel } from './components/FiltersPanel';
 import { MemberModal } from './components/MemberModal';
 import { AdminMemberFormModal } from './components/AdminMemberFormModal';
 import { ImportExcelModal } from './components/ImportExcelModal';
+import { LocationChangeModal } from './components/LocationChangeModal';
 import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
 import { GeographicZonesView } from './components/GeographicZonesView';
 import { DataQualityView } from './components/DataQualityView';
@@ -33,6 +34,7 @@ const LOCAL_STORAGE_SETTINGS_KEY = 'mbok_de_france_app_settings_v1';
 const LOCAL_STORAGE_ZONES_KEY = 'mbok_de_france_custom_zones_v1';
 const LOCAL_STORAGE_USERS_KEY = 'mbok_de_france_users_v1';
 const LOCAL_STORAGE_SESSION_KEY = 'mbok_de_france_session_user_v1';
+const LOCAL_STORAGE_LOGS_KEY = 'mbok_de_france_import_logs_v1';
 
 const INITIAL_USERS: AppUser[] = [
   { id: 'usr-admin', nom: 'MDF', prenom: 'Administrateur', name: 'Administrateur MDF', email: 'admin@mbokdefrance.org', username: 'admin', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' }
@@ -234,6 +236,28 @@ export default function App() {
       localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
     } catch {}
   }, [users]);
+
+  // Import Logs & History State
+  const [importLogs, setImportLogs] = useState<ImportLog[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_LOGS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_LOGS_KEY, JSON.stringify(importLogs));
+    } catch {}
+  }, [importLogs]);
+
+  // Location Change Alerts State
+  const [locationAlerts, setLocationAlerts] = useState<LocationChangeAlert[]>([]);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   // Authentication Handlers
   const handleLogin = (inputUsername: string, inputPassword: string): boolean => {
@@ -656,16 +680,162 @@ export default function App() {
     recordDataUpdate();
   };
 
-  // Excel / CSV Import Success
-  const handleImportSuccess = (imported: Member[], replaceExisting: boolean) => {
+  // Excel / CSV Import Success & Smart Reconciliation
+  const handleImportSuccess = (
+    imported: Member[],
+    replaceExisting: boolean,
+    filename: string = 'Import_MDF.xlsx',
+    errors: string[] = []
+  ) => {
+    let updatedCount = 0;
+    let addedCount = 0;
+    const alerts: LocationChangeAlert[] = [];
+
+    let updatedMembersList: Member[] = [];
+
     if (replaceExisting) {
-      setMembers(imported);
-      showToast(`Annuaire réinitialisé avec ${imported.length} membres importés.`);
+      updatedMembersList = imported;
+      addedCount = imported.length;
     } else {
-      setMembers((prev) => [...imported, ...prev]);
-      showToast(`${imported.length} nouveaux membres ajoutés à l'annuaire.`);
+      // Create lookup map from current members (by email and by normalized full name)
+      const existingEmailMap = new Map<string, Member>();
+      const existingNameMap = new Map<string, Member>();
+
+      members.forEach((m) => {
+        if (m.email?.trim()) {
+          existingEmailMap.set(m.email.trim().toLowerCase(), m);
+        }
+        const nameKey = `${(m.nom || '').trim().toLowerCase()}_${(m.prenom || '').trim().toLowerCase()}`;
+        if (nameKey && nameKey !== '_') {
+          existingNameMap.set(nameKey, m);
+        }
+      });
+
+      const newMembers: Member[] = [];
+      const updatedMemberMap = new Map<string, Member>();
+
+      imported.forEach((imp) => {
+        const emailKey = imp.email?.trim().toLowerCase();
+        const nameKey = `${(imp.nom || '').trim().toLowerCase()}_${(imp.prenom || '').trim().toLowerCase()}`;
+
+        const existing = (emailKey ? existingEmailMap.get(emailKey) : null) || existingNameMap.get(nameKey);
+
+        if (existing && !updatedMemberMap.has(existing.id)) {
+          // Member already exists -> Update fields & detect location change
+          updatedCount++;
+
+          const oldVille = existing.ville || '';
+          const newVille = imp.ville || '';
+          const isLocationChanged = oldVille && newVille && oldVille.toLowerCase() !== newVille.toLowerCase();
+
+          if (isLocationChanged) {
+            // Check if member belongs to any Custom Zone
+            customZones.forEach((z) => {
+              if (z.memberIds.includes(existing.id)) {
+                alerts.push({
+                  memberId: existing.id,
+                  memberName: `${existing.prenom} ${existing.nom}`,
+                  oldVille,
+                  newVille,
+                  zoneId: z.id,
+                  zoneName: z.name
+                });
+              }
+            });
+          }
+
+          // Merge fields into existing member, maintaining ID & Custom Field values if preserved
+          const updatedMember: Member = {
+            ...existing,
+            ...imp,
+            id: existing.id,
+            // Keep existing custom fields if the imported row does not specify them
+            champsPersonnalises: imp.champsPersonnalises || existing.champsPersonnalises
+          };
+
+          updatedMemberMap.set(existing.id, updatedMember);
+        } else {
+          // New Member -> Append
+          addedCount++;
+          newMembers.push(imp);
+        }
+      });
+
+      // Reconstruct updated members array
+      const mergedExisting = members.map((m) => updatedMemberMap.get(m.id) || m);
+      updatedMembersList = [...newMembers, ...mergedExisting];
     }
+
+    setMembers(updatedMembersList);
+
+    // Save import log entry
+    const newLog: ImportLog = {
+      id: `log-${Date.now()}`,
+      filename,
+      date: new Date().toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      importedBy: currentUser ? (currentUser.name || currentUser.prenom || currentUser.username) : 'Administrateur',
+      totalRows: imported.length,
+      addedCount,
+      updatedCount,
+      locationChangesCount: alerts.length,
+      errors
+    };
+
+    setImportLogs((prev) => [newLog, ...prev]);
+
+    if (alerts.length > 0) {
+      setLocationAlerts(alerts);
+      setIsLocationModalOpen(true);
+    }
+
+    showToast(
+      replaceExisting
+        ? `Annuaire réinitialisé avec ${imported.length} membres.`
+        : `Synchronisation réussie : +${addedCount} nouveau(x), ${updatedCount} mis à jour.${alerts.length > 0 ? ` (${alerts.length} alerte(s) zone)` : ''}`
+    );
     recordDataUpdate();
+  };
+
+  // Handle decisions from Location Change Modal
+  const handleApplyLocationDecisions = (
+    decisions: Array<{ memberId: string; currentZoneId: string; action: 'keep' | 'change' | 'remove' | 'later'; targetZoneId?: string }>
+  ) => {
+    setCustomZones((prev) => {
+      let updatedZones = [...prev];
+
+      decisions.forEach((d) => {
+        if (d.action === 'remove' || (d.action === 'change' && d.targetZoneId)) {
+          // Remove member from current zone
+          updatedZones = updatedZones.map((z) => {
+            if (z.id === d.currentZoneId) {
+              return { ...z, memberIds: z.memberIds.filter((id) => id !== d.memberId) };
+            }
+            return z;
+          });
+        }
+
+        if (d.action === 'change' && d.targetZoneId) {
+          // Add member to new target zone
+          updatedZones = updatedZones.map((z) => {
+            if (z.id === d.targetZoneId) {
+              const exists = z.memberIds.includes(d.memberId);
+              return exists ? z : { ...z, memberIds: [...z.memberIds, d.memberId] };
+            }
+            return z;
+          });
+        }
+      });
+
+      return updatedZones;
+    });
+
+    showToast("Décisions d'affectations aux zones enregistrées avec succès !");
   };
 
   // Export handlers
@@ -913,7 +1083,12 @@ export default function App() {
           <ImportExportView
             members={filteredAndSortedMembers}
             userRole={userRole}
+            importLogs={importLogs}
             onImportSuccess={handleImportSuccess}
+            onClearLogs={() => {
+              setImportLogs([]);
+              showToast("Historique des imports effacé.");
+            }}
           />
         )}
 
@@ -982,6 +1157,15 @@ export default function App() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportSuccess={handleImportSuccess}
+      />
+
+      {/* Location Change Review Modal */}
+      <LocationChangeModal
+        isOpen={isLocationModalOpen}
+        alerts={locationAlerts}
+        customZones={customZones}
+        onClose={() => setIsLocationModalOpen(false)}
+        onApplyDecisions={handleApplyLocationDecisions}
       />
 
       {/* Confirm Delete Modal */}

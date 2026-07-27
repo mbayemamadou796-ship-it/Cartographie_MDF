@@ -6,7 +6,7 @@ import { Upload, FileSpreadsheet, Download, CheckCircle2, AlertTriangle, Loader2
 interface ImportExcelModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImportSuccess: (importedMembers: Member[], replaceExisting: boolean) => void;
+  onImportSuccess: (importedMembers: Member[], replaceExisting: boolean, filename: string, errors: string[]) => void;
 }
 
 export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
@@ -53,7 +53,8 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
 
   const handleConfirmImport = () => {
     if (parsedMembers.length === 0) return;
-    onImportSuccess(parsedMembers, replaceExisting);
+    const filename = file ? file.name : 'Import_MDF.xlsx';
+    onImportSuccess(parsedMembers, replaceExisting, filename, parsingErrors);
     onClose();
   };
 
