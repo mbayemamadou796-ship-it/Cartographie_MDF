@@ -35,11 +35,7 @@ const LOCAL_STORAGE_USERS_KEY = 'mbok_de_france_users_v1';
 const LOCAL_STORAGE_SESSION_KEY = 'mbok_de_france_session_user_v1';
 
 const INITIAL_USERS: AppUser[] = [
-  { id: 'usr-admin', nom: 'MDF', prenom: 'Administrateur', name: 'Administrateur MDF', email: 'admin@mbokdefrance.org', username: 'admin', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' },
-  { id: 'usr-user', nom: 'Utilisateur', prenom: 'Membre', name: 'Membre Utilisateur', email: 'utilisateur@mbokdefrance.org', username: 'utilisateur', password: 'utilisateur123', role: 'user', active: true, lastLogin: 'En ligne' },
-  { id: 'usr-2', nom: 'Camara', prenom: 'Mamady', name: 'Mamady Camara', email: 'mamady.camara@mbokdefrance.org', username: 'mamady', password: 'admin123', role: 'admin', active: true, lastLogin: 'Hier 18:45' },
-  { id: 'usr-3', nom: 'Diallo', prenom: 'Aïssatou', name: 'Aïssatou Diallo', email: 'aissatou.diallo@mbokdefrance.org', username: 'aissatou', password: 'utilisateur123', role: 'user', active: true, lastLogin: '24/07/2026' },
-  { id: 'usr-4', nom: 'Mbaye', prenom: 'Mamadou', name: 'Mamadou Mbaye', email: 'mbayemamadou796@gmail.com', username: 'mbaye', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' }
+  { id: 'usr-admin', nom: 'MDF', prenom: 'Administrateur', name: 'Administrateur MDF', email: 'admin@mbokdefrance.org', username: 'admin', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' }
 ];
 
 const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
