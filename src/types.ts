@@ -74,3 +74,17 @@ export interface FilterState {
 
 export type UserRole = 'user' | 'admin';
 
+export interface AppUser {
+  id: string;
+  nom: string;
+  prenom: string;
+  name?: string;
+  email: string;
+  username: string;
+  password?: string;
+  role: UserRole;
+  active: boolean;
+  createdAt?: string;
+  lastLogin: string;
+}
+

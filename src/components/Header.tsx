@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Filter, Shield, ShieldCheck, Plus, Upload, Download, X, LogOut, User as UserIcon } from 'lucide-react';
-import { UserRole } from '../types';
-import { AppUser } from './UserManagementView';
+import { UserRole, AppUser } from '../types';
 import { LogoMbok } from './LogoMbok';
 
 interface HeaderProps {
