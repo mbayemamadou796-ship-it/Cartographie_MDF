@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActiveTab, UserRole } from '../types';
-import { LayoutDashboard, MapPin, Globe, Users, AlertTriangle, FileSpreadsheet, Settings } from 'lucide-react';
+import { LayoutDashboard, MapPin, Globe, Users, AlertTriangle, FileSpreadsheet, History, Settings } from 'lucide-react';
 
 interface NavigationTabsProps {
   activeTab: ActiveTab;
@@ -36,7 +36,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
     },
     {
       id: 'users' as ActiveTab,
-      label: userRole === 'admin' ? 'Utilisateurs (Admin)' : 'Utilisateurs',
+      label: 'Utilisateurs & Droits',
       icon: Users,
       badge: null
     },
@@ -51,6 +51,12 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
       id: 'import_export' as ActiveTab,
       label: 'Import / Export',
       icon: FileSpreadsheet,
+      badge: null
+    },
+    {
+      id: 'audit_logs' as ActiveTab,
+      label: 'Journaux d’activité',
+      icon: History,
       badge: null
     },
     {

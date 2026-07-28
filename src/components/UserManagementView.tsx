@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserRole, AppUser } from '../types';
+import { UserRole, AppUser, CustomZone } from '../types';
 import {
   Users,
   UserPlus,
@@ -14,12 +14,14 @@ import {
   Info,
   CheckCircle2,
   AlertCircle,
-  X
+  X,
+  Layers
 } from 'lucide-react';
 
 interface UserManagementViewProps {
   currentRole: UserRole;
   users: AppUser[];
+  customZones?: CustomZone[];
   onAddUser: (user: Omit<AppUser, 'id' | 'lastLogin'>) => void;
   onUpdateUser: (userId: string, updates: Partial<AppUser>) => void;
   onDeleteUser: (userId: string) => void;
@@ -29,6 +31,7 @@ interface UserManagementViewProps {
 export const UserManagementView: React.FC<UserManagementViewProps> = ({
   currentRole,
   users,
+  customZones = [],
   onAddUser,
   onUpdateUser,
   onDeleteUser,
@@ -57,6 +60,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [formConfirmPassword, setFormConfirmPassword] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('user');
   const [formRegion, setFormRegion] = useState('');
+  const [formAssignedZoneIds, setFormAssignedZoneIds] = useState<string[]>([]);
   const [formActive, setFormActive] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -70,6 +74,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormConfirmPassword('');
     setFormRole('user');
     setFormRegion('Île-de-France');
+    setFormAssignedZoneIds([]);
     setFormActive(true);
     setFormError(null);
     setIsModalOpen(true);
@@ -85,9 +90,16 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormConfirmPassword(user.password || '');
     setFormRole(user.role);
     setFormRegion(user.region || '');
+    setFormAssignedZoneIds(user.assignedZoneIds || []);
     setFormActive(user.active);
     setFormError(null);
     setIsModalOpen(true);
+  };
+
+  const handleToggleZoneAssignment = (zoneId: string) => {
+    setFormAssignedZoneIds((prev) =>
+      prev.includes(zoneId) ? prev.filter((id) => id !== zoneId) : [...prev, zoneId]
+    );
   };
 
   const handleSaveUser = (e: React.FormEvent) => {
@@ -127,6 +139,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         password: formPassword ? formPassword : editingUser.password,
         role: formRole,
         region: formRegion.trim(),
+        assignedZoneIds: formRole === 'referent' ? formAssignedZoneIds : [],
         active: formActive
       });
     } else {
@@ -139,6 +152,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         password: formPassword,
         role: formRole,
         region: formRegion.trim(),
+        assignedZoneIds: formRole === 'referent' ? formAssignedZoneIds : [],
         active: formActive,
         createdAt: new Date().toLocaleDateString('fr-FR')
       });
@@ -336,12 +350,30 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     {/* Role */}
                     <td className="p-4">
                       {user.role === 'admin' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                          <ShieldCheck className="w-3 h-3 text-emerald-700" /> Administrateur
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-900 border border-purple-300">
+                          <ShieldCheck className="w-3 h-3 text-purple-700" /> Administrateur
                         </span>
+                      ) : user.role === 'referent' ? (
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300">
+                            <Shield className="w-3 h-3 text-blue-700" /> Référent Zone
+                          </span>
+                          {user.assignedZoneIds && user.assignedZoneIds.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {user.assignedZoneIds.map((zId) => {
+                                const foundZone = customZones.find((z) => z.id === zId);
+                                return (
+                                  <span key={zId} className="text-[9px] bg-blue-50 text-blue-800 font-bold px-1.5 py-0.2 rounded border border-blue-200">
+                                    {foundZone ? foundZone.name : zId}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                          <Shield className="w-3 h-3 text-slate-500" /> Utilisateur
+                          <Shield className="w-3 h-3 text-slate-500" /> Lecture seule
                         </span>
                       )}
                     </td>
@@ -584,7 +616,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
                   >
                     <option value="user">Utilisateur (Consultation seule)</option>
-                    <option value="admin">Administrateur (Gestion complète)</option>
+                    <option value="referent">Référent (Gestion de zone attribuée)</option>
+                    <option value="admin">Administrateur (Accès global & Audit)</option>
                   </select>
                 </div>
 
@@ -600,6 +633,49 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                   </select>
                 </div>
               </div>
+
+              {/* Referent Zone Selection */}
+              {formRole === 'referent' && (
+                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2">
+                  <label className="block text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-blue-600" />
+                    <span>Zones attribuées à ce référent ({formAssignedZoneIds.length})</span>
+                  </label>
+                  <p className="text-[11px] text-blue-700 font-medium leading-relaxed">
+                    Ce référent aura un accès exclusif aux membres et statistiques de ces zones.
+                  </p>
+
+                  {customZones.length === 0 ? (
+                    <div className="p-2 bg-white rounded-xl border border-blue-200 text-slate-500 text-[11px] italic">
+                      Aucune zone personnalisée disponible. Créez d'abord des zones dans l'onglet "Zones".
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 pt-1 max-h-36 overflow-y-auto">
+                      {customZones.map((z) => {
+                        const isChecked = formAssignedZoneIds.includes(z.id);
+                        return (
+                          <label
+                            key={z.id}
+                            className={`p-2 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all cursor-pointer ${
+                              isChecked
+                                ? 'bg-blue-100 border-blue-400 text-blue-950'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleZoneAssignment(z.id)}
+                              className="rounded border-blue-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                            />
+                            <span className="truncate">{z.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                 <button

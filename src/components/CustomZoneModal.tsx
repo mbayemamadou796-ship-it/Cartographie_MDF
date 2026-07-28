@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { CustomZone } from '../types';
-import { Layers, X, Check, Tag } from 'lucide-react';
+import { CustomZone, AppUser } from '../types';
+import { Layers, X, Check, Tag, UserCheck } from 'lucide-react';
 
 interface CustomZoneModalProps {
   isOpen: boolean;
   zoneToEdit?: CustomZone | null;
+  users?: AppUser[];
   onClose: () => void;
-  onSave: (name: string, description: string, color: string) => void;
+  onSave: (name: string, description: string, color: string, referentUserId?: string, referentName?: string) => void;
 }
 
 const COLOR_OPTIONS = [
@@ -22,23 +23,29 @@ const COLOR_OPTIONS = [
 export const CustomZoneModal: React.FC<CustomZoneModalProps> = ({
   isOpen,
   zoneToEdit,
+  users = [],
   onClose,
   onSave
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState('emerald');
+  const [referentUserId, setReferentUserId] = useState('');
   const [error, setError] = useState('');
+
+  const potentialReferents = users.filter((u) => u.active && (u.role === 'referent' || u.role === 'admin'));
 
   useEffect(() => {
     if (zoneToEdit) {
       setName(zoneToEdit.name);
       setDescription(zoneToEdit.description || '');
       setColor(zoneToEdit.color || 'emerald');
+      setReferentUserId(zoneToEdit.referentUserId || '');
     } else {
       setName('');
       setDescription('');
       setColor('emerald');
+      setReferentUserId('');
     }
     setError('');
   }, [zoneToEdit, isOpen]);
@@ -51,7 +58,16 @@ export const CustomZoneModal: React.FC<CustomZoneModalProps> = ({
       setError('Veuillez renseigner le nom de la zone.');
       return;
     }
-    onSave(name.trim(), description.trim(), color);
+
+    let selectedReferentName: string | undefined = undefined;
+    if (referentUserId) {
+      const found = users.find((u) => u.id === referentUserId);
+      if (found) {
+        selectedReferentName = `${found.prenom} ${found.nom}`.trim() || found.name || found.username;
+      }
+    }
+
+    onSave(name.trim(), description.trim(), color, referentUserId || undefined, selectedReferentName);
     onClose();
   };
 
@@ -84,7 +100,7 @@ export const CustomZoneModal: React.FC<CustomZoneModalProps> = ({
         </div>
 
         {/* Body Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Nom de la Zone / Groupe <span className="text-rose-500">*</span>
@@ -104,12 +120,32 @@ export const CustomZoneModal: React.FC<CustomZoneModalProps> = ({
               Description / Objectif (optionnel)
             </label>
             <textarea
-              rows={3}
+              rows={2}
               placeholder="Ex: Regroupement des membres du réseau Sud pour les projets inter-régionaux."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-emerald-500 outline-none font-medium transition-all"
             />
+          </div>
+
+          {/* Referent Assignment */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Référent de la Zone (Responsable)</span>
+            </label>
+            <select
+              value={referentUserId}
+              onChange={(e) => setReferentUserId(e.target.value)}
+              className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-emerald-500 outline-none font-semibold transition-all"
+            >
+              <option value="">-- Aucun référent attribué --</option>
+              {potentialReferents.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.prenom} {u.nom} ({u.username}) {u.role === 'admin' ? '[Admin]' : '[Référent]'}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

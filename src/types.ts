@@ -36,7 +36,30 @@ export type SortOption = 'nom_asc' | 'nom_desc' | 'ville_asc' | 'organisation_as
 
 export type QualityFilter = 'all' | 'no_phone' | 'no_email' | 'no_location' | 'duplicates';
 
-export type ActiveTab = 'dashboard' | 'directory' | 'zones' | 'users' | 'quality' | 'import_export' | 'settings';
+export type ActiveTab = 'dashboard' | 'directory' | 'zones' | 'users' | 'quality' | 'import_export' | 'audit_logs' | 'settings';
+
+export type AuditLogCategory = 'auth' | 'member' | 'zone' | 'user' | 'data' | 'system';
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  date?: string;
+  time?: string;
+  category: AuditLogCategory;
+  action: string;
+  details: string;
+  userId: string;
+  userName: string;
+  userRole: UserRole;
+  targetId?: string;
+  targetName?: string;
+  targetItem?: string;
+  zoneName?: string;
+  champModifie?: string;
+  ancienneValeur?: string;
+  nouvelleValeur?: string;
+  severity?: 'info' | 'warning' | 'danger';
+}
 
 export interface AppSettings {
   appName: string;
@@ -53,6 +76,8 @@ export interface CustomZone {
   description?: string;
   color?: string;
   memberIds: string[];
+  referentUserId?: string;
+  referentName?: string;
   createdAt: string;
 }
 
@@ -95,7 +120,7 @@ export interface FilterState {
   sortBy: SortOption;
 }
 
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'user' | 'referent' | 'admin';
 
 export interface AppUser {
   id: string;
@@ -107,6 +132,7 @@ export interface AppUser {
   password?: string;
   role: UserRole;
   region?: string;
+  assignedZoneIds?: string[];
   active: boolean;
   createdAt?: string;
   lastLogin: string;

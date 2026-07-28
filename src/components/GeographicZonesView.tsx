@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Member, CustomZone, UserRole } from '../types';
-import { Layers, Globe, MapPin, Building2, Compass, Plus, Users, ArrowRight, Edit3, Trash2, UserPlus, Eye } from 'lucide-react';
+import { Member, CustomZone, UserRole, AppUser } from '../types';
+import { Layers, Globe, MapPin, Building2, Compass, Plus, Users, ArrowRight, Edit3, Trash2, UserPlus, Eye, UserCheck } from 'lucide-react';
 import { CustomZoneModal } from './CustomZoneModal';
 import { ManageZoneMembersModal } from './ManageZoneMembersModal';
 import { ZoneDetailsModal, ZoneDataInfo } from './ZoneDetailsModal';
@@ -9,6 +9,9 @@ interface GeographicZonesViewProps {
   members: Member[];
   customZones: CustomZone[];
   userRole: UserRole;
+  users?: AppUser[];
+  currentUserId?: string;
+  assignedZoneIds?: string[];
   onAddZone: (zone: Omit<CustomZone, 'id' | 'createdAt'>) => void;
   onUpdateZone: (zoneId: string, updates: Partial<CustomZone>) => void;
   onDeleteZone: (zoneId: string) => void;
@@ -37,6 +40,9 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
   members,
   customZones,
   userRole,
+  users,
+  currentUserId,
+  assignedZoneIds,
   onAddZone,
   onUpdateZone,
   onDeleteZone,
@@ -58,6 +64,16 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
 
   // Zone details modal state
   const [activeDetailsZone, setActiveDetailsZone] = useState<ZoneDataInfo | null>(null);
+
+  // Filter custom zones for referent users
+  const filteredCustomZones = useMemo(() => {
+    if (userRole === 'referent' && currentUserId) {
+      return customZones.filter(
+        (z) => z.referentUserId === currentUserId || (assignedZoneIds && assignedZoneIds.includes(z.id))
+      );
+    }
+    return customZones;
+  }, [customZones, userRole, currentUserId, assignedZoneIds]);
 
   // Map of memberId to Member for O(1) live synchronized lookups
   const membersMap = useMemo(() => {
@@ -185,14 +201,22 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
     setIsManageMembersModalOpen(true);
   };
 
-  const handleSaveZoneModal = (name: string, description: string, color: string) => {
+  const handleSaveZoneModal = (
+    name: string,
+    description: string,
+    color: string,
+    referentUserId?: string,
+    referentName?: string
+  ) => {
     if (zoneToEdit) {
-      onUpdateZone(zoneToEdit.id, { name, description, color });
+      onUpdateZone(zoneToEdit.id, { name, description, color, referentUserId, referentName });
     } else {
       onAddZone({
         name,
         description,
         color,
+        referentUserId,
+        referentName,
         memberIds: []
       });
     }
@@ -321,7 +345,7 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {customZones.map((zone) => {
+              {filteredCustomZones.map((zone) => {
                 const colorTheme = COLOR_MAP[zone.color || 'emerald'] || COLOR_MAP.emerald;
 
                 // Resolve live Member objects from memberIds
@@ -343,7 +367,7 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
                       <div className="flex items-start justify-between gap-3 pt-1">
                         <div className="flex items-center gap-3">
                           <span className={`w-3.5 h-3.5 rounded-full ${colorTheme.bg} shrink-0 shadow-xs`} />
-                          <h3 className="font-extrabold text-slate-900 text-base font-['Outfit'] group-hover:text-emerald-900 transition-colors">
+                          <h3 className="font-extrabold text-slate-900 text-base font-[#Outfit] group-hover:text-emerald-900 transition-colors">
                             {zone.name}
                           </h3>
                         </div>
@@ -376,8 +400,17 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
                         </div>
                       </div>
 
+                      {/* Referent Badge */}
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 w-fit">
+                        <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span>Référent : </span>
+                        <strong className="text-slate-900">
+                          {zone.referentName || (zone.referentUserId && users?.find(u => u.id === zone.referentUserId)?.name) || 'Non assigné'}
+                        </strong>
+                      </div>
+
                       {zone.description && (
-                        <p className="text-xs text-slate-500 font-medium leading-relaxed pl-6 line-clamp-2">
+                        <p className="text-xs text-slate-500 font-medium leading-relaxed pl-1 line-clamp-2">
                           {zone.description}
                         </p>
                       )}
@@ -652,6 +685,7 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
       <CustomZoneModal
         isOpen={isZoneModalOpen}
         zoneToEdit={zoneToEdit}
+        users={users}
         onClose={() => setIsZoneModalOpen(false)}
         onSave={handleSaveZoneModal}
       />

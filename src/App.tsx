@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Member, FilterState, UserRole, ActiveTab, AppSettings, CustomZone, AppUser, ImportLog, LocationChangeAlert } from './types';
+import { Member, FilterState, UserRole, ActiveTab, AppSettings, CustomZone, AppUser, ImportLog, LocationChangeAlert, AuditLog, AuditLogCategory } from './types';
 import { INITIAL_MEMBERS } from './data/initialMembers';
 import { Header } from './components/Header';
 import { NavigationTabs } from './components/NavigationTabs';
@@ -22,6 +22,7 @@ import { GeographicZonesView } from './components/GeographicZonesView';
 import { DataQualityView } from './components/DataQualityView';
 import { UserManagementView } from './components/UserManagementView';
 import { ImportExportView } from './components/ImportExportView';
+import { AuditLogsView } from './components/AuditLogsView';
 import { SettingsView } from './components/SettingsView';
 import { EditLogoModal } from './components/EditLogoModal';
 import { LoginScreen } from './components/LoginScreen';
@@ -35,6 +36,32 @@ const LOCAL_STORAGE_ZONES_KEY = 'mbok_de_france_custom_zones_v1';
 const LOCAL_STORAGE_USERS_KEY = 'mbok_de_france_users_v1';
 const LOCAL_STORAGE_SESSION_KEY = 'mbok_de_france_session_user_v1';
 const LOCAL_STORAGE_LOGS_KEY = 'mbok_de_france_import_logs_v1';
+const LOCAL_STORAGE_AUDIT_LOGS_KEY = 'mbok_de_france_audit_logs_v1';
+
+const INITIAL_AUDIT_LOGS: AuditLog[] = [
+  {
+    id: 'log-001',
+    timestamp: new Date(Date.now() - 7200000).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    category: 'system',
+    action: 'Initialisation du système',
+    details: 'Cartographie Mbok de France opérationnelle avec annuaire et gestion par zones',
+    userId: 'usr-admin',
+    userName: 'Administrateur MDF',
+    userRole: 'admin',
+    severity: 'info'
+  },
+  {
+    id: 'log-002',
+    timestamp: new Date(Date.now() - 3600000).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    category: 'auth',
+    action: 'Connexion administrateur',
+    details: 'Ouverture de session administrateur sur la plateforme',
+    userId: 'usr-admin',
+    userName: 'Administrateur MDF',
+    userRole: 'admin',
+    severity: 'info'
+  }
+];
 
 const INITIAL_USERS: AppUser[] = [
   { id: 'usr-admin', nom: 'MDF', prenom: 'Administrateur', name: 'Administrateur MDF', email: 'admin@mbokdefrance.org', username: 'admin', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' }
@@ -255,6 +282,54 @@ export default function App() {
     } catch {}
   }, [importLogs]);
 
+  // Audit Logs State
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_AUDIT_LOGS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return INITIAL_AUDIT_LOGS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_AUDIT_LOGS_KEY, JSON.stringify(auditLogs));
+    } catch {}
+  }, [auditLogs]);
+
+  const addAuditLog = (
+    category: AuditLogCategory,
+    action: string,
+    details: string,
+    severity: 'info' | 'warning' | 'danger' = 'info',
+    targetId?: string,
+    targetName?: string
+  ) => {
+    const newLog: AuditLog = {
+      id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      category,
+      action,
+      details,
+      userId: currentUser?.id || 'sys',
+      userName: currentUser ? `${currentUser.prenom || ''} ${currentUser.nom || currentUser.name}`.trim() : 'Système',
+      userRole: currentUser?.role || 'admin',
+      targetId,
+      targetName,
+      severity
+    };
+    setAuditLogs((prev) => [newLog, ...prev]);
+  };
+
   // Location Change Alerts State
   const [locationAlerts, setLocationAlerts] = useState<LocationChangeAlert[]>([]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -347,18 +422,36 @@ export default function App() {
       lastLogin: 'Nouveau'
     };
     setUsers((prev) => [newUser, ...prev]);
+    addAuditLog('user', 'Création d\'un compte utilisateur', `Création du compte "${newUser.name}" (Rôle: ${newUser.role}, Région: ${newUser.region || 'Non spécifiée'})`, 'info', newUser.id, newUser.name);
     showToast(`Utilisateur "${user.name}" créé avec succès.`);
   };
 
   const handleUpdateUser = (userId: string, updates: Partial<AppUser>) => {
     setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, ...updates } : u))
+      prev.map((u) => {
+        if (u.id === userId) {
+          const updated = { ...u, ...updates };
+          if (currentUser && currentUser.id === userId) {
+            setCurrentUser(updated);
+            setUserRole(updated.role);
+            try {
+              localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(updated));
+            } catch {}
+          }
+          return updated;
+        }
+        return u;
+      })
     );
+    const target = users.find((u) => u.id === userId);
+    addAuditLog('user', 'Mise à jour d\'un utilisateur', `Mise à jour du compte "${target?.name || userId}"`, 'info', userId, target?.name);
     showToast('Compte utilisateur mis à jour.');
   };
 
   const handleDeleteUser = (userId: string) => {
+    const target = users.find((u) => u.id === userId);
     setUsers((prev) => prev.filter((u) => u.id !== userId));
+    addAuditLog('user', 'Suppression d\'un utilisateur', `Suppression du compte "${target?.name || userId}"`, 'warning', userId, target?.name);
     showToast('Utilisateur supprimé.');
   };
 
@@ -569,6 +662,7 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
     setCustomZones((prev) => [created, ...prev]);
+    addAuditLog('zone', 'Création de zone', `Zone "${created.name}" créée`, 'info', created.id, created.name);
     showToast(`Zone "${created.name}" créée avec succès.`);
   };
 
@@ -576,6 +670,8 @@ export default function App() {
     setCustomZones((prev) =>
       prev.map((z) => (z.id === zoneId ? { ...z, ...updates } : z))
     );
+    const target = customZones.find((z) => z.id === zoneId);
+    addAuditLog('zone', 'Mise à jour de zone', `Zone "${updates.name || target?.name || zoneId}" mise à jour`, 'info', zoneId, target?.name);
     showToast('Zone mise à jour.');
   };
 
@@ -585,6 +681,7 @@ export default function App() {
     if (filters.zoneId === zoneId) {
       handleFilterChange({ zoneId: undefined });
     }
+    addAuditLog('zone', 'Suppression de zone', `Zone "${target?.name || zoneId}" supprimée`, 'warning', zoneId, target?.name);
     showToast(`Zone "${target?.name || ''}" supprimée.`);
   };
 
@@ -632,6 +729,7 @@ export default function App() {
       setMembers((prev) =>
         prev.map((m) => (m.id === memberData.id ? ({ ...memberData, id: memberData.id } as Member) : m))
       );
+      addAuditLog('member', 'Modification d\'un membre', `Membre ${memberData.prenom} ${memberData.nom} mis à jour (${memberData.region || ''})`, 'info', memberData.id, `${memberData.prenom} ${memberData.nom}`);
       showToast(`Membre "${memberData.prenom} ${memberData.nom}" mis à jour.`);
     } else {
       // Create
@@ -656,6 +754,7 @@ export default function App() {
         );
       }
 
+      addAuditLog('member', 'Création d\'un membre', `Nouveau membre ${newMember.prenom} ${newMember.nom} créé (${newMember.ville}, ${newMember.region})`, 'info', newMember.id, `${newMember.prenom} ${newMember.nom}`);
       showToast(`Membre "${newMember.prenom} ${newMember.nom}" ajouté avec succès.`);
     }
 
@@ -676,6 +775,7 @@ export default function App() {
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
     if (selectedMemberId === memberId) setSelectedMemberId(null);
     if (activeDetailsMember?.id === memberId) setActiveDetailsMember(null);
+    addAuditLog('member', 'Suppression d\'un membre', `Membre ${target ? `${target.prenom} ${target.nom}` : memberId} supprimé de l'annuaire`, 'danger', memberId, target ? `${target.prenom} ${target.nom}` : undefined);
     showToast(`Membre ${target ? `"${target.prenom} ${target.nom}"` : ''} supprimé.`);
     recordDataUpdate();
   };
@@ -788,6 +888,13 @@ export default function App() {
     };
 
     setImportLogs((prev) => [newLog, ...prev]);
+
+    addAuditLog(
+      'data',
+      replaceExisting ? 'Réinitialisation annuaire (Import)' : 'Import / Synchronisation Excel',
+      `Fichier: ${filename} | +${addedCount} ajoutés, ${updatedCount} mis à jour, ${alerts.length} alerte(s) de zone`,
+      replaceExisting ? 'warning' : 'info'
+    );
 
     if (alerts.length > 0) {
       setLocationAlerts(alerts);
@@ -1034,6 +1141,9 @@ export default function App() {
             members={members}
             customZones={customZones}
             userRole={userRole}
+            users={users}
+            currentUserId={currentUser?.id}
+            assignedZoneIds={currentUser?.assignedZoneIds}
             onSelectZone={(type, name) => {
               handleResetFilters();
               handleFilterChange({ [type]: name });
@@ -1054,10 +1164,25 @@ export default function App() {
           <UserManagementView
             currentRole={userRole}
             users={users}
+            customZones={customZones}
             onAddUser={handleAddUser}
             onUpdateUser={handleUpdateUser}
             onDeleteUser={handleDeleteUser}
             onSwitchRole={(role) => setUserRole(role)}
+          />
+        )}
+
+        {/* Tab 5: Journaux d'audit (Audit Logs) */}
+        {activeTab === 'audit_logs' && (
+          <AuditLogsView
+            auditLogs={auditLogs}
+            onClearLogs={() => {
+              setAuditLogs([]);
+              showToast("Historique du journal d'audit réinitialisé.");
+            }}
+            onExportLogs={() => {
+              showToast("Exportation du journal d'audit effectuée.");
+            }}
           />
         )}
 
