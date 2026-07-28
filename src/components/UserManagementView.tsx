@@ -56,6 +56,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [formPassword, setFormPassword] = useState('');
   const [formConfirmPassword, setFormConfirmPassword] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('user');
+  const [formRegion, setFormRegion] = useState('');
   const [formActive, setFormActive] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -68,6 +69,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormPassword('');
     setFormConfirmPassword('');
     setFormRole('user');
+    setFormRegion('Île-de-France');
     setFormActive(true);
     setFormError(null);
     setIsModalOpen(true);
@@ -82,6 +84,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormPassword(user.password || '');
     setFormConfirmPassword(user.password || '');
     setFormRole(user.role);
+    setFormRegion(user.region || '');
     setFormActive(user.active);
     setFormError(null);
     setIsModalOpen(true);
@@ -123,6 +126,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         username: formUsername.trim(),
         password: formPassword ? formPassword : editingUser.password,
         role: formRole,
+        region: formRegion.trim(),
         active: formActive
       });
     } else {
@@ -134,6 +138,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         username: formUsername.trim(),
         password: formPassword,
         role: formRole,
+        region: formRegion.trim(),
         active: formActive,
         createdAt: new Date().toLocaleDateString('fr-FR')
       });
@@ -180,7 +185,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     const fullName = `${u.prenom || ''} ${u.nom || ''} ${u.name || ''}`.toLowerCase();
     const username = (u.username || '').toLowerCase();
     const email = (u.email || '').toLowerCase();
-    return fullName.includes(q) || username.includes(q) || email.includes(q);
+    const region = (u.region || '').toLowerCase();
+    return fullName.includes(q) || username.includes(q) || email.includes(q) || region.includes(q);
   });
 
   return (
@@ -289,6 +295,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 <th className="p-4">Identifiant</th>
                 <th className="p-4">Adresse Email</th>
                 <th className="p-4">Rôle</th>
+                <th className="p-4">Région</th>
                 <th className="p-4">Statut</th>
                 <th className="p-4">Dernière Connexion</th>
                 <th className="p-4 pr-6 text-right">Actions</th>
@@ -337,6 +344,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                           <Shield className="w-3 h-3 text-slate-500" /> Utilisateur
                         </span>
                       )}
+                    </td>
+
+                    {/* Region */}
+                    <td className="p-4">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200">
+                        {user.region || 'Île-de-France'}
+                      </span>
                     </td>
 
                     {/* Status */}
@@ -472,19 +486,47 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 </div>
               </div>
 
-              {/* Email */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Adresse e-mail <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
-                  placeholder="Ex: membre@mbokdefrance.org"
-                  className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                />
+              {/* Email & Region */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Adresse e-mail <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formEmail}
+                    onChange={(e) => setFormEmail(e.target.value)}
+                    placeholder="Ex: membre@mbokdefrance.org"
+                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Région <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={formRegion}
+                    onChange={(e) => setFormRegion(e.target.value)}
+                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
+                  >
+                    <option value="Île-de-France">Île-de-France</option>
+                    <option value="Auvergne-Rhône-Alpes">Auvergne-Rhône-Alpes</option>
+                    <option value="Bourgogne-Franche-Comté">Bourgogne-Franche-Comté</option>
+                    <option value="Bretagne">Bretagne</option>
+                    <option value="Centre-Val de Loire">Centre-Val de Loire</option>
+                    <option value="Corse">Corse</option>
+                    <option value="Grand Est">Grand Est</option>
+                    <option value="Hauts-de-France">Hauts-de-France</option>
+                    <option value="Normandie">Normandie</option>
+                    <option value="Nouvelle-Aquitaine">Nouvelle-Aquitaine</option>
+                    <option value="Occitanie">Occitanie</option>
+                    <option value="Pays de la Loire">Pays de la Loire</option>
+                    <option value="Provence-Alpes-Côte d'Azur">Provence-Alpes-Côte d'Azur</option>
+                    <option value="Outre-Mer">Outre-Mer</option>
+                    <option value="International / Autre">International / Autre</option>
+                  </select>
+                </div>
               </div>
 
               {/* Identifiant */}

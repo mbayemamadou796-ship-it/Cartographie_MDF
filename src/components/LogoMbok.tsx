@@ -23,10 +23,10 @@ export const LogoMbok: React.FC<LogoMbokProps> = ({
   tagline = 'au service de la fraternité !'
 }) => {
   const dimensions = {
-    sm: { container: 'w-10 h-10', title: 'text-sm', motto: 'text-[11px]', camera: 'w-3 h-3' },
-    md: { container: 'w-14 h-14', title: 'text-lg', motto: 'text-xs', camera: 'w-3.5 h-3.5' },
-    lg: { container: 'w-20 h-20', title: 'text-xl', motto: 'text-sm', camera: 'w-4 h-4' },
-    xl: { container: 'w-32 h-32', title: 'text-3xl', motto: 'text-base', camera: 'w-5 h-5' }
+    sm: { container: 'w-12 h-12', title: 'text-base', motto: 'text-[11px]', camera: 'w-4 h-4' },
+    md: { container: 'w-16 h-16 sm:w-20 sm:h-20', title: 'text-xl sm:text-2xl', motto: 'text-xs sm:text-sm', camera: 'w-5 h-5' },
+    lg: { container: 'w-24 h-24 sm:w-28 sm:h-28', title: 'text-2xl sm:text-3xl', motto: 'text-sm sm:text-base', camera: 'w-6 h-6' },
+    xl: { container: 'w-36 h-36 sm:w-40 sm:h-40', title: 'text-3xl sm:text-4xl', motto: 'text-base sm:text-lg', camera: 'w-7 h-7' }
   }[size];
 
   // Render title with styled "de France"
@@ -111,20 +111,14 @@ export const LogoMbok: React.FC<LogoMbokProps> = ({
             </svg>
           )}
 
-          {/* Hover Overlay Icon when editable */}
+          {/* Hover Overlay Icon when editable (allows changing logo photo on click) */}
           {(editable || onEditClick) && (
-            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white rounded-full backdrop-blur-[1px]">
+            <div className="absolute inset-0 bg-slate-900/35 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white rounded-full backdrop-blur-[1px] p-1">
               <Camera className={dimensions.camera} />
+              <span className="text-[9px] font-bold mt-0.5 leading-tight hidden sm:block">Changer</span>
             </div>
           )}
         </div>
-
-        {/* Small Camera Badge Badge at bottom right if editable */}
-        {(editable || onEditClick) && (
-          <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-600 text-white p-1 rounded-full border-2 border-white shadow-xs group-hover:scale-110 transition-transform">
-            <Camera className="w-2.5 h-2.5" />
-          </div>
-        )}
       </div>
 
       {/* Brand Title & Motto beside Logo */}

@@ -106,6 +106,7 @@ export interface AppUser {
   username: string;
   password?: string;
   role: UserRole;
+  region?: string;
   active: boolean;
   createdAt?: string;
   lastLogin: string;
