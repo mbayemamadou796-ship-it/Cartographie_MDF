@@ -64,7 +64,8 @@ const INITIAL_AUDIT_LOGS: AuditLog[] = [
 ];
 
 const INITIAL_USERS: AppUser[] = [
-  { id: 'usr-admin', nom: 'MDF', prenom: 'Administrateur', name: 'Administrateur MDF', email: 'admin@mbokdefrance.org', username: 'admin', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' }
+  { id: 'usr-admin', nom: 'MDF', prenom: 'Administrateur', name: 'Administrateur MDF', email: 'admin@mbokdefrance.org', username: 'admin', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' },
+  { id: 'usr-referent-idf', nom: 'Diallo', prenom: 'Aïssatou', name: 'Aïssatou Diallo', email: 'referent.idf@mbokdefrance.org', username: 'referent', password: 'referent123', role: 'referent', region: 'Île-de-France', assignedZoneIds: ['zone-idf'], active: true, lastLogin: 'Hier' }
 ];
 
 const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
@@ -506,12 +507,81 @@ export default function App() {
     }, 4000);
   };
 
+  // Referent Scoping Logic
+  const referentZones = useMemo(() => {
+    if (userRole !== 'referent') return [];
+
+    let assigned = customZones.filter(
+      (z) =>
+        (currentUser?.id && z.referentUserId === currentUser.id) ||
+        (currentUser?.assignedZoneIds && currentUser.assignedZoneIds.includes(z.id))
+    );
+
+    if (assigned.length === 0 && currentUser?.region) {
+      const regionMatched = customZones.filter(
+        (z) => z.name.trim().toLowerCase() === currentUser.region?.trim().toLowerCase()
+      );
+      if (regionMatched.length > 0) assigned = regionMatched;
+    }
+
+    return assigned;
+  }, [userRole, currentUser, customZones]);
+
+  const referentZoneNames = useMemo(() => {
+    if (userRole !== 'referent') return [];
+    const names = new Set<string>();
+    referentZones.forEach((z) => names.add(z.name));
+    if (currentUser?.region) names.add(currentUser.region);
+    if (names.size === 0) names.add('Île-de-France');
+    return Array.from(names);
+  }, [userRole, referentZones, currentUser]);
+
+  const scopedMembers = useMemo(() => {
+    if (userRole !== 'referent') {
+      return members;
+    }
+
+    const allowedMemberIds = new Set<string>();
+    referentZones.forEach((z) => {
+      z.memberIds.forEach((id) => allowedMemberIds.add(id));
+    });
+
+    const normalizedZoneNames = referentZoneNames.map((n) => n.trim().toLowerCase());
+
+    const matched = members.filter((m) => {
+      if (allowedMemberIds.has(m.id)) return true;
+
+      const mRegion = m.region?.trim().toLowerCase();
+      const mZone = m.zone?.trim().toLowerCase();
+
+      if (mRegion && normalizedZoneNames.some((zName) => mRegion.includes(zName) || zName.includes(mRegion))) {
+        return true;
+      }
+      if (mZone && normalizedZoneNames.some((zName) => mZone.includes(zName) || zName.includes(mZone))) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (matched.length === 0) {
+      return members.filter(
+        (m) =>
+          m.region === 'Île-de-France' ||
+          m.zone === 'Île-de-France' ||
+          normalizedZoneNames.includes(m.region?.toLowerCase() || '')
+      );
+    }
+
+    return matched;
+  }, [userRole, members, referentZones, referentZoneNames]);
+
   // Map for duplicates computation
   const duplicateIdsSet = useMemo(() => {
     const emailCounts = new Map<string, number>();
     const nameCounts = new Map<string, number>();
 
-    members.forEach((m) => {
+    scopedMembers.forEach((m) => {
       const email = m.email?.trim().toLowerCase();
       if (email) emailCounts.set(email, (emailCounts.get(email) || 0) + 1);
 
@@ -520,7 +590,7 @@ export default function App() {
     });
 
     const dupSet = new Set<string>();
-    members.forEach((m) => {
+    scopedMembers.forEach((m) => {
       const email = m.email?.trim().toLowerCase();
       const name = `${m.nom?.trim().toLowerCase()} ${m.prenom?.trim().toLowerCase()}`;
       if ((email && (emailCounts.get(email) || 0) > 1) || (name && (nameCounts.get(name) || 0) > 1)) {
@@ -528,23 +598,23 @@ export default function App() {
       }
     });
     return dupSet;
-  }, [members]);
+  }, [scopedMembers]);
 
   // Quality Issues count calculation for navigation badge
   const qualityIssueCount = useMemo(() => {
-    const noPhone = members.filter((m) => !m.telephone || !m.telephone.trim()).length;
-    const noEmail = members.filter((m) => !m.email || !m.email.trim()).length;
-    const noLocation = members.filter(
+    const noPhone = scopedMembers.filter((m) => !m.telephone || !m.telephone.trim()).length;
+    const noEmail = scopedMembers.filter((m) => !m.email || !m.email.trim()).length;
+    const noLocation = scopedMembers.filter(
       (m) => !m.latitude || !m.longitude || (m.latitude === 0 && m.longitude === 0)
     ).length;
     return noPhone + noEmail + noLocation + duplicateIdsSet.size;
-  }, [members, duplicateIdsSet]);
+  }, [scopedMembers, duplicateIdsSet]);
 
   // Filter & Search Logic (Multi-field match)
   const filteredAndSortedMembers = useMemo(() => {
     const q = filters.searchQuery.trim().toLowerCase();
 
-    const filtered = members.filter((m) => {
+    const filtered = scopedMembers.filter((m) => {
       // Instant Multi-field Search
       if (q) {
         const fullText = [
@@ -622,7 +692,7 @@ export default function App() {
       }
       return 0;
     });
-  }, [members, filters, customZones, duplicateIdsSet]);
+  }, [scopedMembers, filters, customZones, duplicateIdsSet]);
 
   // Active filter count calculation
   const activeFilterCount = [
@@ -1018,7 +1088,7 @@ export default function App() {
       {/* Collapsible Filters Panel (When opened in directory tab) */}
       {isFiltersOpen && activeTab === 'directory' && (
         <FiltersPanel
-          members={members}
+          members={scopedMembers}
           customZones={customZones}
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -1034,10 +1104,13 @@ export default function App() {
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <DashboardSummary
-              members={members}
+              members={scopedMembers}
               customZones={customZones}
               lastUpdateDate={lastUpdateDate}
               activeQualityFilter={filters.qualityFilter}
+              userRole={userRole}
+              referentZoneNames={referentZoneNames}
+              referentUser={currentUser}
               onSelectQualityFilter={(qf) => {
                 handleFilterChange({ qualityFilter: qf });
                 setActiveTab('directory');
@@ -1050,11 +1123,15 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-slate-900 text-sm font-['Outfit'] flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-emerald-600" />
-                  <span>Aperçu Rapide de la Carte Géographique</span>
+                  <span>
+                    {userRole === 'referent'
+                      ? `Aperçu Carte — Zone ${referentZoneNames.join(', ')}`
+                      : 'Aperçu Rapide de la Carte Géographique'}
+                  </span>
                 </h3>
                 <button
                   onClick={() => setActiveTab('directory')}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 hover:underline"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 hover:underline cursor-pointer"
                 >
                   <span>Ouvrir l'annuaire complet</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -1062,7 +1139,7 @@ export default function App() {
               </div>
 
               <InteractiveMap
-                members={members}
+                members={scopedMembers}
                 selectedMemberId={selectedMemberId}
                 onSelectMember={(member) => {
                   setSelectedMemberId(member.id);
@@ -1089,7 +1166,7 @@ export default function App() {
 
             {/* Info Bar (Search, Filters, Counters, Filter Chips, Sort Dropdown) */}
             <InfoBar
-              totalCount={members.length}
+              totalCount={scopedMembers.length}
               filteredCount={filteredAndSortedMembers.length}
               filters={filters}
               customZones={customZones}
@@ -1189,7 +1266,7 @@ export default function App() {
         {/* Tab 5: Qualité & Maintenance des données */}
         {activeTab === 'quality' && (
           <DataQualityView
-            members={members}
+            members={scopedMembers}
             customZones={customZones}
             userRole={userRole}
             onEditMember={(m) => {

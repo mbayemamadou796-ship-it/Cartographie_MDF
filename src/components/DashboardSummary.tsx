@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Member, QualityFilter, CustomZone } from '../types';
-import { Users, Building2, MapPin, Compass, Calendar, AlertTriangle, PhoneOff, MailX, MapPinOff, Copy, CheckCircle2, RefreshCw, Layers, Activity, FileSpreadsheet, UserPlus } from 'lucide-react';
+import { Member, QualityFilter, CustomZone, UserRole, AppUser } from '../types';
+import { Users, Building2, MapPin, Compass, Calendar, AlertTriangle, PhoneOff, MailX, MapPinOff, Copy, CheckCircle2, RefreshCw, Layers, Activity, FileSpreadsheet, ShieldCheck, UserCheck } from 'lucide-react';
 
 interface DashboardSummaryProps {
   members: Member[];
@@ -9,6 +9,9 @@ interface DashboardSummaryProps {
   activeQualityFilter: QualityFilter;
   onSelectQualityFilter: (filter: QualityFilter) => void;
   onNavigateToTab?: (tab: 'directory' | 'zones' | 'quality' | 'import_export') => void;
+  userRole?: UserRole;
+  referentZoneNames?: string[];
+  referentUser?: AppUser | null;
 }
 
 export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
@@ -17,8 +20,13 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
   lastUpdateDate,
   activeQualityFilter,
   onSelectQualityFilter,
-  onNavigateToTab
+  onNavigateToTab,
+  userRole = 'admin',
+  referentZoneNames = [],
+  referentUser
 }) => {
+  const zoneLabel = referentZoneNames.length > 0 ? referentZoneNames.join(', ') : 'Île-de-France';
+
   // Calculate summary metrics
   const stats = useMemo(() => {
     const totalMembers = members.length;
@@ -90,27 +98,43 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <span className="p-1.5 rounded-xl bg-emerald-100 text-emerald-800">
-              <Building2 className="w-4 h-4 text-emerald-700" />
+              {userRole === 'referent' ? (
+                <ShieldCheck className="w-4 h-4 text-emerald-700" />
+              ) : (
+                <Building2 className="w-4 h-4 text-emerald-700" />
+              )}
             </span>
             <h2 className="text-base sm:text-lg font-bold text-slate-900 font-['Outfit']">
-              Tableau de bord Mbok de France
+              {userRole === 'referent'
+                ? `Tableau de bord Référent — Zone ${zoneLabel}`
+                : 'Tableau de bord Mbok de France'}
             </h2>
           </div>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Vue synthétique des données et indicateurs clés de la communauté MDF
+            {userRole === 'referent'
+              ? `Vue synthétique et indicateurs clés réservés aux membres de la zone ${zoneLabel}`
+              : 'Vue synthétique des données et indicateurs clés de la communauté MDF'}
           </p>
         </div>
 
-        {/* Last update pill */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50/80 border border-emerald-200/80 rounded-xl text-xs font-semibold text-emerald-950 shrink-0">
-          <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Dernière mise à jour : {lastUpdateDate || 'Aujourd\'hui'}</span>
+        {/* Last update pill & Referent Badge */}
+        <div className="flex items-center gap-2">
+          {userRole === 'referent' && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-200">
+              <UserCheck className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Espace Référent Zone</span>
+            </span>
+          )}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50/80 border border-emerald-200/80 rounded-xl text-xs font-semibold text-emerald-950 shrink-0">
+            <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Dernière mise à jour : {lastUpdateDate || 'Aujourd\'hui'}</span>
+          </div>
         </div>
       </div>
 
       {/* Primary KPI Grid (5 metrics) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        {/* Total Membres */}
+        {/* Total Membres / Membres de la Zone */}
         <div
           onClick={() => onNavigateToTab?.('directory')}
           className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden group cursor-pointer"
@@ -119,81 +143,159 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
             <Users className="w-16 h-16" />
           </div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-100 block">
-            Membres totaux
+            {userRole === 'referent' ? 'Membres de la Zone' : 'Membres totaux'}
           </span>
           <div className="text-2xl sm:text-3xl font-extrabold font-['Outfit'] mt-1">
             {stats.totalMembers}
           </div>
-          <p className="text-[10px] text-emerald-100 mt-1 font-medium">Inscrits dans l'annuaire</p>
+          <p className="text-[10px] text-emerald-100 mt-1 font-medium">
+            {userRole === 'referent' ? `Inscrits dans la zone ${zoneLabel}` : 'Inscrits dans l\'annuaire'}
+          </p>
         </div>
 
-        {/* Nombre de Zones (Régions MDF) */}
-        <div
-          onClick={() => onNavigateToTab?.('zones')}
-          className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Zones (Régions)
-            </span>
-            <Layers className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
-            {stats.totalZones}
-          </div>
-          <p className="text-[10px] text-slate-500 font-medium">Zones régionales MDF</p>
-        </div>
+        {userRole === 'referent' ? (
+          <>
+            {/* Referent Card 2: Communes de la Zone */}
+            <div
+              onClick={() => onNavigateToTab?.('directory')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Communes de la Zone
+                </span>
+                <MapPin className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
+                {stats.uniqueVilles}
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium">Villes représentées dans la zone</p>
+            </div>
 
-        {/* Régions de présence */}
-        <div
-          onClick={() => onNavigateToTab?.('directory')}
-          className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Régions
-            </span>
-            <Building2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
-            {stats.uniqueRegions}
-          </div>
-          <p className="text-[10px] text-slate-500 font-medium">Régions de présence</p>
-        </div>
+            {/* Referent Card 3: Organisations & Structures */}
+            <div
+              onClick={() => onNavigateToTab?.('directory')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Organisations
+                </span>
+                <Building2 className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
+                {stats.uniqueOrganisations}
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium">Structures dans la zone</p>
+            </div>
 
-        {/* Villes & Communes */}
-        <div
-          onClick={() => onNavigateToTab?.('directory')}
-          className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Villes
-            </span>
-            <MapPin className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
-            {stats.uniqueVilles}
-          </div>
-          <p className="text-[10px] text-slate-500 font-medium">Communes représentées</p>
-        </div>
+            {/* Referent Card 4: Sur la Carte de la Zone */}
+            <div
+              onClick={() => onNavigateToTab?.('directory')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Sur la Carte
+                </span>
+                <Compass className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
+                {stats.geolocatedCount}
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium">Membres géolocalisés de la zone</p>
+            </div>
 
-        {/* Membres Cartographiés / Géolocalisés */}
-        <div
-          onClick={() => onNavigateToTab?.('directory')}
-          className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Sur la Carte
-            </span>
-            <Compass className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
-            {stats.geolocatedCount}
-          </div>
-          <p className="text-[10px] text-slate-500 font-medium">Membres géolocalisés</p>
-        </div>
+            {/* Referent Card 5: Zone d'action */}
+            <div
+              onClick={() => onNavigateToTab?.('zones')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Zone d'action
+                </span>
+                <Layers className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-base font-extrabold text-slate-900 font-['Outfit'] mt-1 truncate" title={zoneLabel}>
+                {zoneLabel}
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium truncate">
+                {referentUser ? `Référent : ${referentUser.prenom || ''} ${referentUser.nom || referentUser.name}` : 'Espace Référent Délégué'}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Nombre de Zones (Régions MDF) */}
+            <div
+              onClick={() => onNavigateToTab?.('zones')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Zones (Régions)
+                </span>
+                <Layers className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
+                {stats.totalZones}
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium">Zones régionales MDF</p>
+            </div>
+
+            {/* Régions de présence */}
+            <div
+              onClick={() => onNavigateToTab?.('directory')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Régions
+                </span>
+                <Building2 className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
+                {stats.uniqueRegions}
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium">Régions de présence</p>
+            </div>
+
+            {/* Villes & Communes */}
+            <div
+              onClick={() => onNavigateToTab?.('directory')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Villes
+                </span>
+                <MapPin className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
+                {stats.uniqueVilles}
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium">Communes représentées</p>
+            </div>
+
+            {/* Membres Cartographiés / Géolocalisés */}
+            <div
+              onClick={() => onNavigateToTab?.('directory')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Sur la Carte
+                </span>
+                <Compass className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
+                {stats.geolocatedCount}
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium">Membres géolocalisés</p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Data Quality & Health Checks Section */}
@@ -202,7 +304,9 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 font-['Outfit']">
-              Amélioration de la qualité des données
+              {userRole === 'referent'
+                ? `Qualité des données — Zone ${zoneLabel}`
+                : 'Amélioration de la qualité des données'}
             </h3>
             {totalQualityIssues === 0 ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
@@ -324,7 +428,9 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-emerald-700" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 font-['Outfit']">
-              Activité Récente & Synchronisation
+              {userRole === 'referent'
+                ? `Activité & Suivi de la Zone ${zoneLabel}`
+                : 'Activité Récente & Synchronisation'}
             </h3>
           </div>
           <span className="text-[10px] text-slate-400 font-medium">Temps réel</span>
@@ -338,7 +444,9 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
             <div>
               <p className="font-bold text-slate-900">Synchronisation base de données</p>
               <p className="text-[11px] text-slate-500">
-                Annuaire ({stats.totalMembers} membres) & Carte synchronisés.
+                {userRole === 'referent'
+                  ? `Membres de la zone (${stats.totalMembers}) & Carte synchronisés.`
+                  : `Annuaire (${stats.totalMembers} membres) & Carte synchronisés.`}
               </p>
               <span className="text-[9px] text-emerald-700 font-mono mt-1 block">Aujourd'hui, {lastUpdateDate}</span>
             </div>
@@ -349,9 +457,11 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
               <Layers className="w-3.5 h-3.5" />
             </span>
             <div>
-              <p className="font-bold text-slate-900">Mise à jour des zones MDF</p>
+              <p className="font-bold text-slate-900">Périmètre territorial MDF</p>
               <p className="text-[11px] text-slate-500">
-                {stats.totalZones} zone(s) personnalisée(s) actives (Île-de-France, Bretagne...).
+                {userRole === 'referent'
+                  ? `Gestion exclusive de la zone : ${zoneLabel}`
+                  : `${stats.totalZones} zone(s) personnalisée(s) actives (Île-de-France, Bretagne...).`}
               </p>
               <span className="text-[9px] text-emerald-700 font-mono mt-1 block">Réseau MDF actif</span>
             </div>
@@ -364,7 +474,9 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
             <div>
               <p className="font-bold text-slate-900">Rapport de qualité des données</p>
               <p className="text-[11px] text-slate-500">
-                {totalQualityIssues === 0 ? 'Toutes les fiches sont 100% complètes' : `${totalQualityIssues} fiche(s) nécessitent une attention`}
+                {totalQualityIssues === 0
+                  ? 'Toutes les fiches de la zone sont 100% complètes'
+                  : `${totalQualityIssues} fiche(s) de la zone nécessitent une attention`}
               </p>
               <span className="text-[9px] text-emerald-700 font-mono mt-1 block">Contrôle de cohérence OK</span>
             </div>
