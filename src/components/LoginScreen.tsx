@@ -160,6 +160,39 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </button>
         </form>
 
+        {/* Quick Demo Logins */}
+        <div className="mt-6 pt-4 border-t border-slate-100">
+          <p className="text-[11px] font-bold text-slate-500 mb-2 text-center uppercase tracking-wider">
+            Comptes de Démonstration (Accès Rapide)
+          </p>
+          <div className="grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleQuickFill('admin', 'admin123')}
+              className="px-2 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-[11px] font-bold transition-colors border border-emerald-200/60 flex flex-col items-center cursor-pointer"
+            >
+              <span className="font-black text-emerald-900">Admin</span>
+              <span className="text-[9px] text-emerald-700 font-mono">admin123</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('referent', 'referent123')}
+              className="px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl text-[11px] font-bold transition-colors border border-blue-200/60 flex flex-col items-center cursor-pointer"
+            >
+              <span className="font-black text-blue-900">Référent</span>
+              <span className="text-[9px] text-blue-700 font-mono">referent123</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('membre', 'user123')}
+              className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-[11px] font-bold transition-colors border border-slate-200 flex flex-col items-center cursor-pointer"
+            >
+              <span className="font-black text-slate-900">Membre</span>
+              <span className="text-[9px] text-slate-600 font-mono">user123</span>
+            </button>
+          </div>
+        </div>
+
         {/* Footer info */}
         <p className="mt-5 text-[11px] text-center text-slate-400">
           Système sécurisé Mbok de France • v1.0 MVP

@@ -65,7 +65,8 @@ const INITIAL_AUDIT_LOGS: AuditLog[] = [
 
 const INITIAL_USERS: AppUser[] = [
   { id: 'usr-admin', nom: 'MDF', prenom: 'Administrateur', name: 'Administrateur MDF', email: 'admin@mbokdefrance.org', username: 'admin', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' },
-  { id: 'usr-referent-idf', nom: 'Diallo', prenom: 'Aïssatou', name: 'Aïssatou Diallo', email: 'referent.idf@mbokdefrance.org', username: 'referent', password: 'referent123', role: 'referent', region: 'Île-de-France', assignedZoneIds: ['zone-idf'], active: true, lastLogin: 'Hier' }
+  { id: 'usr-referent-idf', nom: 'Diallo', prenom: 'Aïssatou', name: 'Aïssatou Diallo', email: 'referent.idf@mbokdefrance.org', username: 'referent', password: 'referent123', role: 'referent', region: 'Île-de-France', assignedZoneIds: ['zone-idf'], active: true, lastLogin: 'Hier' },
+  { id: 'usr-user', nom: 'Sow', prenom: 'Mamadou', name: 'Mamadou Sow', email: 'membre@mbokdefrance.org', username: 'membre', password: 'user123', role: 'user', active: true, lastLogin: 'Il y a 2h' }
 ];
 
 const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
