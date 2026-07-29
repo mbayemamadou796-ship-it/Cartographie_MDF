@@ -140,6 +140,14 @@ export const MemberModal: React.FC<MemberModalProps> = ({
                 </div>
 
                 <div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block">Ville de résidence</span>
+                  <span className="font-bold text-slate-900 flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{member.ville || 'Non renseignée'}</span>
+                  </span>
+                </div>
+
+                <div>
                   <span className="text-[10px] text-slate-500 font-bold uppercase block">Situation Professionnelle</span>
                   <span className="font-bold text-slate-900 flex items-center gap-1 mt-0.5">
                     <Briefcase className="w-3.5 h-3.5 text-emerald-600 shrink-0" />

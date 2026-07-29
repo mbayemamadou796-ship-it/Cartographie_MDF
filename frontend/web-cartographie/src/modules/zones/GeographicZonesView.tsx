@@ -67,10 +67,15 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
 
   // Filter custom zones for referent users
   const filteredCustomZones = useMemo(() => {
-    if (userRole === 'referent' && currentUserId) {
-      return customZones.filter(
-        (z) => z.referentUserId === currentUserId || (assignedZoneIds && assignedZoneIds.includes(z.id))
-      );
+    if (userRole === 'referent') {
+      if (currentUserId || (assignedZoneIds && assignedZoneIds.length > 0)) {
+        return customZones.filter(
+          (z) =>
+            (currentUserId && z.referentUserId === currentUserId) ||
+            (assignedZoneIds && assignedZoneIds.includes(z.id))
+        );
+      }
+      return customZones;
     }
     return customZones;
   }, [customZones, userRole, currentUserId, assignedZoneIds]);
@@ -270,7 +275,7 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
               Rubrique Zones & Groupes sur-mesure
             </h2>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Créez et gérez vos zones personnalisées (Bretagne, Grand Ouest, Réseau Sud, Projet 2026...) avec synchronisation automatique
+              Gérez et attribuez les zones régionales de France (Bretagne, Île-de-France, Pays de la Loire, Normandie, Occitanie...) avec synchronisation automatique
             </p>
           </div>
         </div>
@@ -287,7 +292,7 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
               }`}
             >
               <Layers className="w-4 h-4 text-emerald-400" />
-              <span>Zones MDF ({customZones.length})</span>
+              <span>Zones MDF ({filteredCustomZones.length})</span>
             </button>
 
             <button

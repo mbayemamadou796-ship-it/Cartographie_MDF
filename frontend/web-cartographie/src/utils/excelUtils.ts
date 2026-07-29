@@ -69,9 +69,9 @@ export async function parseExcelFile(file: File): Promise<{ members: Member[]; e
           let lat = parseFloat(mappedRow['latitude'] || mappedRow['lat'] || 'NaN');
           let lng = parseFloat(mappedRow['longitude'] || mappedRow['lng'] || mappedRow['lon'] || 'NaN');
 
-          // If latitude or longitude missing, geocode automatically
+          // Always auto-compute latitude and longitude from address, postal code, city, and zone if missing or empty
           if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-            const geo = await geocodeLocation(adresse, codePostal, ville, pays);
+            const geo = await geocodeLocation(adresse, codePostal, ville, pays, zone);
             lat = geo.latitude;
             lng = geo.longitude;
           }
@@ -197,53 +197,44 @@ export function downloadSampleExcel() {
     {
       'Nom': 'Garnier',
       'Prénom': 'Nathalie',
-      'Fonction': 'Directrice de Pôle',
-      'Organisation': 'MDF Paris - Est',
+      'Situation professionnelle': 'Directrice de Pôle',
+      'Domaine d\'étude': 'Santé publique',
+      'Zone': 'Île-de-France',
       'Email': 'nathalie.garnier@mdf-france.org',
       'Téléphone': '01 43 55 12 00',
       'Adresse': '15 Rue de la Roquette',
       'Code Postal': '75011',
       'Ville': 'Paris',
       'Département': 'Paris (75)',
-      'Région': 'Île-de-France',
-      'Pays': 'France',
-      'Latitude': 48.8542,
-      'Longitude': 2.3712,
-      'Photo': ''
+      'Pays': 'France'
     },
     {
       'Nom': 'Ndiaye',
       'Prénom': 'Ousmane',
-      'Fonction': 'Psychologue clinicien',
-      'Organisation': 'MDF Lyon - Centre',
+      'Situation professionnelle': 'Psychologue clinicien',
+      'Domaine d\'étude': 'Psychologie',
+      'Zone': 'Auvergne-Rhône-Alpes',
       'Email': 'ousmane.ndiaye@mdf-france.org',
       'Téléphone': '04 78 60 20 30',
       'Adresse': '12 Place Bellecour',
       'Code Postal': '69002',
       'Ville': 'Lyon',
       'Département': 'Rhône (69)',
-      'Région': 'Auvergne-Rhône-Alpes',
-      'Pays': 'France',
-      'Latitude': 45.7578,
-      'Longitude': 4.8320,
-      'Photo': ''
+      'Pays': 'France'
     },
     {
       'Nom': 'Rousseau',
       'Prénom': 'Élodie',
-      'Fonction': 'Juriste Droit Social',
-      'Organisation': 'MDF Bordeaux',
+      'Situation professionnelle': 'Juriste Droit Social',
+      'Domaine d\'étude': 'Droit',
+      'Zone': 'Nouvelle-Aquitaine',
       'Email': 'elodie.rousseau@mdf-france.org',
       'Téléphone': '05 56 00 11 22',
       'Adresse': '8 Cours de l\'Intendance',
       'Code Postal': '33000',
       'Ville': 'Bordeaux',
       'Département': 'Gironde (33)',
-      'Région': 'Nouvelle-Aquitaine',
-      'Pays': 'France',
-      'Latitude': 44.8415,
-      'Longitude': -0.5750,
-      'Photo': ''
+      'Pays': 'France'
     }
   ];
 

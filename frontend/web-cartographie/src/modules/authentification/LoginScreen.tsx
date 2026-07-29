@@ -165,7 +165,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           <p className="text-[11px] font-bold text-slate-500 mb-2 text-center uppercase tracking-wider">
             Comptes de Démonstration (Accès Rapide)
           </p>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             <button
               type="button"
               onClick={() => handleQuickFill('admin', 'admin123')}
@@ -176,10 +176,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </button>
             <button
               type="button"
+              onClick={() => handleQuickFill('modou', 'modou123')}
+              className="px-2 py-1.5 bg-emerald-100/80 hover:bg-emerald-200 text-emerald-950 rounded-xl text-[11px] font-bold transition-colors border border-emerald-300 flex flex-col items-center cursor-pointer"
+            >
+              <span className="font-black text-emerald-950">Ref. Bretagne</span>
+              <span className="text-[9px] text-emerald-800 font-mono">modou123</span>
+            </button>
+            <button
+              type="button"
               onClick={() => handleQuickFill('referent', 'referent123')}
               className="px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl text-[11px] font-bold transition-colors border border-blue-200/60 flex flex-col items-center cursor-pointer"
             >
-              <span className="font-black text-blue-900">Référent</span>
+              <span className="font-black text-blue-900">Ref. IDF</span>
               <span className="text-[9px] text-blue-700 font-mono">referent123</span>
             </button>
             <button

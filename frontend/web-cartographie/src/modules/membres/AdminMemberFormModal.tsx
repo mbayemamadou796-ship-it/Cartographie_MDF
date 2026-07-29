@@ -170,19 +170,21 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
     }));
   };
 
-  const handleAutoGeocode = async () => {
-    if (!formData.ville && !formData.adresse) {
-      setErrorMsg('Veuillez entrer au moins une ville ou une adresse pour géolocaliser.');
+  const handleAutoGeocode = async (overrideData?: typeof formData) => {
+    const dataToUse = overrideData || formData;
+    if (!dataToUse.ville && !dataToUse.adresse && !dataToUse.zone) {
+      setErrorMsg('Veuillez entrer au moins une ville, une adresse ou une zone pour géolocaliser.');
       return;
     }
     setIsGeocoding(true);
     setErrorMsg('');
     try {
       const result = await geocodeLocation(
-        formData.adresse || '',
-        formData.codePostal || '',
-        formData.ville || '',
-        formData.pays || 'France'
+        dataToUse.adresse || '',
+        dataToUse.codePostal || '',
+        dataToUse.ville || '',
+        dataToUse.pays || 'France',
+        dataToUse.zone || dataToUse.region || ''
       );
       setFormData((prev) => ({
         ...prev,
@@ -199,21 +201,46 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nom.trim()) {
       setErrorMsg('Le nom du membre est obligatoire.');
       return;
     }
 
-    // Ensure fallback fields match for backwards compatibility
+    setIsGeocoding(true);
+    let finalLat = formData.latitude;
+    let finalLng = formData.longitude;
     const zoneValue = formData.zone || formData.region || 'Île-de-France';
+
+    // Auto-calculate latitude and longitude from address, city, postal code and zone if missing or default
+    try {
+      const geoResult = await geocodeLocation(
+        formData.adresse || '',
+        formData.codePostal || '',
+        formData.ville || '',
+        formData.pays || 'France',
+        zoneValue
+      );
+      if (geoResult && geoResult.latitude && geoResult.longitude) {
+        finalLat = geoResult.latitude;
+        finalLng = geoResult.longitude;
+      }
+    } catch {
+      // Keep existing lat/lng if geocoding fails
+    } finally {
+      setIsGeocoding(false);
+    }
+
+    // Ensure fallback fields match for backwards compatibility
     const fonctionValue = formData.situationProfessionnelle || formData.fonction || 'Membre MDF';
     const orgValue = formData.domaineEtude || formData.organisation || 'MDF';
 
     onSave({
       ...(memberToEdit?.id ? { id: memberToEdit.id } : {}),
       ...formData,
+      latitude: finalLat,
+      longitude: finalLng,
       zone: zoneValue,
       region: zoneValue,
       fonction: fonctionValue,
@@ -544,13 +571,14 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Ville</label>
+                <label className="block font-semibold text-slate-700 mb-1">Ville de résidence (Commune) *</label>
                 <input
                   type="text"
+                  required
                   value={formData.ville}
                   onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
-                  placeholder="Ex: Saint-Denis"
-                  className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none"
+                  placeholder="Ex: Saint-Denis, Rennes, Nantes, Lyon..."
+                  className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
                 />
               </div>
 

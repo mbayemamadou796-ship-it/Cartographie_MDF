@@ -36,10 +36,6 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
       members.map((m) => m.ville?.trim().toLowerCase()).filter(Boolean)
     ).size;
 
-    const uniqueRegions = new Set(
-      members.map((m) => m.region?.trim().toLowerCase()).filter(Boolean)
-    ).size;
-
     const geolocatedCount = members.filter(
       (m) => m.latitude && m.longitude && (m.latitude !== 0 || m.longitude !== 0)
     ).length;
@@ -78,7 +74,6 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
       totalMembers,
       totalZones,
       uniqueVilles,
-      uniqueRegions,
       geolocatedCount,
       uniqueOrganisations,
       noPhoneCount,
@@ -132,8 +127,8 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
         </div>
       </div>
 
-      {/* Primary KPI Grid (5 metrics) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+      {/* Primary KPI Grid (4 metrics) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Membres / Membres de la Zone */}
         <div
           onClick={() => onNavigateToTab?.('directory')}
@@ -172,24 +167,7 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
               <p className="text-[10px] text-slate-500 font-medium">Villes représentées dans la zone</p>
             </div>
 
-            {/* Referent Card 3: Organisations & Structures */}
-            <div
-              onClick={() => onNavigateToTab?.('directory')}
-              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Organisations
-                </span>
-                <Building2 className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
-                {stats.uniqueOrganisations}
-              </div>
-              <p className="text-[10px] text-slate-500 font-medium">Structures dans la zone</p>
-            </div>
-
-            {/* Referent Card 4: Sur la Carte de la Zone */}
+            {/* Referent Card 3: Sur la Carte de la Zone */}
             <div
               onClick={() => onNavigateToTab?.('directory')}
               className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
@@ -206,7 +184,7 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
               <p className="text-[10px] text-slate-500 font-medium">Membres géolocalisés de la zone</p>
             </div>
 
-            {/* Referent Card 5: Zone d'action */}
+            {/* Referent Card 4: Zone d'action */}
             <div
               onClick={() => onNavigateToTab?.('zones')}
               className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
@@ -244,23 +222,6 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
               <p className="text-[10px] text-slate-500 font-medium">Zones régionales MDF</p>
             </div>
 
-            {/* Régions de présence */}
-            <div
-              onClick={() => onNavigateToTab?.('directory')}
-              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Régions
-                </span>
-                <Building2 className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
-                {stats.uniqueRegions}
-              </div>
-              <p className="text-[10px] text-slate-500 font-medium">Régions de présence</p>
-            </div>
-
             {/* Villes & Communes */}
             <div
               onClick={() => onNavigateToTab?.('directory')}
@@ -268,14 +229,14 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Villes
+                  Villes (Communes)
                 </span>
                 <MapPin className="w-4 h-4 text-emerald-600" />
               </div>
               <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
                 {stats.uniqueVilles}
               </div>
-              <p className="text-[10px] text-slate-500 font-medium">Communes représentées</p>
+              <p className="text-[10px] text-slate-500 font-medium">Communes de résidence</p>
             </div>
 
             {/* Membres Cartographiés / Géolocalisés */}

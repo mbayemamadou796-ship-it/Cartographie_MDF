@@ -89,12 +89,24 @@ cartographie-mdf/
    - Accès global à l'ensemble du territoire national et international.
    - Gestion complète des membres, zones sur-mesure, utilisateurs, imports/exports Excel, contrôle qualité, journaux d'audit et paramètres d'association.
 
-2. **Référent Régional (`referent`)** :
-   - Périmètre automatiquement restreint aux membres de la zone ou région attribuée.
-   - Édition et ajout des membres de sa zone, export ciblé de sa zone.
+2. **Référent de Zone (`referent`)** :
+   - Périmètre **strictement et automatiquement restreint** aux membres et zones qui lui sont attribués (ex: Modou Mbaye pour la zone Bretagne, Aïssatou Diallo pour l'Île-de-France).
+   - Accès restreint uniquement à sa zone sur le Tableau de bord, l'Annuaire & Carte, et l'onglet Zones Géographiques.
+   - Les autres zones et membres hors de sa région lui sont totalement inaccessibles.
 
 3. **Utilisateur / Membre (`user`)** :
    - Consultation seule de l'annuaire et de la carte communautaire.
+
+---
+
+## 👤 Comptes de Démonstration
+
+| Identifiant | Mot de passe | Rôle | Zone / Portée | Nom |
+| :--- | :--- | :--- | :--- | :--- |
+| **`admin`** | `admin123` | Administrateur | Global (Toutes les zones) | Administrateur MDF |
+| **`modou`** | `modou123` | Référent | **Bretagne** uniquement | Modou Mbaye |
+| **`referent`** | `referent123` | Référent | **Île-de-France** uniquement | Aïssatou Diallo |
+| **`membre`** | `user123` | Membre | Mode lecture | Mamadou Sow |
 
 ---
 

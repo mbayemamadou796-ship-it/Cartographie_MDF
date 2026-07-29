@@ -65,6 +65,7 @@ const INITIAL_AUDIT_LOGS: AuditLog[] = [
 
 const INITIAL_USERS: AppUser[] = [
   { id: 'usr-admin', nom: 'MDF', prenom: 'Administrateur', name: 'Administrateur MDF', email: 'admin@mbokdefrance.org', username: 'admin', password: 'admin123', role: 'admin', active: true, lastLogin: 'En ligne' },
+  { id: 'usr-modou', nom: 'Mbaye', prenom: 'Modou', name: 'Modou Mbaye', email: 'modou.mbaye@mbokdefrance.org', username: 'modou', password: 'modou123', role: 'referent', region: 'Bretagne', assignedZoneIds: ['zone-bretagne'], active: true, lastLogin: 'En ligne' },
   { id: 'usr-referent-idf', nom: 'Diallo', prenom: 'Aïssatou', name: 'Aïssatou Diallo', email: 'referent.idf@mbokdefrance.org', username: 'referent', password: 'referent123', role: 'referent', region: 'Île-de-France', assignedZoneIds: ['zone-idf'], active: true, lastLogin: 'Hier' },
   { id: 'usr-user', nom: 'Sow', prenom: 'Mamadou', name: 'Mamadou Sow', email: 'membre@mbokdefrance.org', username: 'membre', password: 'user123', role: 'user', active: true, lastLogin: 'Il y a 2h' }
 ];
@@ -73,9 +74,11 @@ const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
   {
     id: 'zone-bretagne',
     name: 'Bretagne',
-    description: 'Réseau et membres basés en région Bretagne',
+    description: 'Réseau et membres basés en région Bretagne (Rennes, Brest, Quimper...)',
     color: 'emerald',
-    memberIds: ['mdf-005', 'mdf-009'],
+    memberIds: ['mdf-010'],
+    referentUserId: 'usr-modou',
+    referentName: 'Modou Mbaye',
     createdAt: new Date().toISOString()
   },
   {
@@ -83,47 +86,105 @@ const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
     name: 'Île-de-France',
     description: 'Membres actifs en Île-de-France et réseau Parisien',
     color: 'blue',
-    memberIds: ['mdf-001', 'mdf-002', 'mdf-007'],
+    memberIds: ['mdf-001', 'mdf-002', 'mdf-011', 'mdf-012'],
+    referentUserId: 'usr-referent-idf',
+    referentName: 'Aïssatou Diallo',
     createdAt: new Date().toISOString()
   },
   {
-    id: 'zone-grand-ouest',
-    name: 'Grand Ouest',
-    description: 'Regroupement des antennes Ouest (Nantes, Rennes, Bordeaux)',
+    id: 'zone-pays-de-la-loire',
+    name: 'Pays de la Loire',
+    description: 'Réseau et antenne Pays de la Loire (Nantes, Angers, Le Mans...)',
+    color: 'teal',
+    memberIds: ['mdf-009'],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-normandie',
+    name: 'Normandie',
+    description: 'Réseau et antenne Normandie (Rouen, Caen, Le Havre...)',
     color: 'indigo',
-    memberIds: ['mdf-005', 'mdf-008', 'mdf-009'],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'zone-reseau-sud',
-    name: 'Réseau Sud',
-    description: 'Antennes Sud et Méditerranée (Marseille, Nice, Toulouse)',
-    color: 'amber',
-    memberIds: ['mdf-003', 'mdf-010'],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'zone-antilles',
-    name: 'Antilles',
-    description: 'Délégation Caraïbes et Outre-mer',
-    color: 'rose',
     memberIds: [],
     createdAt: new Date().toISOString()
   },
   {
-    id: 'zone-groupe-a',
-    name: 'Groupe A',
-    description: 'Groupe de travail A - Action Sociale & Fraternité',
+    id: 'zone-auvergne-rhone-alpes',
+    name: 'Auvergne-Rhône-Alpes',
+    description: 'Antennes Auvergne-Rhône-Alpes (Lyon, Grenoble, Saint-Étienne...)',
     color: 'purple',
-    memberIds: ['mdf-001', 'mdf-003', 'mdf-006'],
+    memberIds: ['mdf-004'],
     createdAt: new Date().toISOString()
   },
   {
-    id: 'zone-projet-2026',
-    name: 'Projet 2026',
-    description: 'Comité de pilotage de la nouvelle initiative 2026',
+    id: 'zone-nouvelle-aquitaine',
+    name: 'Nouvelle-Aquitaine',
+    description: 'Réseau Nouvelle-Aquitaine (Bordeaux, Limoges, Poitiers...)',
+    color: 'amber',
+    memberIds: ['mdf-005'],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-occitanie',
+    name: 'Occitanie',
+    description: 'Antennes Occitanie (Toulouse, Montpellier, Nîmes...)',
+    color: 'rose',
+    memberIds: ['mdf-008'],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-paca',
+    name: 'Provence-Alpes-Côte d\'Azur',
+    description: 'Réseau Provence-Alpes-Côte d\'Azur (Marseille, Nice, Avignon...)',
+    color: 'emerald',
+    memberIds: ['mdf-003'],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-hauts-de-france',
+    name: 'Hauts-de-France',
+    description: 'Antennes Hauts-de-France (Lille, Amiens, Roubaix...)',
+    color: 'blue',
+    memberIds: ['mdf-006'],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-grand-est',
+    name: 'Grand Est',
+    description: 'Réseau Grand Est (Strasbourg, Reims, Metz, Nancy...)',
+    color: 'indigo',
+    memberIds: ['mdf-007'],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-bourgogne-franche-comte',
+    name: 'Bourgogne-Franche-Comté',
+    description: 'Antennes Bourgogne-Franche-Comté (Dijon, Besançon...)',
+    color: 'purple',
+    memberIds: [],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-centre-val-de-loire',
+    name: 'Centre-Val de Loire',
+    description: 'Réseau Centre-Val de Loire (Orléans, Tours, Bourges...)',
     color: 'teal',
-    memberIds: ['mdf-002', 'mdf-004', 'mdf-007'],
+    memberIds: [],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-corse',
+    name: 'Corse',
+    description: 'Antenne et membres basés en Corse (Ajaccio, Bastia...)',
+    color: 'amber',
+    memberIds: [],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-outre-mer',
+    name: 'Outre-Mer (DROM-COM)',
+    description: 'Réseau Outre-Mer (Guadeloupe, Martinique, Guyane, La Réunion, Mayotte...)',
+    color: 'rose',
+    memberIds: [],
     createdAt: new Date().toISOString()
   }
 ];
@@ -533,7 +594,6 @@ export default function App() {
     const names = new Set<string>();
     referentZones.forEach((z) => names.add(z.name));
     if (currentUser?.region) names.add(currentUser.region);
-    if (names.size === 0) names.add('Île-de-France');
     return Array.from(names);
   }, [userRole, referentZones, currentUser]);
 
@@ -564,15 +624,6 @@ export default function App() {
 
       return false;
     });
-
-    if (matched.length === 0) {
-      return members.filter(
-        (m) =>
-          m.region === 'Île-de-France' ||
-          m.zone === 'Île-de-France' ||
-          normalizedZoneNames.includes(m.region?.toLowerCase() || '')
-      );
-    }
 
     return matched;
   }, [userRole, members, referentZones, referentZoneNames]);
@@ -1216,8 +1267,8 @@ export default function App() {
         {/* Tab 3: Zones Géographiques */}
         {activeTab === 'zones' && (
           <GeographicZonesView
-            members={members}
-            customZones={customZones}
+            members={scopedMembers}
+            customZones={userRole === 'referent' ? referentZones : customZones}
             userRole={userRole}
             users={users}
             currentUserId={currentUser?.id}
