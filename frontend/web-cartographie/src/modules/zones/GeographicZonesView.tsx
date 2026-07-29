@@ -52,9 +52,6 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
   onOpenAddMemberInZone,
   onSelectMemberDetails
 }) => {
-  const [activeTab, setActiveTab] = useState<'custom' | 'administrative'>('custom');
-  const [adminSubTab, setAdminSubTab] = useState<'region' | 'departement' | 'ville'>('region');
-
   // Modals state
   const [isZoneModalOpen, setIsZoneModalOpen] = useState(false);
   const [zoneToEdit, setZoneToEdit] = useState<CustomZone | null>(null);
@@ -280,35 +277,9 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
           </div>
         </div>
 
-        {/* Tab Switcher & Create Button */}
+        {/* Header Title & Create Button */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 text-xs font-bold">
-            <button
-              onClick={() => setActiveTab('custom')}
-              className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
-                activeTab === 'custom'
-                  ? 'bg-emerald-950 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Layers className="w-4 h-4 text-emerald-400" />
-              <span>Zones MDF ({filteredCustomZones.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('administrative')}
-              className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
-                activeTab === 'administrative'
-                  ? 'bg-emerald-950 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Globe className="w-4 h-4 text-emerald-400" />
-              <span>Régions & Découpage Public</span>
-            </button>
-          </div>
-
-          {activeTab === 'custom' && userRole === 'admin' && (
+          {userRole === 'admin' && (
             <button
               onClick={handleOpenCreateZone}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-[#2be39d] via-[#48c92a] to-[#8de02d] hover:brightness-105 text-emerald-950 font-bold text-xs rounded-2xl shadow-sm transition-all active:scale-95 shrink-0"
@@ -320,9 +291,8 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
         </div>
       </div>
 
-      {/* TAB 1: CUSTOM USER ZONES */}
-      {activeTab === 'custom' && (
-        <div className="space-y-6">
+      {/* MDF ZONES LIST */}
+      <div className="space-y-6">
           
           {customZones.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 border border-dashed border-emerald-300 text-center space-y-4">
@@ -509,182 +479,6 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
           )}
 
         </div>
-      )}
-
-      {/* TAB 2: ADMINISTRATIVE REGIONS / DEPTS / CITIES */}
-      {activeTab === 'administrative' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-emerald-200">
-            <h3 className="font-bold text-slate-800 text-sm font-['Outfit']">
-              Découpage Administratif de France
-            </h3>
-
-            {/* Sub Navigation */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <button
-                onClick={() => setAdminSubTab('region')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  adminSubTab === 'region'
-                    ? 'bg-white text-emerald-950 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Régions ({zonesData.regionsList.length})
-              </button>
-              <button
-                onClick={() => setAdminSubTab('departement')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  adminSubTab === 'departement'
-                    ? 'bg-white text-emerald-950 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Départements ({zonesData.deptsList.length})
-              </button>
-              <button
-                onClick={() => setAdminSubTab('ville')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  adminSubTab === 'ville'
-                    ? 'bg-white text-emerald-950 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Villes ({zonesData.citiesList.length})
-              </button>
-            </div>
-          </div>
-
-          {adminSubTab === 'region' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {zonesData.regionsList.map((reg) => (
-                <div
-                  key={reg.name}
-                  onClick={() => handleOpenAdminZoneDetails('region', reg.name)}
-                  className="bg-white rounded-3xl p-5 border border-emerald-200 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between space-y-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center font-bold text-sm shrink-0 group-hover:bg-emerald-100 transition-colors">
-                        <Compass className="w-5 h-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-sm group-hover:text-emerald-800 transition-colors font-['Outfit']">
-                          {reg.name}
-                        </h3>
-                        <p className="text-xs text-slate-500 font-medium">{reg.cityCount} ville(s) représentée(s)</p>
-                      </div>
-                    </div>
-
-                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100/80 text-emerald-900 text-xs font-extrabold rounded-full">
-                      <Users className="w-3 h-3 text-emerald-600" />
-                      <span>{reg.count}</span>
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Membres résidents :</p>
-                    <div className="flex flex-wrap gap-1">
-                      {reg.members.slice(0, 4).map((m) => (
-                        <span key={m.id} className="text-[11px] bg-slate-50 text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 font-medium">
-                          {m.prenom} {m.nom}
-                        </span>
-                      ))}
-                      {reg.members.length > 4 && (
-                        <span className="text-[10px] text-slate-500 font-bold self-center">
-                          +{reg.members.length - 4} autres
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs font-bold text-emerald-800 pt-1">
-                    <span className="text-emerald-700 font-extrabold group-hover:underline">Voir les {reg.count} membres de cette zone</span>
-                    <ArrowRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {adminSubTab === 'departement' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {zonesData.deptsList.map((dept) => (
-                <div
-                  key={dept.name}
-                  onClick={() => handleOpenAdminZoneDetails('departement', dept.name, dept.name, dept.region)}
-                  className="bg-white rounded-3xl p-5 border border-emerald-200 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between space-y-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center font-bold text-sm shrink-0 group-hover:bg-emerald-100 transition-colors">
-                        <Building2 className="w-5 h-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-sm group-hover:text-emerald-800 transition-colors font-['Outfit']">
-                          {dept.name}
-                        </h3>
-                        <p className="text-xs text-slate-500 font-medium">{dept.region || 'France'}</p>
-                      </div>
-                    </div>
-
-                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100/80 text-emerald-900 text-xs font-extrabold rounded-full">
-                      <Users className="w-3 h-3 text-emerald-600" />
-                      <span>{dept.count}</span>
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Membres résidents :</p>
-                    <div className="flex flex-wrap gap-1">
-                      {dept.members.slice(0, 4).map((m) => (
-                        <span key={m.id} className="text-[11px] bg-slate-50 text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 font-medium">
-                          {m.prenom} {m.nom}
-                        </span>
-                      ))}
-                      {dept.members.length > 4 && (
-                        <span className="text-[10px] text-slate-500 font-bold self-center">
-                          +{dept.members.length - 4} autres
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs font-bold text-emerald-800 pt-1">
-                    <span className="text-emerald-700 font-extrabold group-hover:underline">Voir les {dept.count} membres de cette zone</span>
-                    <ArrowRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {adminSubTab === 'ville' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {zonesData.citiesList.map((city) => (
-                <div
-                  key={city.name}
-                  onClick={() => handleOpenAdminZoneDetails('ville', city.name, city.dept, city.region)}
-                  className="bg-white rounded-2xl p-4 border border-emerald-200 hover:border-emerald-400 hover:shadow-sm transition-all cursor-pointer group flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-xs group-hover:text-emerald-800 transition-colors">
-                        {city.name}
-                      </h4>
-                      <p className="text-[10px] text-slate-400 font-medium">{city.dept}</p>
-                    </div>
-                  </div>
-
-                  <span className="px-2.5 py-1 bg-emerald-100 text-emerald-950 font-extrabold text-xs rounded-lg shrink-0">
-                    {city.count}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Modals */}
       <CustomZoneModal

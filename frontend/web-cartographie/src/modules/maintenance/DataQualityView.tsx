@@ -74,9 +74,9 @@ export const DataQualityView: React.FC<DataQualityViewProps> = ({
     return (email && (emailCounts.get(email) || 0) > 1) || (name && (nameCounts.get(name) || 0) > 1);
   });
 
-  // 5. GPS validity check (France bounding box approx: lat 41-52, lng -5-10)
+  // 5. GPS validity check (France bounding box approx: lat 40-53, lng -10-11)
   const invalidGpsMembers = members.filter((m) => {
-    if (!m.latitude || !m.longitude) return true;
+    if (!m.latitude || !m.longitude || (m.latitude === 0 && m.longitude === 0)) return false;
     if (m.latitude < 40 || m.latitude > 53 || m.longitude < -10 || m.longitude > 11) return true;
     return false;
   });
@@ -110,12 +110,15 @@ export const DataQualityView: React.FC<DataQualityViewProps> = ({
 
   const emptyZones = customZones.filter((z) => z.memberIds.length === 0);
 
-  const totalQualityIssues =
-    noPhoneMembers.length +
-    noEmailMembers.length +
-    noLocationMembers.length +
-    duplicateMembers.length +
-    invalidGpsMembers.length;
+  // Set of member IDs with at least 1 quality issue
+  const membersWithIssuesSet = new Set<string>();
+  noPhoneMembers.forEach((m) => membersWithIssuesSet.add(m.id));
+  noEmailMembers.forEach((m) => membersWithIssuesSet.add(m.id));
+  noLocationMembers.forEach((m) => membersWithIssuesSet.add(m.id));
+  duplicateMembers.forEach((m) => membersWithIssuesSet.add(m.id));
+  invalidGpsMembers.forEach((m) => membersWithIssuesSet.add(m.id));
+
+  const validMembersCount = Math.max(0, members.length - membersWithIssuesSet.size);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -138,7 +141,7 @@ export const DataQualityView: React.FC<DataQualityViewProps> = ({
 
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-2xl font-bold text-xs text-emerald-900 shrink-0">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>{members.length - totalQualityIssues} fiches 100% valides</span>
+          <span>{validMembersCount} / {members.length} fiches 100% valides</span>
         </div>
       </div>
 
@@ -287,7 +290,7 @@ export const DataQualityView: React.FC<DataQualityViewProps> = ({
             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 space-y-2">
               <h4 className="font-bold text-emerald-950 font-['Outfit']">Fiches membres complètes</h4>
               <p className="text-2xl font-extrabold text-emerald-700 font-['Outfit']">
-                {members.length - totalQualityIssues} / {members.length}
+                {validMembersCount} / {members.length}
               </p>
               <p className="text-[11px] text-slate-500">
                 Fiches disposant d'un téléphone, email, localisation GPS valide et uniques.

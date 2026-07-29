@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Shield, ShieldCheck, Plus, Upload, Download, X, LogOut, User as UserIcon } from 'lucide-react';
+import { Search, Filter, Shield, ShieldCheck, Upload, Download, X, LogOut, User as UserIcon } from 'lucide-react';
 import { UserRole, AppUser } from '../types';
 import { LogoMbok } from './LogoMbok';
 
@@ -96,14 +96,6 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <Upload className="w-3.5 h-3.5 text-emerald-600" />
                   <span className="hidden md:inline">Import Excel</span>
-                </button>
-
-                <button
-                  onClick={onOpenAddMember}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-[#2be39d] via-[#48c92a] to-[#8de02d] hover:brightness-105 text-emerald-950 text-xs font-extrabold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 text-emerald-950 stroke-[2.5]" />
-                  <span>Ajouter un membre</span>
                 </button>
               </>
             )}

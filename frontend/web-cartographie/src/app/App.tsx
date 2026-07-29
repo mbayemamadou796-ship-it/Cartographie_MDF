@@ -693,14 +693,15 @@ export default function App() {
     return dupSet;
   }, [scopedMembers]);
 
-  // Quality Issues count calculation for navigation badge
+  // Quality Issues count calculation for navigation badge (distinct member records with at least 1 issue)
   const qualityIssueCount = useMemo(() => {
-    const noPhone = scopedMembers.filter((m) => !m.telephone || !m.telephone.trim()).length;
-    const noEmail = scopedMembers.filter((m) => !m.email || !m.email.trim()).length;
-    const noLocation = scopedMembers.filter(
-      (m) => !m.latitude || !m.longitude || (m.latitude === 0 && m.longitude === 0)
-    ).length;
-    return noPhone + noEmail + noLocation + duplicateIdsSet.size;
+    return scopedMembers.filter((m) => {
+      const noPhone = !m.telephone || !m.telephone.trim();
+      const noEmail = !m.email || !m.email.trim();
+      const noLocation = !m.latitude || !m.longitude || (m.latitude === 0 && m.longitude === 0);
+      const isDuplicate = duplicateIdsSet.has(m.id);
+      return noPhone || noEmail || noLocation || isDuplicate;
+    }).length;
   }, [scopedMembers, duplicateIdsSet]);
 
   // Filter & Search Logic (Multi-field match)
