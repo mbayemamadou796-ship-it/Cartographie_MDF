@@ -5,10 +5,12 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    root: './frontend/web-cartographie',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, './frontend/web-cartographie/src'),
+        '@shared': path.resolve(__dirname, './shared'),
       },
     },
     server: {

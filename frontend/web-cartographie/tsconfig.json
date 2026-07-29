@@ -17,13 +17,17 @@
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
-        "./frontend/web-cartographie/src/*"
+        "./src/*"
       ],
       "@shared/*": [
-        "./shared/*"
+        "../../shared/*"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src/**/*",
+    "../../shared/**/*"
+  ]
 }
