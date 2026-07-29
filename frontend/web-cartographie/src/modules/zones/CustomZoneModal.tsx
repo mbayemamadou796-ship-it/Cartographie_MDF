@@ -107,7 +107,7 @@ export const CustomZoneModal: React.FC<CustomZoneModalProps> = ({
             </label>
             <input
               type="text"
-              placeholder="Ex: Bretagne, Grand Ouest, Réseau Sud, Projet 2026..."
+              placeholder="Ex: Bretagne, Auvergne-Rhône-Alpes, Occitanie, Normandie..."
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-emerald-500 outline-none font-semibold transition-all"

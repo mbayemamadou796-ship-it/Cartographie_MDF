@@ -4,27 +4,19 @@ import { X, Save, Compass, Loader2, Plus, Trash2, Sliders, Upload, Camera } from
 import { geocodeLocation } from '../../utils/geocoding';
 
 export const FRENCH_ZONES = [
-  'Île-de-France',
-  'Bretagne',
-  'Grand Est',
   'Auvergne-Rhône-Alpes',
   'Bourgogne-Franche-Comté',
+  'Bretagne',
   'Centre-Val de Loire',
   'Corse',
+  'Grand Est',
   'Hauts-de-France',
+  'Île-de-France',
   'Normandie',
   'Nouvelle-Aquitaine',
   'Occitanie',
   'Pays de la Loire',
-  'Provence-Alpes-Côte d\'Azur',
-  'Grand Ouest',
-  'Réseau Sud',
-  'Guadeloupe',
-  'Martinique',
-  'Guyane',
-  'La Réunion',
-  'Mayotte',
-  'Autre / International'
+  'Provence-Alpes-Côte d\'Azur'
 ];
 
 interface AdminMemberFormModalProps {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserRole, AppUser, CustomZone } from '../../types';
+import { FRENCH_ZONES } from '../membres/AdminMemberFormModal';
 import {
   Users,
   UserPlus,
@@ -542,21 +543,9 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     onChange={(e) => setFormRegion(e.target.value)}
                     className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
                   >
-                    <option value="Île-de-France">Île-de-France</option>
-                    <option value="Auvergne-Rhône-Alpes">Auvergne-Rhône-Alpes</option>
-                    <option value="Bourgogne-Franche-Comté">Bourgogne-Franche-Comté</option>
-                    <option value="Bretagne">Bretagne</option>
-                    <option value="Centre-Val de Loire">Centre-Val de Loire</option>
-                    <option value="Corse">Corse</option>
-                    <option value="Grand Est">Grand Est</option>
-                    <option value="Hauts-de-France">Hauts-de-France</option>
-                    <option value="Normandie">Normandie</option>
-                    <option value="Nouvelle-Aquitaine">Nouvelle-Aquitaine</option>
-                    <option value="Occitanie">Occitanie</option>
-                    <option value="Pays de la Loire">Pays de la Loire</option>
-                    <option value="Provence-Alpes-Côte d'Azur">Provence-Alpes-Côte d'Azur</option>
-                    <option value="Outre-Mer">Outre-Mer</option>
-                    <option value="International / Autre">International / Autre</option>
+                    {FRENCH_ZONES.map((z) => (
+                      <option key={z} value={z}>{z}</option>
+                    ))}
                   </select>
                 </div>
               </div>

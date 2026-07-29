@@ -27,6 +27,7 @@ import { SettingsView } from '../components/SettingsView';
 import { EditLogoModal } from '../components/EditLogoModal';
 import { LoginScreen } from '../components/LoginScreen';
 import { exportToExcel, exportToCsv } from '../utils/excelUtils';
+import { FRENCH_ZONES } from '../modules/membres/AdminMemberFormModal';
 import { CheckCircle2, MapPin, Users, ArrowRight } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'mbok_de_france_members_v1';
@@ -72,13 +73,61 @@ const INITIAL_USERS: AppUser[] = [
 
 const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
   {
+    id: 'zone-auvergne-rhone-alpes',
+    name: 'Auvergne-Rhône-Alpes',
+    description: 'Antennes Auvergne-Rhône-Alpes (Lyon, Grenoble, Saint-Étienne...)',
+    color: 'purple',
+    memberIds: ['mdf-004'],
+    referentUserId: 'usr-modou',
+    referentName: 'Modou Mbaye',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-bourgogne-franche-comte',
+    name: 'Bourgogne-Franche-Comté',
+    description: 'Antennes Bourgogne-Franche-Comté (Dijon, Besançon, Belfort...)',
+    color: 'amber',
+    memberIds: [],
+    createdAt: new Date().toISOString()
+  },
+  {
     id: 'zone-bretagne',
     name: 'Bretagne',
     description: 'Réseau et membres basés en région Bretagne (Rennes, Brest, Quimper...)',
     color: 'emerald',
     memberIds: ['mdf-010'],
-    referentUserId: 'usr-modou',
-    referentName: 'Modou Mbaye',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-centre-val-de-loire',
+    name: 'Centre-Val de Loire',
+    description: 'Réseau Centre-Val de Loire (Orléans, Tours, Bourges...)',
+    color: 'teal',
+    memberIds: [],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-corse',
+    name: 'Corse',
+    description: 'Antenne et membres basés en Corse (Ajaccio, Bastia...)',
+    color: 'rose',
+    memberIds: [],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-grand-est',
+    name: 'Grand Est',
+    description: 'Réseau Grand Est (Strasbourg, Reims, Metz, Nancy...)',
+    color: 'indigo',
+    memberIds: ['mdf-007'],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'zone-hauts-de-france',
+    name: 'Hauts-de-France',
+    description: 'Antennes Hauts-de-France (Lille, Amiens, Roubaix...)',
+    color: 'blue',
+    memberIds: ['mdf-006'],
     createdAt: new Date().toISOString()
   },
   {
@@ -92,27 +141,11 @@ const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
     createdAt: new Date().toISOString()
   },
   {
-    id: 'zone-pays-de-la-loire',
-    name: 'Pays de la Loire',
-    description: 'Réseau et antenne Pays de la Loire (Nantes, Angers, Le Mans...)',
-    color: 'teal',
-    memberIds: ['mdf-009'],
-    createdAt: new Date().toISOString()
-  },
-  {
     id: 'zone-normandie',
     name: 'Normandie',
     description: 'Réseau et antenne Normandie (Rouen, Caen, Le Havre...)',
     color: 'indigo',
     memberIds: [],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'zone-auvergne-rhone-alpes',
-    name: 'Auvergne-Rhône-Alpes',
-    description: 'Antennes Auvergne-Rhône-Alpes (Lyon, Grenoble, Saint-Étienne...)',
-    color: 'purple',
-    memberIds: ['mdf-004'],
     createdAt: new Date().toISOString()
   },
   {
@@ -132,59 +165,19 @@ const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
     createdAt: new Date().toISOString()
   },
   {
+    id: 'zone-pays-de-la-loire',
+    name: 'Pays de la Loire',
+    description: 'Réseau et antenne Pays de la Loire (Nantes, Angers, Le Mans...)',
+    color: 'teal',
+    memberIds: ['mdf-009'],
+    createdAt: new Date().toISOString()
+  },
+  {
     id: 'zone-paca',
     name: 'Provence-Alpes-Côte d\'Azur',
     description: 'Réseau Provence-Alpes-Côte d\'Azur (Marseille, Nice, Avignon...)',
     color: 'emerald',
     memberIds: ['mdf-003'],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'zone-hauts-de-france',
-    name: 'Hauts-de-France',
-    description: 'Antennes Hauts-de-France (Lille, Amiens, Roubaix...)',
-    color: 'blue',
-    memberIds: ['mdf-006'],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'zone-grand-est',
-    name: 'Grand Est',
-    description: 'Réseau Grand Est (Strasbourg, Reims, Metz, Nancy...)',
-    color: 'indigo',
-    memberIds: ['mdf-007'],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'zone-bourgogne-franche-comte',
-    name: 'Bourgogne-Franche-Comté',
-    description: 'Antennes Bourgogne-Franche-Comté (Dijon, Besançon...)',
-    color: 'purple',
-    memberIds: [],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'zone-centre-val-de-loire',
-    name: 'Centre-Val de Loire',
-    description: 'Réseau Centre-Val de Loire (Orléans, Tours, Bourges...)',
-    color: 'teal',
-    memberIds: [],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'zone-corse',
-    name: 'Corse',
-    description: 'Antenne et membres basés en Corse (Ajaccio, Bastia...)',
-    color: 'amber',
-    memberIds: [],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'zone-outre-mer',
-    name: 'Outre-Mer (DROM-COM)',
-    description: 'Réseau Outre-Mer (Guadeloupe, Martinique, Guyane, La Réunion, Mayotte...)',
-    color: 'rose',
-    memberIds: [],
     createdAt: new Date().toISOString()
   }
 ];
@@ -270,18 +263,39 @@ export default function App() {
     }
   }, [members]);
 
-  // Custom Zones State with LocalStorage Persistence
+  // Custom Zones State with LocalStorage Persistence & Guaranteed 13 Metropolitan Region Cards
   const [customZones, setCustomZones] = useState<CustomZone[]>(() => {
+    let savedZones: CustomZone[] = [];
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_ZONES_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          savedZones = parsed;
         }
       }
     } catch {}
-    return DEFAULT_CUSTOM_ZONES;
+
+    const zoneMap = new Map<string, CustomZone>();
+
+    // Add default 13 metropolitan zones first
+    DEFAULT_CUSTOM_ZONES.forEach((dz) => {
+      zoneMap.set(dz.name.toLowerCase(), { ...dz, memberIds: [...dz.memberIds] });
+    });
+
+    // Merge saved zones if they belong to FRENCH_ZONES
+    savedZones.forEach((sz) => {
+      if (FRENCH_ZONES.includes(sz.name)) {
+        const existing = zoneMap.get(sz.name.toLowerCase());
+        zoneMap.set(sz.name.toLowerCase(), {
+          ...existing,
+          ...sz,
+          memberIds: Array.from(new Set([...(existing?.memberIds || []), ...(sz.memberIds || [])]))
+        });
+      }
+    });
+
+    return Array.from(zoneMap.values());
   });
 
   useEffect(() => {
@@ -289,6 +303,33 @@ export default function App() {
       localStorage.setItem(LOCAL_STORAGE_ZONES_KEY, JSON.stringify(customZones));
     } catch {}
   }, [customZones]);
+
+  // Auto-synchronize memberIds in customZones based on live member.zone or member.region
+  useEffect(() => {
+    setCustomZones((prevZones) => {
+      let changed = false;
+      const newZones = prevZones.map((z) => {
+        const matchingMemberIds = members
+          .filter((m) => {
+            const mZone = (m.zone || m.region || '').trim().toLowerCase();
+            return mZone === z.name.toLowerCase();
+          })
+          .map((m) => m.id);
+
+        const currentSet = new Set(z.memberIds);
+        const hasAllMatching = matchingMemberIds.every((id) => currentSet.has(id));
+
+        if (!hasAllMatching) {
+          changed = true;
+          const mergedIds = Array.from(new Set([...z.memberIds, ...matchingMemberIds]));
+          return { ...z, memberIds: mergedIds };
+        }
+        return z;
+      });
+
+      return changed ? newZones : prevZones;
+    });
+  }, [members]);
 
   // Current Logged In User State with Session Persistence
   const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {

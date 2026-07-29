@@ -97,7 +97,7 @@ export const INITIAL_MEMBERS: Member[] = [
     id: 'mdf-005',
     nom: 'Traoré',
     prenom: 'Mamadou',
-    zone: 'Grand Ouest',
+    zone: 'Nouvelle-Aquitaine',
     situationProfessionnelle: 'Cadre juriste',
     domaineEtude: 'Droit international & Droits humains',
     anneeArriveeFrance: '2017',

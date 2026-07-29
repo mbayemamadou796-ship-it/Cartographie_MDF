@@ -334,7 +334,7 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
                   Aucune zone personnalisée définie
                 </h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  Créez vos premières zones (ex: Bretagne, Île-de-France, Grand Ouest, Réseau Sud, Groupe A, Projet 2026) pour associer des membres et les afficher sur la carte.
+                  Créez vos zones régionales (ex: Bretagne, Île-de-France, Occitanie, Normandie...) pour associer des membres et les afficher sur la carte.
                 </p>
               </div>
 
