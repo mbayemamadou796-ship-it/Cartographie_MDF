@@ -19,7 +19,7 @@ Le système accepte les en-têtes de colonnes variables et applique un algorithm
 ## 3. Traitements Automatisés
 - **Normalisation Téléphone** : Conversion au format international propre (suppression des espaces, parenthèses et points).
 - **Détection des Doublons** : Comparaison avec la base existante par adresse e-mail unique.
-- **Géocodage par Batch** : Résolution des latitudes/longitudes en tâche de fond.
+- **Géocodage Automatique Intégré** : Résolution des latitudes/longitudes en tâche de fond. **Les colonnes Latitude et Longitude ne sont plus nécessaires dans le fichier Excel** : l'application calcule automatiquement l'emplacement exact à partir de la ville, de l'adresse et de la zone.
 
 ## 4. Rapport d'Importation & Historique
 Après chaque opération, un résumé est enregistré dans la table `import_logs` détaillant :

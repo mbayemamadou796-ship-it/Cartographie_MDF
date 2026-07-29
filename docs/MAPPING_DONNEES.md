@@ -9,7 +9,7 @@
 | `prenom` | `string` | Oui | Prénom, Prenom, First Name | Prénom |
 | `telephone` | `string` | Non | Téléphone, Tel, Phone, Mobile | Numéro de téléphone au format international |
 | `email` | `string` | Non | E-mail, Email, Courriel | Adresse email unique |
-| `zone` | `string` | Non | Zone, Territoire | Zone géographique principale ou pôle |
+| `zone` | `string` | Oui | Zone, Région, Territoire | Zone géographique régionale (ex: Bretagne, Île-de-France, Pays de la Loire...) |
 | `situationProfessionnelle` | `string` | Non | Situation, Statut pro, Profession | Ex: Salarié, Étudiant, Indépendant, Cadre |
 | `domaineEtude` | `string` | Non | Domaine, Secteur, Domaine d'étude | Ex: Informatique, Droit, Commerce, Santé |
 | `anneeArriveeFrance` | `string` | Non | Arrivée France, Année arrivée | Année d'installation en France (ex: 2018) |
@@ -17,12 +17,12 @@
 | `organisation` | `string` | Non | Organisation, Entreprise, École | Structure ou entreprise d'affiliation |
 | `adresse` | `string` | Non | Adresse, Rue, Voie | Adresse postale résiduelle |
 | `codePostal` | `string` | Non | CP, Code Postal, Zip | Code postal |
-| `ville` | `string` | Non | Ville, Commune, City | Ville de résidence |
+| `ville` | `string` | Oui | Ville, Commune, City | Ville de résidence précise du membre dans la zone |
 | `departement` | `string` | Non | Dép, Département, Dept | Nom ou numéro du département |
-| `region` | `string` | Non | Région, Region | Région administrative |
+| `region` | `string` | Non | Région, Region | Région administrative (synonyme de Zone) |
 | `pays` | `string` | Non | Pays, Country | Pays de résidence (Défaut: France) |
-| `latitude` | `number` | Non | Lat, Latitude | Coordonnée géographique nord |
-| `longitude` | `number` | Non | Lng, Longitude, Lon | Coordonnée géographique est |
+| `latitude` | `number` | Calculé (Auto) | Lat, Latitude | Coordonnée géographique nord (générée automatiquement via Ville/Zone) |
+| `longitude` | `number` | Calculé (Auto) | Lng, Longitude, Lon | Coordonnée géographique est (générée automatiquement via Ville/Zone) |
 | `photo` | `string` | Non | Photo, Avatar, Image URL | URL ou base64 de la photo de profil |
 | `champsPersonnalises` | `CustomField[]` | Non | - | Tableau de métadonnées additionnelles `{ id, label, value }` |
 

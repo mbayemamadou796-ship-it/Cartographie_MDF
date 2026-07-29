@@ -2,21 +2,24 @@
 
 ## 1. Carte Interactive & Géolocalisation
 - **Affichage sur Carte** : Représentation visuelle des membres par marqueurs et regroupements (clusters).
-- **Filtres Carte** : Filtrage en temps réel par région, département, zone spécifique ou métier.
-- **Fiche Popup Membre** : Clic sur un marqueur pour afficher l'essentiel du profil avec accès direct à la fiche détaillée.
+- **Géocodage Intelligemment Synchronisé** : Calcul et synchronisation automatique des coordonnées GPS (latitude et longitude) pour chaque membre selon sa ville de résidence et sa zone régionale.
+- **Filtres Carte** : Filtrage en temps réel par zone régionale (Bretagne, Île-de-France, Pays de la Loire...), ville/commune, ou secteur d'activité.
+- **Fiche Popup Membre** : Clic sur un marqueur pour afficher la ville de résidence et l'essentiel du profil avec accès direct à la fiche détaillée.
 
 ## 2. Annuaire Dynamique
-- **Recherche Multi-critères** : Recherche textuelle instantanée (Nom, Prénom, Profession, Entreprise, Ville).
+- **Recherche Multi-critères** : Recherche textuelle instantanée (Nom, Prénom, Profession, Entreprise, Ville de résidence).
+- **Champs Précis Membre** : Saisie obligatoire de la ville de résidence (ex: Rennes, Nantes, Lyon, Saint-Denis) pour chaque membre au sein de sa zone attribuée.
 - **Filtres Avancés** :
   - Domaine d'étude (Informatique, Droit, Santé, Commerce...)
   - Situation professionnelle (Salarié, Étudiant, Indépendant, Cadre...)
   - Statut de complétion du profil.
 - **Modes d'Affichage** : Bascule entre vue Grille de cartes, vue Liste compacte et vue Carte.
 
-## 3. Gestion des Zones Géographiques
-- Découpage territorial personnalisé (ex: Île-de-France Nord, Rhône-Alpes, Diaspora Europe).
-- Attribution d'un ou plusieurs **Référents Régionaux** par zone.
-- Visualisation des effectifs et du taux de complétion par zone.
+## 3. Gestion des Zones Géographiques (Régions Administratives de France)
+- Découpage territorial aligné sur les vraies régions françaises (Bretagne, Île-de-France, Pays de la Loire, Normandie, Auvergne-Rhône-Alpes, Nouvelle-Aquitaine, Occitanie, PACA, Hauts-de-France, Grand Est, Bourgogne-Franche-Comté, Centre-Val de Loire, Corse, Outre-Mer).
+- **Indicateurs Épurés sur le Tableau de Bord** : Le concept de zone remplace et fusionne le terme de région pour éviter toute redondance (Synthèse affichant Membres Totaux, Zones Régionales, Villes et Membres Géolocalisés).
+- Attribution d'un ou plusieurs **Référents de Zone** (ex: Modou Mbaye pour la zone Bretagne).
+- Visualisation des effectifs et des membres rattachés à chaque commune de la zone.
 
 ## 4. Import Intelligent Excel / CSV
 - Import en glisser-déposer de listes Excel (`.xlsx`, `.csv`).

@@ -25,11 +25,11 @@ Deux membres $M_1$ et $M_2$ sont considérés comme doublons potentiels si :
 - $M_1.email \text{ (normalisé)} == M_2.email \text{ (normalisé)}$
 - OU $(M_1.nom + M_1.prenom) \text{ (normalisés)} == (M_2.nom + M_2.prenom) \text{ (normalisés)}$
 
-### Règle QUAL-02 : Géocodage et Fallback Coordonnées GPS
-Si un membre n'a pas de latitude/longitude valides ($latitude == 0 \land longitude == 0$) :
-1. Tenter un géocodage précis via `adresse, codePostal, ville, pays`.
-2. Si échec, tenter un géocodage par `ville, departement, pays`.
-3. Si échec, utiliser les coordonnées par défaut du chef-lieu de la région ou du centre de la France (Paris : 48.8566, 2.3522).
+### Règle QUAL-02 : Géocodage Automatique et Synchronisation GPS
+L'application prend en charge la résolution automatique des coordonnées géographiques (latitude et longitude) :
+1. **Pendant la saisie / édition** : À partir des champs `adresse`, `codePostal`, `ville` et `zone` (ex: Bretagne, Île-de-France), l'application interroge l'API Nominatim/OpenStreetMap ou bascule automatiquement sur le dictionnaire de coordonnées intégré pour positionner le membre sur la carte.
+2. **Lors de l'importation Excel** : Les colonnes latitude et longitude ne sont pas requises dans les fichiers Excel. L'application calcule automatiquement les coordonnées GPS de chaque membre importé en s'appuyant sur sa ville et sa zone.
+3. **Fallback Téléchargé / Hors Ligne** : Si l'adresse exacte est introuvable, les coordonnées sont automatiquement calées sur le centre de la commune (`ville`) ou sur le chef-lieu de la `zone` administrative attribuée.
 
 ---
 
