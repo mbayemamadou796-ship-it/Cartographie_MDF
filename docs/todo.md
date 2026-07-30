@@ -1,5 +1,7 @@
 # Liste des Tâches de Développement (TODO) — Cartographie MDF
 
+> ⛔ **IMPORTANT** : Le Frontend (design, organisation des éléments, composants UI/UX) est **finalisé et stabilisé — NE PAS Y TOUCHER**. Les travaux restants portent uniquement sur le **Backend** (base de données, API, sécurité, Supabase).
+
 ## 🛠️ Architecture & Code Base
 - [x] Séparer proprement l'application dans `frontend/web-cartographie/src`.
 - [x] Centraliser les types TypeScript canoniques dans `shared/types/index.ts`.

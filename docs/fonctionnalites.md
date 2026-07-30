@@ -1,5 +1,7 @@
 # Description Détallée des Fonctionnalités — Cartographie MDF
 
+> ⛔ **DIRECTIVE GÉNÉRALE** : Le Frontend (design, organisation des éléments, layout UI/UX, composants visuels) est **intégralement finalisé et stabilisé — NE PAS Y TOUCHER**. Les évolutions à venir doivent se concentrer exclusivement sur la couche **Backend** (API REST, base de données, Supabase/PostgreSQL, RLS et sécurité).
+
 ## 1. Carte Interactive & Géolocalisation
 - **Affichage sur Carte** : Représentation visuelle des membres par marqueurs et regroupements (clusters).
 - **Géocodage Intelligemment Synchronisé** : Calcul et synchronisation automatique des coordonnées GPS (latitude et longitude) pour chaque membre selon sa ville de résidence et sa zone régionale.

@@ -2,6 +2,8 @@
 
 ## 1. Vue d'ensemble
 
+> ⛔ **DIRECTIVE DE DÉVELOPPEMENT** : L'interface utilisateur Frontend (design, organisation visuelle, layout UI/UX et composants React) est **intégralement finalisée et stabilisée**. **IL NE FAUT PLUS Y TOUCHER**. L'ensemble des développements futurs est strictement concentré sur le **Backend** (API REST, base de données Supabase / PostgreSQL, politiques RLS, contrôleurs et sécurité).
+
 L'application **Cartographie MDF** est une plateforme Web unifiée et modulaire conçue pour la gestion, la cartographie géographique interactive et l'annuaire synchronisé des membres de l'association **Mbok de France (MDF)**.
 
 L'architecture repose sur une séparation claire des responsabilités entre :

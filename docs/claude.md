@@ -368,26 +368,25 @@ Chaque évolution importante doit mettre à jour la documentation du dossier `do
 
 # Ce que tu peux modifier
 
-- Backend
-- Base de données / Schémas Supabase
-- API / Handlers
-- Politiques RLS
-- Modules métier Frontend (`src/modules/*`)
-- Utilitaire de Géocodage (`src/utils/geocoding.ts`)
-- Import / Export Excel
-- Journaux d'activité
+- Backend (Node.js / Express / Supabase)
+- Base de données / Schémas PostgreSQL & Supabase
+- API REST / Handlers / Controllers
+- Politiques RLS & Sécurité des routes
+- Traitements serveur de fond (Géocodage asynchrone, Import/Export Excel serveur)
 - Documentation technique (`docs/*`, `claude.md`)
 
 ---
 
-# Ce que tu ne dois pas modifier
+# Ce que tu ne dois pas modifier (DIRECTIVE STRICTE)
 
-Tu ne dois jamais :
+Tu ne dois **STRICTEMENT PAS** :
 
-- changer l'architecture globale du projet sans motif explicite ;
-- renommer les modules métier sans justification ;
-- casser la compatibilité du Frontend existant ;
-- déplacer arbitrairement les dossiers du projet.
+- **Toucher ou modifier le Frontend (Design, organisation des éléments, layout UI/UX, composants visuels)** : Le design, l'organisation et la structure visuelle du Frontend sont **figés, validés et stabilisés**. **IL EST STRICTEMENT INTERDIT D'Y TOUCHER OU DE MODIFIER LE DESIGN FRONTEND**.
+- Changer l'architecture globale du projet ;
+- Renommer les modules métier sans justification ;
+- Casser la compatibilité ou déplacer les fichiers du projet.
+
+> ⚠️ **RÈGLE D'OR** : Le travail restant à accomplir est **EXCLUSIVEMENT AXÉ SUR LE BACKEND** (API REST, base de données Supabase/PostgreSQL, RLS, contrôleurs, scripts serveur). Le Frontend ne doit plus subir aucune modification de design ou d'organisation.
 
 ---
 

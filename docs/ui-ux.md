@@ -1,5 +1,7 @@
 # Organisation des Écrans et Guide Navigation UI/UX — Cartographie MDF
 
+> 🔒 **STATUT DU FRONTEND** : L'organisation des écrans, le design, le layout UI/UX et la structure des composants décrits ci-dessous sont **définitivement stabilisés et validés**. **IL NE FAUT PLUS TOUCHER NI MODIFIER LE FRONTEND**. L'ensemble des travaux de développement à venir doit se concentrer exclusivement sur la couche **Backend**.
+
 ## 1. Structure Générale du Dashboard
 L'interface s'articule autour d'un système à deux composantes principales :
 1. **Sidebar Latérale Navigation** :
