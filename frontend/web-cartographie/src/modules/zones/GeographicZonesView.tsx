@@ -65,12 +65,13 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
   // Filter custom zones for referent users
   const filteredCustomZones = useMemo(() => {
     if (userRole === 'referent') {
-      if (currentUserId || (assignedZoneIds && assignedZoneIds.length > 0)) {
-        return customZones.filter(
-          (z) =>
-            (currentUserId && z.referentUserId === currentUserId) ||
-            (assignedZoneIds && assignedZoneIds.includes(z.id))
-        );
+      if (assignedZoneIds && assignedZoneIds.length > 0) {
+        const matched = customZones.filter((z) => assignedZoneIds.includes(z.id));
+        if (matched.length > 0) return matched;
+      }
+      if (currentUserId) {
+        const matchedByUserId = customZones.filter((z) => z.referentUserId === currentUserId);
+        if (matchedByUserId.length > 0) return matchedByUserId;
       }
       return customZones;
     }

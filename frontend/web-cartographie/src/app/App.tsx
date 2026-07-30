@@ -78,8 +78,6 @@ const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
     description: 'Antennes Auvergne-Rhône-Alpes (Lyon, Grenoble, Saint-Étienne...)',
     color: 'purple',
     memberIds: ['mdf-004'],
-    referentUserId: 'usr-modou',
-    referentName: 'Modou Mbaye',
     createdAt: new Date().toISOString()
   },
   {
@@ -95,7 +93,9 @@ const DEFAULT_CUSTOM_ZONES: CustomZone[] = [
     name: 'Bretagne',
     description: 'Réseau et membres basés en région Bretagne (Rennes, Brest, Quimper...)',
     color: 'emerald',
-    memberIds: ['mdf-010'],
+    memberIds: ['mdf-010', 'mdf-modou'],
+    referentUserId: 'usr-modou',
+    referentName: 'Modou Mbaye',
     createdAt: new Date().toISOString()
   },
   {
@@ -306,23 +306,45 @@ export default function App() {
 
   // Auto-synchronize memberIds in customZones based on live member.zone or member.region
   useEffect(() => {
+    const validMemberIds = new Set(members.map((m) => m.id));
+    const memberZoneMap = new Map<string, string>(); // member.id -> normalized zone/region name
+    members.forEach((m) => {
+      const zName = (m.zone || m.region || '').trim().toLowerCase();
+      if (zName) memberZoneMap.set(m.id, zName);
+    });
+
     setCustomZones((prevZones) => {
       let changed = false;
       const newZones = prevZones.map((z) => {
+        const zNameLower = z.name.trim().toLowerCase();
+
+        // All members whose region or zone matches this zone
         const matchingMemberIds = members
-          .filter((m) => {
-            const mZone = (m.zone || m.region || '').trim().toLowerCase();
-            return mZone === z.name.toLowerCase();
-          })
+          .filter((m) => (m.zone || m.region || '').trim().toLowerCase() === zNameLower)
           .map((m) => m.id);
 
-        const currentSet = new Set(z.memberIds);
-        const hasAllMatching = matchingMemberIds.every((id) => currentSet.has(id));
+        // Keep IDs that exist in members AND either explicitly match this zone or were manually added and haven't moved to another known zone
+        const updatedMemberIds = Array.from(
+          new Set([
+            ...z.memberIds.filter((id) => {
+              if (!validMemberIds.has(id)) return false; // remove deleted member
+              const currentMZone = memberZoneMap.get(id);
+              if (currentMZone && currentMZone !== zNameLower) {
+                // Member's region/zone was changed to another specific zone! Remove from old zone.
+                return false;
+              }
+              return true;
+            }),
+            ...matchingMemberIds
+          ])
+        );
 
-        if (!hasAllMatching) {
+        if (
+          updatedMemberIds.length !== z.memberIds.length ||
+          !updatedMemberIds.every((id, idx) => id === z.memberIds[idx])
+        ) {
           changed = true;
-          const mergedIds = Array.from(new Set([...z.memberIds, ...matchingMemberIds]));
-          return { ...z, memberIds: mergedIds };
+          return { ...z, memberIds: updatedMemberIds };
         }
         return z;
       });
@@ -350,6 +372,17 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // Security Guard: Reset active tab for non-admin users if viewing an admin-only tab
+  useEffect(() => {
+    const allowedTabs = userRole === 'admin'
+      ? ['dashboard', 'directory', 'zones', 'users', 'quality', 'import_export', 'audit_logs', 'settings']
+      : ['dashboard', 'directory', 'zones'];
+
+    if (!allowedTabs.includes(activeTab)) {
+      setActiveTab('directory');
+    }
+  }, [userRole, activeTab]);
+
   // Users Management State with LocalStorage Persistence
   const [users, setUsers] = useState<AppUser[]>(() => {
     try {
@@ -366,6 +399,89 @@ export default function App() {
     try {
       localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
     } catch {}
+  }, [users]);
+
+  // Auto-synchronize referents as members & zone leads whenever users change
+  useEffect(() => {
+    let membersAdded = false;
+    let zonesChanged = false;
+
+    let updatedMembers = [...members];
+    let updatedZones = [...customZones];
+
+    users.forEach((u) => {
+      if (u.role === 'referent') {
+        const fullName = u.name || `${u.prenom || ''} ${u.nom || ''}`.trim();
+
+        // 1. Check if user exists as a member in directory
+        let matchingMember = updatedMembers.find(
+          (m) =>
+            (m.email && u.email && m.email.toLowerCase() === u.email.toLowerCase()) ||
+            (`${m.prenom} ${m.nom}`.toLowerCase() === fullName.toLowerCase())
+        );
+
+        if (!matchingMember) {
+          const newMember: Member = {
+            id: `mdf-ref-${u.id}`,
+            nom: u.nom || u.name?.split(' ')[1] || 'Nom',
+            prenom: u.prenom || u.name?.split(' ')[0] || 'Prénom',
+            email: u.email,
+            telephone: '06 00 00 00 00',
+            region: u.region || 'Île-de-France',
+            zone: u.region || 'Île-de-France',
+            ville: u.region === 'Bretagne' ? 'Rennes' : 'Paris',
+            departement: u.region || 'France',
+            pays: 'France',
+            fonction: `Référent Régional ${u.region || ''}`,
+            organisation: 'Mbok de France',
+            latitude: 48.8566,
+            longitude: 2.3522
+          };
+          updatedMembers.push(newMember);
+          matchingMember = newMember;
+          membersAdded = true;
+        }
+
+        const memberId = matchingMember.id;
+
+        // 2. Link referent to custom zone(s)
+        updatedZones = updatedZones.map((z) => {
+          const isTargetZone =
+            (u.assignedZoneIds && u.assignedZoneIds.includes(z.id)) ||
+            (u.region && z.name.trim().toLowerCase() === u.region.trim().toLowerCase());
+
+          if (isTargetZone) {
+            const hasMember = z.memberIds.includes(memberId);
+            const needsRefInfo = z.referentUserId !== u.id || z.referentName !== fullName;
+            if (!hasMember || needsRefInfo) {
+              zonesChanged = true;
+              return {
+                ...z,
+                referentUserId: u.id,
+                referentName: fullName,
+                memberIds: Array.from(new Set([...z.memberIds, memberId]))
+              };
+            }
+          } else if (z.referentUserId === u.id && !isTargetZone) {
+            // Unassign from zones not assigned to this user
+            zonesChanged = true;
+            return {
+              ...z,
+              referentUserId: undefined,
+              referentName: undefined
+            };
+          }
+          return z;
+        });
+      }
+    });
+
+    if (membersAdded) {
+      setMembers(updatedMembers);
+    }
+    if (zonesChanged) {
+      setCustomZones(updatedZones);
+    }
   }, [users]);
 
   // Import Logs & History State
@@ -498,6 +614,15 @@ export default function App() {
     setCurrentUser(loggedUser);
     setUserRole(loggedUser.role);
 
+    // Security reset: Ensure non-admin users start on 'directory' or 'dashboard'
+    const allowedTabs = loggedUser.role === 'admin'
+      ? ['dashboard', 'directory', 'zones', 'users', 'quality', 'import_export', 'audit_logs', 'settings']
+      : ['dashboard', 'directory', 'zones'];
+
+    if (!allowedTabs.includes(activeTab)) {
+      setActiveTab('directory');
+    }
+
     try {
       localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(loggedUser));
     } catch {}
@@ -513,6 +638,7 @@ export default function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     setUserRole('user');
+    setActiveTab('directory');
     try {
       localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
     } catch {}
@@ -614,20 +740,27 @@ export default function App() {
   const referentZones = useMemo(() => {
     if (userRole !== 'referent') return [];
 
-    let assigned = customZones.filter(
-      (z) =>
-        (currentUser?.id && z.referentUserId === currentUser.id) ||
-        (currentUser?.assignedZoneIds && currentUser.assignedZoneIds.includes(z.id))
-    );
+    // 1. First priority: explicitly assigned zone IDs
+    if (currentUser?.assignedZoneIds && currentUser.assignedZoneIds.length > 0) {
+      const assigned = customZones.filter((z) => currentUser.assignedZoneIds?.includes(z.id));
+      if (assigned.length > 0) return assigned;
+    }
 
-    if (assigned.length === 0 && currentUser?.region) {
+    // 2. Second priority: matching referentUserId on custom zone
+    if (currentUser?.id) {
+      const assignedByUserId = customZones.filter((z) => z.referentUserId === currentUser.id);
+      if (assignedByUserId.length > 0) return assignedByUserId;
+    }
+
+    // 3. Fallback: match region name
+    if (currentUser?.region) {
       const regionMatched = customZones.filter(
         (z) => z.name.trim().toLowerCase() === currentUser.region?.trim().toLowerCase()
       );
-      if (regionMatched.length > 0) assigned = regionMatched;
+      if (regionMatched.length > 0) return regionMatched;
     }
 
-    return assigned;
+    return [];
   }, [userRole, currentUser, customZones]);
 
   const referentZoneNames = useMemo(() => {
@@ -937,6 +1070,12 @@ export default function App() {
     }
     const target = members.find((m) => m.id === memberId);
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
+    setCustomZones((prev) =>
+      prev.map((z) => ({
+        ...z,
+        memberIds: z.memberIds.filter((id) => id !== memberId)
+      }))
+    );
     if (selectedMemberId === memberId) setSelectedMemberId(null);
     if (activeDetailsMember?.id === memberId) setActiveDetailsMember(null);
     addAuditLog('member', 'Suppression d\'un membre', `Membre ${target ? `${target.prenom} ${target.nom}` : memberId} supprimé de l'annuaire`, 'danger', memberId, target ? `${target.prenom} ${target.nom}` : undefined);

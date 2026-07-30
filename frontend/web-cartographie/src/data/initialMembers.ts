@@ -268,6 +268,28 @@ export const INITIAL_MEMBERS: Member[] = [
     latitude: 48.8732,
     longitude: 2.3188,
     photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'mdf-modou',
+    nom: 'Mbaye',
+    prenom: 'Modou',
+    zone: 'Bretagne',
+    situationProfessionnelle: 'Cadre Associatif',
+    domaineEtude: 'Management & Réseaux',
+    anneeArriveeFrance: '2016',
+    fonction: 'Référent Régional Bretagne',
+    organisation: 'MDF Bretagne - Rennes',
+    email: 'modou.mbaye@mbokdefrance.org',
+    telephone: '02 99 12 34 56',
+    adresse: '15 Rue de la Monnaie',
+    codePostal: '35000',
+    ville: 'Rennes',
+    departement: 'Ille-et-Vilaine (35)',
+    region: 'Bretagne',
+    pays: 'France',
+    latitude: 48.1113,
+    longitude: -1.6800,
+    photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80'
   }
 ];
 
