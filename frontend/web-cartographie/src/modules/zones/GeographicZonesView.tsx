@@ -317,11 +317,6 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
             <p className="text-lg font-black font-['Outfit'] text-white">
               {filteredCustomZones.length}
             </p>
-            {activeSubTab === 'zones' && (
-              <span className="text-[9px] font-extrabold text-emerald-300 bg-emerald-500/30 px-1.5 py-0.5 rounded-md border border-emerald-400/40 mt-0.5 inline-block">
-                ● Affichées ci-dessous
-              </span>
-            )}
           </div>
         </button>
 
@@ -344,11 +339,6 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
             <p className="text-lg font-black font-['Outfit'] text-white">
               {new Set(filteredCustomZones.flatMap(z => z.memberIds.map(id => membersMap.get(id)?.ville?.trim()).filter(Boolean))).size}
             </p>
-            {activeSubTab === 'villes' && (
-              <span className="text-[9px] font-extrabold text-emerald-300 bg-emerald-500/30 px-1.5 py-0.5 rounded-md border border-emerald-400/40 mt-0.5 inline-block">
-                ● Affichées ci-dessous
-              </span>
-            )}
           </div>
         </button>
 
@@ -371,11 +361,6 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
             <p className="text-lg font-black font-['Outfit'] text-white">
               {new Set(filteredCustomZones.flatMap(z => z.memberIds.map(id => membersMap.get(id)?.departement?.trim()).filter(Boolean))).size}
             </p>
-            {activeSubTab === 'departements' && (
-              <span className="text-[9px] font-extrabold text-emerald-300 bg-emerald-500/30 px-1.5 py-0.5 rounded-md border border-emerald-400/40 mt-0.5 inline-block">
-                ● Affichés ci-dessous
-              </span>
-            )}
           </div>
         </button>
 
@@ -398,11 +383,6 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
             <p className="text-lg font-black font-['Outfit'] text-white">
               {filteredCustomZones.reduce((acc, z) => acc + z.memberIds.length, 0)}
             </p>
-            {activeSubTab === 'membres' && (
-              <span className="text-[9px] font-extrabold text-emerald-300 bg-emerald-500/30 px-1.5 py-0.5 rounded-md border border-emerald-400/40 mt-0.5 inline-block">
-                ● Affichés ci-dessous
-              </span>
-            )}
           </div>
         </button>
       </div>
