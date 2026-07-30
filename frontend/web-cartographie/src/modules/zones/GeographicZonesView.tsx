@@ -291,6 +291,57 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
         </div>
       </div>
 
+      {/* Coverage Statistics Banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-r from-emerald-900 via-emerald-950 to-slate-900 p-4 rounded-3xl text-white shadow-md border border-emerald-700/40">
+        <div className="flex items-center gap-3 p-2">
+          <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <Globe className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/80">Zones Régionales</p>
+            <p className="text-lg font-black font-['Outfit'] text-white">
+              {filteredCustomZones.length}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 p-2">
+          <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <Compass className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/80">Villes Représentées</p>
+            <p className="text-lg font-black font-['Outfit'] text-white">
+              {new Set(filteredCustomZones.flatMap(z => z.memberIds.map(id => membersMap.get(id)?.ville?.trim()).filter(Boolean))).size}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 p-2">
+          <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <Building2 className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/80">Départements Couverts</p>
+            <p className="text-lg font-black font-['Outfit'] text-white">
+              {new Set(filteredCustomZones.flatMap(z => z.memberIds.map(id => membersMap.get(id)?.departement?.trim()).filter(Boolean))).size}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 p-2">
+          <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/80">Membres Associés</p>
+            <p className="text-lg font-black font-['Outfit'] text-white">
+              {filteredCustomZones.reduce((acc, z) => acc + z.memberIds.length, 0)}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* MDF ZONES LIST */}
       <div className="space-y-6">
           
@@ -327,6 +378,11 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
                 const zoneMembers = zone.memberIds
                   .map((id) => membersMap.get(id))
                   .filter((m): m is Member => m !== undefined);
+
+                // Geographic Breakdown Calculations
+                const zoneCitiesSet = new Set(zoneMembers.map((m) => m.ville?.trim()).filter(Boolean));
+                const zoneDeptsSet = new Set(zoneMembers.map((m) => m.departement?.trim()).filter(Boolean));
+                const zoneCitiesList = Array.from(zoneCitiesSet);
 
                 return (
                   <div
@@ -388,6 +444,34 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
                         <p className="text-xs text-slate-500 font-medium leading-relaxed pl-1 line-clamp-2">
                           {zone.description}
                         </p>
+                      )}
+                    </div>
+
+                    {/* Geographic Distribution Breakdown */}
+                    <div className="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200/70 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1.5 font-bold text-emerald-950">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>{zoneCitiesList.length} ville{zoneCitiesList.length > 1 ? 's' : ''} représentée{zoneCitiesList.length > 1 ? 's' : ''}</span>
+                        </span>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full font-extrabold border border-emerald-300/60">
+                          {zoneDeptsSet.size} dép.
+                        </span>
+                      </div>
+
+                      {zoneCitiesList.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {zoneCitiesList.slice(0, 4).map((c) => (
+                            <span key={c} className="text-[10px] bg-white text-emerald-900 px-2 py-0.5 rounded-lg border border-emerald-200 font-extrabold shadow-2xs">
+                              {c}
+                            </span>
+                          ))}
+                          {zoneCitiesList.length > 4 && (
+                            <span className="text-[10px] text-emerald-800 font-bold self-center pl-0.5">
+                              +{zoneCitiesList.length - 4} autres
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
 

@@ -129,6 +129,26 @@ export const ZoneDetailsModal: React.FC<ZoneDetailsModalProps> = ({
     );
   });
 
+  // Calculate Geographic Distribution for this zone
+  const zoneCitiesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    zoneMembers.forEach((m) => {
+      const v = m.ville?.trim();
+      if (v) {
+        map.set(v, (map.get(v) || 0) + 1);
+      }
+    });
+    return map;
+  }, [zoneMembers]);
+
+  const zoneDeptsSet = useMemo(() => {
+    return new Set(zoneMembers.map((m) => m.departement?.trim()).filter(Boolean));
+  }, [zoneMembers]);
+
+  const cityList = useMemo(() => {
+    return Array.from(zoneCitiesMap.entries()).sort((a, b) => b[1] - a[1]);
+  }, [zoneCitiesMap]);
+
   const handleAddNewMemberClick = () => {
     onOpenAddMemberInZone(zone.id, zone.name, zone.defaultGeo);
   };
@@ -231,6 +251,49 @@ export const ZoneDetailsModal: React.FC<ZoneDetailsModalProps> = ({
 
           </div>
         </div>
+
+        {/* Territory Distribution Summary Banner */}
+        {zoneMembers.length > 0 && (
+          <div className="mx-6 mt-4 p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl space-y-2 shrink-0">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 font-extrabold text-emerald-950">
+                <MapPin className="w-4 h-4 text-emerald-600" />
+                <span>Répartition géographique : {cityList.length} ville{cityList.length > 1 ? 's' : ''} représentée{cityList.length > 1 ? 's' : ''}</span>
+              </span>
+              <span className="text-[11px] font-bold text-emerald-900 bg-white px-2.5 py-0.5 rounded-full border border-emerald-300/80 shadow-2xs">
+                {zoneDeptsSet.size} département{zoneDeptsSet.size > 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pt-1">
+              {cityList.map(([cityName, count]) => (
+                <button
+                  key={cityName}
+                  onClick={() => setSearchQuery(cityName)}
+                  title={`Filtrer par ${cityName}`}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all border ${
+                    searchQuery.toLowerCase() === cityName.toLowerCase()
+                      ? 'bg-emerald-950 text-white border-emerald-950 shadow-2xs'
+                      : 'bg-white hover:bg-emerald-100 text-slate-800 border-emerald-200/80'
+                  }`}
+                >
+                  <span>{cityName}</span>
+                  <span className="bg-emerald-100 text-emerald-950 font-black px-1.5 py-0.2 rounded-md text-[9px]">
+                    {count}
+                  </span>
+                </button>
+              ))}
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline self-center ml-1 cursor-pointer"
+                >
+                  Réinitialiser le filtre
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Members List Container */}
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
