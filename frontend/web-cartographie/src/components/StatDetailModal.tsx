@@ -44,10 +44,9 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
 
-  if (!isOpen || !type) return null;
-
   // 1. Group by Cities
   const citiesData = useMemo(() => {
+    if (!isOpen || !type) return [];
     const map = new Map<string, { dept: string; region: string; members: Member[] }>();
     members.forEach((m) => {
       const city = m.ville?.trim() || 'Non renseignée';
@@ -70,10 +69,11 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
         count: data.members.length
       }))
       .sort((a, b) => b.count - a.count);
-  }, [members]);
+  }, [members, isOpen, type]);
 
   // 2. Group by Departments
   const deptsData = useMemo(() => {
+    if (!isOpen || !type) return [];
     const map = new Map<string, { region: string; cities: Set<string>; members: Member[] }>();
     members.forEach((m) => {
       const dept = m.departement?.trim() || 'Non renseigné';
@@ -98,7 +98,10 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
         count: data.members.length
       }))
       .sort((a, b) => b.count - a.count);
-  }, [members]);
+  }, [members, isOpen, type]);
+
+  // Early return after hooks execution
+  if (!isOpen || !type) return null;
 
   // Filtered lists based on search input
   const filteredCities = citiesData.filter(
