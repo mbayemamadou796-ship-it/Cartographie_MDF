@@ -156,7 +156,19 @@ Les mots de passe ne doivent jamais être stockés manuellement.
 
 # Gestion des rôles
 
-Trois rôles existent.
+Trois rôles existent : **Administrateur**, **Référent de Zone**, **Utilisateur** (Lecture seule).
+
+## Initialisation du Compte Administrateur Unique
+
+Lors du déploiement / seed de la base de données Backend, **un seul et unique compte administrateur** est créé initialement :
+
+- **Identifiant / Email** : `Bilal`
+- **Mot de passe** : `Ziguinchor1999@`
+- **Rôle** : `admin` (Administrateur Racine)
+
+C'est cet administrateur racine (`Bilal`) qui est ensuite chargé de créer les autres utilisateurs dans la plateforme (autres Administrateurs, Référents de zone, Utilisateurs en lecture seule).
+
+---
 
 ## Administrateur
 
@@ -166,7 +178,7 @@ Peut :
 
 - gérer tous les membres
 - gérer les zones régionales
-- gérer les utilisateurs et leurs rôles
+- créer et gérer les utilisateurs ainsi que leurs rôles
 - importer et exporter des fichiers Excel
 - consulter les journaux d'audit
 - accéder aux paramètres globaux

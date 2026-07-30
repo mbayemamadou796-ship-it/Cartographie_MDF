@@ -30,3 +30,17 @@ Lorsqu'un utilisateur possède le rôle `referent` (ex: **Modou Mbaye** pour la 
 - **Membre de Zone Automatique** : Tout utilisateur créé ou désigné avec le rôle `referent` est automatiquement intégré comme membre officiel de l'annuaire rattaché à sa région/zone d'attribution s'il n'y figurait pas encore.
 - **Désignation du Responsable** : La fiche de la zone est instantanément mise à jour avec l'identifiant et le nom complet du référent assigné (`referentUserId` et `referentName`).
 - **Maintien de la Cohérence lors des Suppressions** : La suppression d'un membre entraîne automatiquement son retrait de toutes les listes de membres (`memberIds`) des zones sur-mesure.
+
+## 5. Compte Administrateur Racine & Création des Utilisateurs
+- **Administrateur Unique d'Initialisation (Seed Backend)** :
+  - À l'initialisation du système / de la base de données, **un seul et unique compte administrateur racine** est créé au départ.
+  - **Identifiant** : `Bilal`
+  - **Mot de passe** : `Ziguinchor1999@`
+  - **Rôle** : `admin` (Administrateur système)
+- **Flux de Gestion des Utilisateurs** :
+  - Cet administrateur racine (`Bilal`) est l'unique utilisateur initial. C'est lui qui est chargé de créer ensuite tous les autres utilisateurs du système via l'interface d'administration.
+  - La logique stricte des 3 types d'utilisateurs reste intégralement préservée :
+    1. **Administrateur (`admin`)** : Droits totaux (gestion des membres, zones, utilisateurs, imports/exports, audit, paramètres).
+    2. **Référent de Zone (`referent`)** : Droits de consultation et gestion restreints exclusivement aux membres de sa ou ses zone(s) d'attribution.
+    3. **Lecture seule / Utilisateur (`user`)** : Accès en consultation uniquement sur l'annuaire et la carte, sans accès aux fonctions d'édition ni aux onglets d'administration.
+

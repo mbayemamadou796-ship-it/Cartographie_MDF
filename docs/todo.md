@@ -16,6 +16,8 @@
 
 ## 📊 Base de Données & Backend
 - [x] Configurer la structure des tables SQL Supabase (`members`, `custom_zones`, `app_users`, `audit_logs`).
+- [x] Configurer le compte administrateur racine unique par défaut (`Bilal` / `Ziguinchor1999@`) pour la création ultérieure des utilisateurs.
 - [x] Développer l'API Backend Express pour servir le frontend et la gestion d'import/export.
 - [ ] Finaliser l'intégration des clés de production Supabase.
+
 - [ ] Exécuter des tests de charge sur les imports massifs Excel (> 5000 enregistrements).

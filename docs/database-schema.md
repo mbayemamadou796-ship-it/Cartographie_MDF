@@ -57,7 +57,19 @@ CREATE TABLE app_users (
   last_login TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Insertion de l'administrateur unique initial (Seed de départ)
+-- Cet administrateur (Bilal) sera l'unique utilisateur initial habilité à créer ensuite les autres comptes.
+INSERT INTO app_users (id, email, full_name, role, is_active)
+VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  'Bilal', -- Identifiant / Username
+  'Bilal Admin',
+  'admin',
+  true
+) ON CONFLICT (email) DO NOTHING;
 ```
+
 
 ## 4. Table `audit_logs` (Journaux de Traçabilité)
 ```sql

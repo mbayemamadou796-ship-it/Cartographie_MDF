@@ -10,6 +10,14 @@
 ### Règle RBAC-02 : Réinitialisation Sécurisée de Navigation
 - Lors d'une déconnexion ou d'une reconnexion sous une identité non-administrateur (ex: Référent ou Utilisateur), l'onglet actif est systématiquement réinitialisé vers l'Annuaire (`directory`). Cela garantit que les vues d'administration précédemment ouvertes ne restent jamais accessibles par un utilisateur non autorisé.
 
+### Règle RBAC-03 : Compte Administrateur Racine Unique & Création des Comptes
+- **Administrateur Initial Unique** : Lors de l'initialisation du système / de la base de données, **un seul et unique compte administrateur** est créé par défaut :
+  - **Identifiant** : `Bilal`
+  - **Mot de passe** : `Ziguinchor1999@`
+  - **Rôle** : `admin`
+- **Délégation de Création des Utilisateurs** : L'administrateur initial (`Bilal`) est la seule personne habilitée au départ à créer les comptes ultérieurs. C'est à lui d'enregistrer et d'attribuer les rôles aux autres utilisateurs (Administrateurs, Référents de zone, Utilisateurs en lecture seule).
+
+
 ---
 
 ## 2. Portée des Données pour les Référents
