@@ -115,6 +115,9 @@ Le contrôle d'accès garantit qu'un utilisateur ne peut accéder qu'aux fonctio
      ```
 2. **Isolation du Périmètre des Référents (Scope Isolation)** :
    - Un utilisateur avec le rôle `referent` ne peut lire, éditer ou exporter que les membres appartenant à sa zone d'attribution validée côté serveur.
+   - Dans le sous-module de cartes des zones (`GeographicZonesView`), le composant filtre strictement les zones affichées pour que seules les zones assignées soient retournées au navigateur client.
+3. **Réinitialisation Sécurisée des Onglets de Navigation (Tab Security Guard)** :
+   - L'application client intègre un garde-fou dynamique qui bascule automatiquement l'onglet actif vers la vue publique/annuaire (`directory`) lorsqu'un utilisateur non-administrateur se connecte ou lorsque la session expire, empêchant l'accès direct par URL ou rétention d'état aux sous-modules d'administration (`users`, `quality`, `import_export`, `audit_logs`, `settings`).
 
 ---
 
