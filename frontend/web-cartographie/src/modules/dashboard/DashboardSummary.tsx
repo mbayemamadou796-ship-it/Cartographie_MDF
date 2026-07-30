@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Member, QualityFilter, CustomZone, UserRole, AppUser } from '../../types';
 import { Users, Building2, MapPin, Compass, Calendar, AlertTriangle, PhoneOff, MailX, MapPinOff, Copy, CheckCircle2, RefreshCw, Layers, Activity, FileSpreadsheet, ShieldCheck, UserCheck } from 'lucide-react';
+import { StatDetailModal, StatModalType } from '../../components/StatDetailModal';
 
 interface DashboardSummaryProps {
   members: Member[];
@@ -12,6 +13,7 @@ interface DashboardSummaryProps {
   userRole?: UserRole;
   referentZoneNames?: string[];
   referentUser?: AppUser | null;
+  onSelectMemberDetails?: (member: Member) => void;
 }
 
 export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
@@ -23,8 +25,10 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
   onNavigateToTab,
   userRole = 'admin',
   referentZoneNames = [],
-  referentUser
+  referentUser,
+  onSelectMemberDetails
 }) => {
+  const [statModalType, setStatModalType] = useState<StatModalType>(null);
   const zoneLabel = referentZoneNames.length > 0 ? referentZoneNames.join(', ') : 'Île-de-France';
 
   // Calculate summary metrics
@@ -131,8 +135,8 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Membres / Membres de la Zone */}
         <div
-          onClick={() => onNavigateToTab?.('directory')}
-          className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden group cursor-pointer"
+          onClick={() => setStatModalType('membres')}
+          className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden group cursor-pointer hover:brightness-105 transition-all"
         >
           <div className="absolute right-2 bottom-2 opacity-15 transform group-hover:scale-110 transition-transform">
             <Users className="w-16 h-16" />
@@ -144,7 +148,7 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
             {stats.totalMembers}
           </div>
           <p className="text-[10px] text-emerald-100 mt-1 font-medium">
-            {userRole === 'referent' ? `Inscrits dans la zone ${zoneLabel}` : 'Inscrits dans l\'annuaire'}
+            Cliquez pour voir tous les membres
           </p>
         </div>
 
@@ -152,8 +156,8 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
           <>
             {/* Referent Card 2: Communes de la Zone */}
             <div
-              onClick={() => onNavigateToTab?.('directory')}
-              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+              onClick={() => setStatModalType('villes')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -164,13 +168,13 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
               <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
                 {stats.uniqueVilles}
               </div>
-              <p className="text-[10px] text-slate-500 font-medium">Villes représentées dans la zone</p>
+              <p className="text-[10px] text-emerald-700 font-semibold">Cliquez pour voir les villes</p>
             </div>
 
             {/* Referent Card 3: Sur la Carte de la Zone */}
             <div
               onClick={() => onNavigateToTab?.('directory')}
-              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -186,8 +190,8 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
 
             {/* Referent Card 4: Zone d'action */}
             <div
-              onClick={() => onNavigateToTab?.('zones')}
-              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+              onClick={() => setStatModalType('zones')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -198,8 +202,8 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
               <div className="text-base font-extrabold text-slate-900 font-['Outfit'] mt-1 truncate" title={zoneLabel}>
                 {zoneLabel}
               </div>
-              <p className="text-[10px] text-slate-500 font-medium truncate">
-                {referentUser ? `Référent : ${referentUser.prenom || ''} ${referentUser.nom || referentUser.name}` : 'Espace Référent Délégué'}
+              <p className="text-[10px] text-emerald-700 font-semibold truncate">
+                Cliquez pour voir les détails zone
               </p>
             </div>
           </>
@@ -207,8 +211,8 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
           <>
             {/* Nombre de Zones (Régions MDF) */}
             <div
-              onClick={() => onNavigateToTab?.('zones')}
-              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+              onClick={() => setStatModalType('zones')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -219,13 +223,13 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
               <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
                 {stats.totalZones}
               </div>
-              <p className="text-[10px] text-slate-500 font-medium">Zones régionales MDF</p>
+              <p className="text-[10px] text-emerald-700 font-semibold">Cliquez pour voir les zones</p>
             </div>
 
             {/* Villes & Communes */}
             <div
-              onClick={() => onNavigateToTab?.('directory')}
-              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 transition-all"
+              onClick={() => setStatModalType('villes')}
+              className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -236,7 +240,7 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
               <div className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
                 {stats.uniqueVilles}
               </div>
-              <p className="text-[10px] text-slate-500 font-medium">Communes de résidence</p>
+              <p className="text-[10px] text-emerald-700 font-semibold">Cliquez pour voir les villes</p>
             </div>
 
             {/* Membres Cartographiés / Géolocalisés */}
@@ -444,6 +448,26 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
           </div>
         </div>
       </div>
+
+      <StatDetailModal
+        isOpen={statModalType !== null}
+        type={statModalType}
+        members={members}
+        customZones={customZones}
+        onClose={() => setStatModalType(null)}
+        onSelectMemberDetails={(m) => {
+          setStatModalType(null);
+          onSelectMemberDetails?.(m);
+        }}
+        onSelectZoneDetails={() => {
+          setStatModalType(null);
+          onNavigateToTab?.('zones');
+        }}
+        onFilterOnMap={() => {
+          setStatModalType(null);
+          onNavigateToTab?.('directory');
+        }}
+      />
     </section>
   );
 };

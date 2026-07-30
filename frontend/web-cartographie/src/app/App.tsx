@@ -1349,6 +1349,7 @@ export default function App() {
                 setActiveTab('directory');
               }}
               onNavigateToTab={(tab) => setActiveTab(tab)}
+              onSelectMemberDetails={(member) => setActiveDetailsMember(member)}
             />
 
             {/* Quick Map Preview */}
