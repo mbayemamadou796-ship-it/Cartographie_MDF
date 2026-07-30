@@ -15,9 +15,9 @@
 - [x] Rendre interactives les métriques (Villes, Départements, Zones, Membres) par fenêtre modale de détail et centrage sur carte.
 
 ## 📊 Base de Données & Backend
-- [x] Configurer la structure des tables SQL Supabase (`members`, `custom_zones`, `app_users`, `audit_logs`).
-- [x] Configurer le compte administrateur racine unique par défaut (`Bilal` / `Ziguinchor1999@`) pour la création ultérieure des utilisateurs.
-- [x] Développer l'API Backend Express pour servir le frontend et la gestion d'import/export.
-- [ ] Finaliser l'intégration des clés de production Supabase.
-
+- [x] Configurer la structure des tables SQL Supabase (`members`, `custom_zones`, `app_users`, `audit_logs`, `import_logs`, `app_settings`) — `backend/database/migrations/001_init.sql`.
+- [x] Configurer le compte administrateur racine unique (username `bilal` / email `salyndiayembaye@gmail.com`) via Supabase Auth + seed (`npm run seed`).
+- [x] Développer l'API Backend Express (auth Supabase, bootstrap, PUT bulk membres/zones/users, audit, imports, settings) — `npm run dev:api`.
+- [x] Câbler le frontend sur l'API (couche données uniquement : `apiService.ts`, `App.tsx`) sans toucher au design.
+- [x] Finaliser l'intégration des clés Supabase (`.env`).
 - [ ] Exécuter des tests de charge sur les imports massifs Excel (> 5000 enregistrements).

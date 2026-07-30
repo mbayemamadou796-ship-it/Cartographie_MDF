@@ -3,7 +3,7 @@ import { LogoMbok } from '../parametres/LogoMbok';
 import { Lock, User, Eye, EyeOff, LogIn, AlertCircle, ShieldCheck, Shield, Check } from 'lucide-react';
 
 interface LoginScreenProps {
-  onLogin: (username: string, password: string) => boolean;
+  onLogin: (username: string, password: string) => boolean | Promise<boolean>;
   logoUrl?: string;
   associationName?: string;
   tagline?: string;
@@ -32,8 +32,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const success = onLogin(username.trim(), password.trim());
+    setTimeout(async () => {
+      const success = await onLogin(username.trim(), password.trim());
       if (!success) {
         setError('Identifiant ou mot de passe incorrect.');
         setIsLoading(false);

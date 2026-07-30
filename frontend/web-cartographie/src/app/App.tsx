@@ -27,6 +27,7 @@ import { SettingsView } from '../components/SettingsView';
 import { EditLogoModal } from '../components/EditLogoModal';
 import { LoginScreen } from '../components/LoginScreen';
 import { exportToExcel, exportToCsv } from '../utils/excelUtils';
+import { ApiService } from '../services/apiService';
 import { FRENCH_ZONES } from '../modules/membres/AdminMemberFormModal';
 import { CheckCircle2, MapPin, Users, ArrowRight } from 'lucide-react';
 
@@ -209,6 +210,7 @@ export default function App() {
       } catch {}
       return updated;
     });
+    ApiService.saveSettings(newSettings);
   };
 
   // Members State with LocalStorage Persistence
@@ -252,15 +254,17 @@ export default function App() {
     try {
       localStorage.setItem(LOCAL_STORAGE_UPDATE_KEY, formatted);
     } catch {}
+    ApiService.saveSettings({ lastUpdateDate: formatted });
   };
 
-  // Save members to localStorage
+  // Save members to localStorage (cache) + synchronisation backend
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(members));
     } catch {
       // Ignore quota errors
     }
+    ApiService.syncMembers(members);
   }, [members]);
 
   // Custom Zones State with LocalStorage Persistence & Guaranteed 13 Metropolitan Region Cards
@@ -302,6 +306,7 @@ export default function App() {
     try {
       localStorage.setItem(LOCAL_STORAGE_ZONES_KEY, JSON.stringify(customZones));
     } catch {}
+    ApiService.syncZones(customZones);
   }, [customZones]);
 
   // Auto-synchronize memberIds in customZones based on live member.zone or member.region
@@ -399,6 +404,7 @@ export default function App() {
     try {
       localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
     } catch {}
+    ApiService.syncUsers(users);
   }, [users]);
 
   // Auto-synchronize referents as members & zone leads whenever users change
@@ -500,6 +506,7 @@ export default function App() {
     try {
       localStorage.setItem(LOCAL_STORAGE_LOGS_KEY, JSON.stringify(importLogs));
     } catch {}
+    ApiService.syncImportLogs(importLogs);
   }, [importLogs]);
 
   // Audit Logs State
@@ -519,6 +526,34 @@ export default function App() {
       localStorage.setItem(LOCAL_STORAGE_AUDIT_LOGS_KEY, JSON.stringify(auditLogs));
     } catch {}
   }, [auditLogs]);
+
+  // Hydratation depuis l'API backend (Supabase). Le localStorage reste le
+  // cache de démarrage : si l'API est indisponible, l'application continue
+  // sur le cache local sans erreur visible.
+  useEffect(() => {
+    if (!currentUser || !ApiService.hasSession()) return;
+    let cancelled = false;
+    ApiService.bootstrap()
+      .then((d) => {
+        if (cancelled) return;
+        const { lastUpdateDate, ...serverSettings } = d.settings;
+        setAppSettings((prev) => ({ ...prev, ...serverSettings }));
+        if (lastUpdateDate) setLastUpdateDate(lastUpdateDate);
+        setMembers(d.members);
+        setCustomZones(d.zones);
+        if (currentUser.role === 'admin') {
+          if (d.users.length > 0) setUsers(d.users);
+          setImportLogs(d.importLogs);
+          setAuditLogs(d.auditLogs);
+        }
+      })
+      .catch(() => {
+        // API hors ligne : mode cache localStorage
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id]);
 
   const addAuditLog = (
     category: AuditLogCategory,
@@ -548,68 +583,31 @@ export default function App() {
       severity
     };
     setAuditLogs((prev) => [newLog, ...prev]);
+    ApiService.appendAuditLog(newLog);
   };
 
   // Location Change Alerts State
   const [locationAlerts, setLocationAlerts] = useState<LocationChangeAlert[]>([]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
-  // Authentication Handlers
-  const handleLogin = (inputUsername: string, inputPassword: string): boolean => {
-    const normInput = inputUsername.trim().toLowerCase();
+  // Authentication Handlers — l'authentification est déléguée au backend
+  // (Supabase Auth). L'identifiant accepte le username ou l'email.
+  const handleLogin = async (inputUsername: string, inputPassword: string): Promise<boolean> => {
+    const result = await ApiService.login(inputUsername.trim(), inputPassword.trim());
 
-    // 1. Search in users list
-    let matchedUser = users.find((u) => {
-      const normName = u.username ? u.username.toLowerCase() : '';
-      const normEmail = u.email ? u.email.toLowerCase() : '';
-      const normId = u.id ? u.id.toLowerCase() : '';
-      return normName === normInput || normEmail === normInput || normId === normInput;
-    });
-
-    // 2. Fallback check for default MVP accounts if not found by user list
-    if (!matchedUser) {
-      if (normInput === 'admin' && inputPassword === 'admin123') {
-        matchedUser = {
-          id: 'usr-admin',
-          name: 'Administrateur MDF',
-          email: 'admin@mbokdefrance.org',
-          username: 'admin',
-          password: 'admin123',
-          role: 'admin',
-          active: true,
-          lastLogin: 'En ligne'
-        };
-      } else if (normInput === 'utilisateur' && inputPassword === 'utilisateur123') {
-        matchedUser = {
-          id: 'usr-user',
-          name: 'Membre Utilisateur',
-          email: 'utilisateur@mbokdefrance.org',
-          username: 'utilisateur',
-          password: 'utilisateur123',
-          role: 'user',
-          active: true,
-          lastLogin: 'En ligne'
-        };
-      }
-    }
-
-    if (!matchedUser) return false;
-
-    // Check if account active
-    if (!matchedUser.active) {
+    if (result.status === 'disabled') {
       showToast('Ce compte d\'accès est désactivé. Veuillez contacter l\'administrateur.');
       return false;
     }
-
-    // Check password
-    const expectedPassword = matchedUser.password || (matchedUser.role === 'admin' ? 'admin123' : 'utilisateur123');
-    if (inputPassword !== expectedPassword) {
+    if (result.status === 'error') {
+      showToast('Serveur inaccessible. Vérifiez que l\'API backend est démarrée.');
       return false;
     }
+    if (result.status !== 'ok') return false;
 
     // Success login
     const timeStr = 'Aujourd\'hui ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const loggedUser = { ...matchedUser, lastLogin: timeStr };
+    const loggedUser = { ...result.user, lastLogin: timeStr };
 
     setCurrentUser(loggedUser);
     setUserRole(loggedUser.role);
@@ -631,11 +629,16 @@ export default function App() {
       prev.map((u) => (u.id === loggedUser.id ? { ...u, lastLogin: timeStr } : u))
     );
 
+    addAuditLog('auth', 'Connexion', `Ouverture de session de "${loggedUser.name || loggedUser.username}"`, 'info', loggedUser.id, loggedUser.name);
     showToast(`Bienvenue ${loggedUser.name} ! Connexion réussie.`);
     return true;
   };
 
   const handleLogout = () => {
+    if (currentUser) {
+      addAuditLog('auth', 'Déconnexion', `Fermeture de session de "${currentUser.name || currentUser.username}"`, 'info', currentUser.id, currentUser.name);
+    }
+    ApiService.logout();
     setCurrentUser(null);
     setUserRole('user');
     setActiveTab('directory');
@@ -681,6 +684,7 @@ export default function App() {
   const handleDeleteUser = (userId: string) => {
     const target = users.find((u) => u.id === userId);
     setUsers((prev) => prev.filter((u) => u.id !== userId));
+    ApiService.deleteUser(userId);
     addAuditLog('user', 'Suppression d\'un utilisateur', `Suppression du compte "${target?.name || userId}"`, 'warning', userId, target?.name);
     showToast('Utilisateur supprimé.');
   };
@@ -975,6 +979,7 @@ export default function App() {
   const handleDeleteZone = (zoneId: string) => {
     const target = customZones.find((z) => z.id === zoneId);
     setCustomZones((prev) => prev.filter((z) => z.id !== zoneId));
+    ApiService.deleteZone(zoneId);
     if (filters.zoneId === zoneId) {
       handleFilterChange({ zoneId: undefined });
     }
@@ -1070,6 +1075,7 @@ export default function App() {
     }
     const target = members.find((m) => m.id === memberId);
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
+    ApiService.deleteMember(memberId);
     setCustomZones((prev) =>
       prev.map((z) => ({
         ...z,

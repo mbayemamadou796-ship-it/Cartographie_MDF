@@ -1,5 +1,7 @@
 # Documentation des Endpoints API REST — Cartographie MDF
 
+> ⚠️ **Document obsolète** — conservé pour historique. La documentation à jour de l'API réellement implémentée est [`DOCUMENTATION_API.md`](DOCUMENTATION_API.md).
+
 ## Base URL : `/api`
 
 ### 1. Endpoints Membres (`/api/members`)
