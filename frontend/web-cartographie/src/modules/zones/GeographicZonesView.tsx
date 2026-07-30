@@ -4,7 +4,7 @@ import { Layers, Globe, MapPin, Building2, Compass, Plus, Users, ArrowRight, Edi
 import { CustomZoneModal } from './CustomZoneModal';
 import { ManageZoneMembersModal } from './ManageZoneMembersModal';
 import { ZoneDetailsModal, ZoneDataInfo } from './ZoneDetailsModal';
-import { StatDetailModal, StatModalType } from '../../components/StatDetailModal';
+import { StatInlineView } from '../../components/StatDetailModal';
 
 interface GeographicZonesViewProps {
   members: Member[];
@@ -63,8 +63,8 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
   // Zone details modal state
   const [activeDetailsZone, setActiveDetailsZone] = useState<ZoneDataInfo | null>(null);
 
-  // Statistics Detail Modal state
-  const [statModalType, setStatModalType] = useState<StatModalType>(null);
+  // Active sub-part tab state ('zones' | 'villes' | 'departements' | 'membres')
+  const [activeSubTab, setActiveSubTab] = useState<'zones' | 'villes' | 'departements' | 'membres'>('zones');
 
   // Filter custom zones for referent users
   const filteredCustomZones = useMemo(() => {
@@ -296,86 +296,137 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
         </div>
       </div>
 
-      {/* Coverage Statistics Banner */}
+      {/* Coverage Statistics Banner / Sub-part Tabs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-r from-emerald-900 via-emerald-950 to-slate-900 p-4 rounded-3xl text-white shadow-md border border-emerald-700/40">
         <button
           type="button"
-          onClick={() => setStatModalType('zones')}
-          className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-emerald-500/20 hover:border-emerald-400/50 transition-all text-left group cursor-pointer"
+          onClick={() => setActiveSubTab('zones')}
+          className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left group cursor-pointer ${
+            activeSubTab === 'zones'
+              ? 'bg-emerald-500/30 border-2 border-emerald-400 ring-2 ring-emerald-400/40 shadow-lg scale-[1.02]'
+              : 'bg-white/5 hover:bg-white/10 border border-emerald-500/20 hover:border-emerald-400/50 opacity-80 hover:opacity-100'
+          }`}
         >
           <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 group-hover:scale-110 transition-transform shrink-0">
             <Globe className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/80 flex items-center gap-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/90 flex items-center gap-1">
               <span>Zones Régionales</span>
-              <ChevronRight className="w-3 h-3 text-emerald-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
             </p>
             <p className="text-lg font-black font-['Outfit'] text-white">
               {filteredCustomZones.length}
             </p>
+            {activeSubTab === 'zones' && (
+              <span className="text-[9px] font-extrabold text-emerald-300 bg-emerald-500/30 px-1.5 py-0.5 rounded-md border border-emerald-400/40 mt-0.5 inline-block">
+                ● Affichées ci-dessous
+              </span>
+            )}
           </div>
         </button>
 
         <button
           type="button"
-          onClick={() => setStatModalType('villes')}
-          className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-emerald-500/20 hover:border-emerald-400/50 transition-all text-left group cursor-pointer"
+          onClick={() => setActiveSubTab('villes')}
+          className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left group cursor-pointer ${
+            activeSubTab === 'villes'
+              ? 'bg-emerald-500/30 border-2 border-emerald-400 ring-2 ring-emerald-400/40 shadow-lg scale-[1.02]'
+              : 'bg-white/5 hover:bg-white/10 border border-emerald-500/20 hover:border-emerald-400/50 opacity-80 hover:opacity-100'
+          }`}
         >
           <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 group-hover:scale-110 transition-transform shrink-0">
             <Compass className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/80 flex items-center gap-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/90 flex items-center gap-1">
               <span>Villes Représentées</span>
-              <ChevronRight className="w-3 h-3 text-emerald-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
             </p>
             <p className="text-lg font-black font-['Outfit'] text-white">
               {new Set(filteredCustomZones.flatMap(z => z.memberIds.map(id => membersMap.get(id)?.ville?.trim()).filter(Boolean))).size}
             </p>
+            {activeSubTab === 'villes' && (
+              <span className="text-[9px] font-extrabold text-emerald-300 bg-emerald-500/30 px-1.5 py-0.5 rounded-md border border-emerald-400/40 mt-0.5 inline-block">
+                ● Affichées ci-dessous
+              </span>
+            )}
           </div>
         </button>
 
         <button
           type="button"
-          onClick={() => setStatModalType('departements')}
-          className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-emerald-500/20 hover:border-emerald-400/50 transition-all text-left group cursor-pointer"
+          onClick={() => setActiveSubTab('departements')}
+          className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left group cursor-pointer ${
+            activeSubTab === 'departements'
+              ? 'bg-emerald-500/30 border-2 border-emerald-400 ring-2 ring-emerald-400/40 shadow-lg scale-[1.02]'
+              : 'bg-white/5 hover:bg-white/10 border border-emerald-500/20 hover:border-emerald-400/50 opacity-80 hover:opacity-100'
+          }`}
         >
           <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 group-hover:scale-110 transition-transform shrink-0">
             <Building2 className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/80 flex items-center gap-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/90 flex items-center gap-1">
               <span>Départements Couverts</span>
-              <ChevronRight className="w-3 h-3 text-emerald-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
             </p>
             <p className="text-lg font-black font-['Outfit'] text-white">
               {new Set(filteredCustomZones.flatMap(z => z.memberIds.map(id => membersMap.get(id)?.departement?.trim()).filter(Boolean))).size}
             </p>
+            {activeSubTab === 'departements' && (
+              <span className="text-[9px] font-extrabold text-emerald-300 bg-emerald-500/30 px-1.5 py-0.5 rounded-md border border-emerald-400/40 mt-0.5 inline-block">
+                ● Affichés ci-dessous
+              </span>
+            )}
           </div>
         </button>
 
         <button
           type="button"
-          onClick={() => setStatModalType('membres')}
-          className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-emerald-500/20 hover:border-emerald-400/50 transition-all text-left group cursor-pointer"
+          onClick={() => setActiveSubTab('membres')}
+          className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left group cursor-pointer ${
+            activeSubTab === 'membres'
+              ? 'bg-emerald-500/30 border-2 border-emerald-400 ring-2 ring-emerald-400/40 shadow-lg scale-[1.02]'
+              : 'bg-white/5 hover:bg-white/10 border border-emerald-500/20 hover:border-emerald-400/50 opacity-80 hover:opacity-100'
+          }`}
         >
           <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 group-hover:scale-110 transition-transform shrink-0">
             <Users className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/80 flex items-center gap-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-300/90 flex items-center gap-1">
               <span>Membres Associés</span>
-              <ChevronRight className="w-3 h-3 text-emerald-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
             </p>
             <p className="text-lg font-black font-['Outfit'] text-white">
               {filteredCustomZones.reduce((acc, z) => acc + z.memberIds.length, 0)}
             </p>
+            {activeSubTab === 'membres' && (
+              <span className="text-[9px] font-extrabold text-emerald-300 bg-emerald-500/30 px-1.5 py-0.5 rounded-md border border-emerald-400/40 mt-0.5 inline-block">
+                ● Affichés ci-dessous
+              </span>
+            )}
           </div>
         </button>
       </div>
 
-      {/* MDF ZONES LIST */}
+      {/* DYNAMIC CONTENT UNDERNEATH BANNER */}
+      {activeSubTab !== 'zones' ? (
+        <StatInlineView
+          type={activeSubTab}
+          members={members}
+          customZones={filteredCustomZones}
+          onSelectMemberDetails={onSelectMemberDetails}
+          onSelectZoneDetails={(zone) => handleOpenCustomZoneDetails(zone)}
+          onFilterOnMap={(geo) => {
+            if (geo.ville) {
+              onSelectZone('ville', geo.ville);
+            } else if (geo.departement) {
+              onSelectZone('departement', geo.departement);
+            } else if (geo.region) {
+              onSelectZone('region', geo.region);
+            }
+          }}
+        />
+      ) : (
+      /* MDF ZONES LIST */
       <div className="space-y-6">
           
           {customZones.length === 0 ? (
@@ -596,6 +647,7 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
           )}
 
         </div>
+      )}
 
       {/* Modals */}
       <CustomZoneModal
@@ -641,32 +693,6 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
         onSelectMemberDetails={(member) => {
           setActiveDetailsZone(null);
           onSelectMemberDetails(member);
-        }}
-      />
-
-      <StatDetailModal
-        isOpen={statModalType !== null}
-        type={statModalType}
-        members={members}
-        customZones={filteredCustomZones}
-        onClose={() => setStatModalType(null)}
-        onSelectMemberDetails={(member) => {
-          setStatModalType(null);
-          onSelectMemberDetails(member);
-        }}
-        onSelectZoneDetails={(zone) => {
-          setStatModalType(null);
-          handleOpenCustomZoneDetails(zone);
-        }}
-        onFilterOnMap={(geo) => {
-          setStatModalType(null);
-          if (geo.ville) {
-            onSelectZone('ville', geo.ville);
-          } else if (geo.departement) {
-            onSelectZone('departement', geo.departement);
-          } else if (geo.region) {
-            onSelectZone('region', geo.region);
-          }
         }}
       />
 
