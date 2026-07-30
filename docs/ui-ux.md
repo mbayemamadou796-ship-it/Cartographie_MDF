@@ -26,3 +26,6 @@ L'interface s'articule autour d'un système à deux composantes principales :
 
 ### Parcours C : Gestion d'une Zone par un Référent
 `Sidebar ➔ Zones Géographiques` : Le référent accède à sa zone d'attribution, consulte la liste des membres associés, valide les données et met à jour les informations en cas de besoin.
+
+### Parcours D : Inspection Interactive des Métriques (Villes, Départements, Membres)
+`Dashboard ou Zones ➔ Clic sur Métrique (ex: Villes ou Départements)` : Une fenêtre modale interactive (`StatDetailModal`) s'ouvre, permettant de filtrer les villes/départements, de déplier la liste des membres rattachés et de basculer la carte directement sur la zone sélectionnée.

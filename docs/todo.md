@@ -10,6 +10,7 @@
 - [x] Intégrer la carte dynamique Leaflet avec marqueurs personnalisés.
 - [x] Permettre le basculement rapide entre la vue Annuaire et la vue Cartographique.
 - [x] Ajouter le panneau latéral de filtres multi-critères (Domaine, Situation pro, Zone).
+- [x] Rendre interactives les métriques (Villes, Départements, Zones, Membres) par fenêtre modale de détail et centrage sur carte.
 
 ## 📊 Base de Données & Backend
 - [x] Configurer la structure des tables SQL Supabase (`members`, `custom_zones`, `app_users`, `audit_logs`).

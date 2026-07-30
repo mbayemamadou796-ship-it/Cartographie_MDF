@@ -17,7 +17,9 @@
 
 ## 3. Gestion des Zones Géographiques (Régions Administratives de France)
 - Découpage territorial aligné sur les vraies régions françaises (Bretagne, Île-de-France, Pays de la Loire, Normandie, Auvergne-Rhône-Alpes, Nouvelle-Aquitaine, Occitanie, PACA, Hauts-de-France, Grand Est, Bourgogne-Franche-Comté, Centre-Val de Loire, Corse, Outre-Mer).
-- **Indicateurs Épurés sur le Tableau de Bord** : Le concept de zone remplace et fusionne le terme de région pour éviter toute redondance (Synthèse affichant Membres Totaux, Zones Régionales, Villes et Membres Géolocalisés).
+- **Indicateurs Épurés & Interactifs sur le Tableau de Bord et l'Espace Zones** :
+  - **Consultation Interactive par Clic** : Un clic sur les cartes d'indicateurs (Villes Représentées, Départements Couverts, Zones Régionales, Membres Associés) ouvre une fenêtre modale détaillée (`StatDetailModal`).
+  - **Détails & Filtres Cartographiques** : Exploration des listes groupées par ville ou département avec recherche en temps réel, accès direct aux fiches membres et bouton pour afficher/filtrer la commune ou le département sélectionné sur la carte interactive.
 - Attribution d'un ou plusieurs **Référents de Zone** (ex: Modou Mbaye pour la zone Bretagne).
 - Visualisation des effectifs et des membres rattachés à chaque commune de la zone.
 
