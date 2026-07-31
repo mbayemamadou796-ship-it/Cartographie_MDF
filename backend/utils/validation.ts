@@ -80,6 +80,8 @@ export const appUsersArraySchema = z.array(appUserSchema).max(2000);
 export const auditLogSchema = z.object({
   id: z.string().min(1).max(120),
   timestamp: z.string().max(60),              // "JJ/MM/AAAA HH:mm" — conservé tel quel
+  date: z.string().max(20).optional(),        // "JJ/MM/AAAA" (recalculée côté serveur)
+  time: z.string().max(20).optional(),        // "HH:MM:SS" (recalculée côté serveur)
   category: z.enum(['auth', 'member', 'zone', 'user', 'data', 'system']),
   action: z.string().max(300),
   details: z.string().max(5000).default(''),
@@ -88,6 +90,9 @@ export const auditLogSchema = z.object({
   userRole: z.string().max(50).default('admin'),
   targetId: z.string().max(120).optional(),
   targetName: z.string().max(300).optional(),
+  targetItem: z.string().max(300).optional(),
+  zoneName: z.string().max(200).optional(),
+  champModifie: z.string().max(300).optional(),
   ancienneValeur: z.string().max(2000).optional(),
   nouvelleValeur: z.string().max(2000).optional(),
   severity: z.enum(['info', 'warning', 'danger']).optional()

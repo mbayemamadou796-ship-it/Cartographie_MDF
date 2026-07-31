@@ -170,6 +170,8 @@ export function auditLogFromDb(row: Row): AuditLog {
   return compact({
     id: str(row.id),
     timestamp: str(row.timestamp_fr),
+    date: optStr(row.date_fr),
+    time: optStr(row.time_fr),
     category: str(row.category) as AuditLogCategory,
     action: str(row.action),
     details: str(row.details),
@@ -178,6 +180,9 @@ export function auditLogFromDb(row: Row): AuditLog {
     userRole: str(row.user_role) as UserRole,
     targetId: optStr(row.target_id),
     targetName: optStr(row.target_name),
+    targetItem: optStr(row.target_name),
+    zoneName: optStr(row.zone_name),
+    champModifie: optStr(row.champ_modifie),
     ancienneValeur: optStr(row.ancienne_valeur),
     nouvelleValeur: optStr(row.nouvelle_valeur),
     severity: optStr(row.severity) as AuditLog['severity']
@@ -188,6 +193,8 @@ export function auditLogToDb(l: AuditLog): Row {
   return {
     id: l.id,
     timestamp_fr: l.timestamp,
+    date_fr: l.date ?? null,
+    time_fr: l.time ?? null,
     category: l.category,
     action: l.action,
     details: l.details ?? '',
@@ -195,7 +202,9 @@ export function auditLogToDb(l: AuditLog): Row {
     user_name: l.userName,
     user_role: l.userRole,
     target_id: l.targetId ?? null,
-    target_name: l.targetName ?? null,
+    target_name: l.targetName ?? l.targetItem ?? null,
+    zone_name: l.zoneName ?? null,
+    champ_modifie: l.champModifie ?? null,
     ancienne_valeur: l.ancienneValeur ?? null,
     nouvelle_valeur: l.nouvelleValeur ?? null,
     severity: l.severity ?? 'info'

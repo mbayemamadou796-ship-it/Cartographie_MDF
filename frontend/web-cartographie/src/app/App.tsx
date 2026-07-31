@@ -561,17 +561,23 @@ export default function App() {
     details: string,
     severity: 'info' | 'warning' | 'danger' = 'info',
     targetId?: string,
-    targetName?: string
+    targetName?: string,
+    zoneName?: string
   ) => {
+    // Horodatage local pour l'affichage immédiat ; le serveur ré-horodate
+    // chaque entrée (fuseau Europe/Paris) pour garantir l'exactitude.
+    const now = new Date();
     const newLog: AuditLog = {
       id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      timestamp: new Date().toLocaleDateString('fr-FR', {
+      timestamp: now.toLocaleDateString('fr-FR', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
       }),
+      date: now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      time: now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       category,
       action,
       details,
@@ -580,6 +586,8 @@ export default function App() {
       userRole: currentUser?.role || 'admin',
       targetId,
       targetName,
+      targetItem: targetName,
+      zoneName,
       severity
     };
     setAuditLogs((prev) => [newLog, ...prev]);
@@ -963,7 +971,7 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
     setCustomZones((prev) => [created, ...prev]);
-    addAuditLog('zone', 'Création de zone', `Zone "${created.name}" créée`, 'info', created.id, created.name);
+    addAuditLog('zone', 'Création de zone', `Zone "${created.name}" créée`, 'info', created.id, created.name, created.name);
     showToast(`Zone "${created.name}" créée avec succès.`);
   };
 
@@ -972,7 +980,7 @@ export default function App() {
       prev.map((z) => (z.id === zoneId ? { ...z, ...updates } : z))
     );
     const target = customZones.find((z) => z.id === zoneId);
-    addAuditLog('zone', 'Mise à jour de zone', `Zone "${updates.name || target?.name || zoneId}" mise à jour`, 'info', zoneId, target?.name);
+    addAuditLog('zone', 'Mise à jour de zone', `Zone "${updates.name || target?.name || zoneId}" mise à jour`, 'info', zoneId, target?.name, updates.name || target?.name);
     showToast('Zone mise à jour.');
   };
 
@@ -983,7 +991,7 @@ export default function App() {
     if (filters.zoneId === zoneId) {
       handleFilterChange({ zoneId: undefined });
     }
-    addAuditLog('zone', 'Suppression de zone', `Zone "${target?.name || zoneId}" supprimée`, 'warning', zoneId, target?.name);
+    addAuditLog('zone', 'Suppression de zone', `Zone "${target?.name || zoneId}" supprimée`, 'warning', zoneId, target?.name, target?.name);
     showToast(`Zone "${target?.name || ''}" supprimée.`);
   };
 
@@ -1031,7 +1039,7 @@ export default function App() {
       setMembers((prev) =>
         prev.map((m) => (m.id === memberData.id ? ({ ...memberData, id: memberData.id } as Member) : m))
       );
-      addAuditLog('member', 'Modification d\'un membre', `Membre ${memberData.prenom} ${memberData.nom} mis à jour (${memberData.region || ''})`, 'info', memberData.id, `${memberData.prenom} ${memberData.nom}`);
+      addAuditLog('member', 'Modification d\'un membre', `Membre ${memberData.prenom} ${memberData.nom} mis à jour (${memberData.region || ''})`, 'info', memberData.id, `${memberData.prenom} ${memberData.nom}`, memberData.zone || memberData.region);
       showToast(`Membre "${memberData.prenom} ${memberData.nom}" mis à jour.`);
     } else {
       // Create
@@ -1056,7 +1064,7 @@ export default function App() {
         );
       }
 
-      addAuditLog('member', 'Création d\'un membre', `Nouveau membre ${newMember.prenom} ${newMember.nom} créé (${newMember.ville}, ${newMember.region})`, 'info', newMember.id, `${newMember.prenom} ${newMember.nom}`);
+      addAuditLog('member', 'Création d\'un membre', `Nouveau membre ${newMember.prenom} ${newMember.nom} créé (${newMember.ville}, ${newMember.region})`, 'info', newMember.id, `${newMember.prenom} ${newMember.nom}`, newMember.zone || newMember.region);
       showToast(`Membre "${newMember.prenom} ${newMember.nom}" ajouté avec succès.`);
     }
 
@@ -1084,7 +1092,7 @@ export default function App() {
     );
     if (selectedMemberId === memberId) setSelectedMemberId(null);
     if (activeDetailsMember?.id === memberId) setActiveDetailsMember(null);
-    addAuditLog('member', 'Suppression d\'un membre', `Membre ${target ? `${target.prenom} ${target.nom}` : memberId} supprimé de l'annuaire`, 'danger', memberId, target ? `${target.prenom} ${target.nom}` : undefined);
+    addAuditLog('member', 'Suppression d\'un membre', `Membre ${target ? `${target.prenom} ${target.nom}` : memberId} supprimé de l'annuaire`, 'danger', memberId, target ? `${target.prenom} ${target.nom}` : undefined, target?.zone || target?.region);
     showToast(`Membre ${target ? `"${target.prenom} ${target.nom}"` : ''} supprimé.`);
     recordDataUpdate();
   };
@@ -1257,11 +1265,13 @@ export default function App() {
   // Export handlers
   const handleExportExcel = () => {
     exportToExcel(filteredAndSortedMembers, `Mbok_de_France_Membres_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    addAuditLog('data', 'Export Excel', `Export Excel de ${filteredAndSortedMembers.length} membre(s) de l'annuaire`);
     showToast(`Exportation Excel de ${filteredAndSortedMembers.length} membres en cours...`);
   };
 
   const handleExportCsv = () => {
     exportToCsv(filteredAndSortedMembers, `Mbok_de_France_Membres_${new Date().toISOString().slice(0, 10)}.csv`);
+    addAuditLog('data', 'Export CSV', `Export CSV de ${filteredAndSortedMembers.length} membre(s) de l'annuaire`);
     showToast(`Exportation CSV de ${filteredAndSortedMembers.length} membres en cours...`);
   };
 
@@ -1493,12 +1503,9 @@ export default function App() {
         {activeTab === 'audit_logs' && (
           <AuditLogsView
             auditLogs={auditLogs}
-            onClearLogs={() => {
-              setAuditLogs([]);
-              showToast("Historique du journal d'audit réinitialisé.");
-            }}
-            onExportLogs={() => {
-              showToast("Exportation du journal d'audit effectuée.");
+            zoneNames={customZones.map((z) => z.name)}
+            onExportLogs={(count) => {
+              showToast(`Exportation de ${count} entrée(s) du journal d'audit effectuée.`);
             }}
           />
         )}

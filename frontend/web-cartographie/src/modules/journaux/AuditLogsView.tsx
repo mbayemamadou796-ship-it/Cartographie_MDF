@@ -1,13 +1,15 @@
 import React, { useState, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { AuditLog, AuditLogCategory, UserRole } from '../../types';
-import { ShieldCheck, History, UserCheck, Layers, Users, FileSpreadsheet, AlertTriangle, Search, Filter, Download, Trash2, Calendar, Clock, Eye, CheckCircle, XCircle } from 'lucide-react';
+import { ShieldCheck, History, UserCheck, Layers, Users, FileSpreadsheet, AlertTriangle, Search, Filter, Download, Calendar, Eye } from 'lucide-react';
 
 interface AuditLogsViewProps {
   auditLogs?: AuditLog[];
   logs?: AuditLog[];
   userRole?: UserRole;
-  onClearLogs?: () => void;
-  onExportLogs?: () => void;
+  zoneNames?: string[];
+  onClearLogs?: () => void; // conservé pour compatibilité — les journaux ne sont jamais supprimés (historique officiel)
+  onExportLogs?: (count: number) => void;
 }
 
 const CATEGORY_CONFIG: Record<
@@ -60,7 +62,7 @@ const CATEGORY_CONFIG: Record<
     color: 'text-amber-700',
     bg: 'bg-amber-50',
     border: 'border-amber-200',
-    desc: 'Historique des synchronisations et réconciliations'
+    desc: 'Historique des synchronisations, imports et exports'
   },
   system: {
     label: 'Journal système',
@@ -72,11 +74,80 @@ const CATEGORY_CONFIG: Record<
   }
 };
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Administrateur',
+  referent: 'Référent',
+  user: 'Lecteur'
+};
+
+type DatePreset = 'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom';
+type ActionFilter = 'all' | 'ajout' | 'modification' | 'suppression' | 'connexion' | 'deconnexion' | 'import' | 'export';
+
+const DATE_PRESET_OPTIONS: Array<{ value: DatePreset; label: string }> = [
+  { value: 'all', label: 'Toutes les dates' },
+  { value: 'today', label: 'Aujourd’hui' },
+  { value: 'yesterday', label: 'Hier' },
+  { value: 'week', label: 'Cette semaine' },
+  { value: 'month', label: 'Ce mois' },
+  { value: 'custom', label: 'Période personnalisée' }
+];
+
+const ACTION_FILTER_OPTIONS: Array<{ value: ActionFilter; label: string; pattern: RegExp | null }> = [
+  { value: 'all', label: 'Toutes les actions', pattern: null },
+  { value: 'ajout', label: 'Ajout', pattern: /cr[ée]ation|ajout/i },
+  { value: 'modification', label: 'Modification', pattern: /modification|mise [àa] jour|r[ée]initialisation/i },
+  { value: 'suppression', label: 'Suppression', pattern: /suppression/i },
+  { value: 'connexion', label: 'Connexion', pattern: /^connexion/i },
+  { value: 'deconnexion', label: 'Déconnexion', pattern: /d[ée]connexion/i },
+  { value: 'import', label: 'Import', pattern: /import/i },
+  { value: 'export', label: 'Export', pattern: /export/i }
+];
+
+/** Date fr "JJ/MM/AAAA" (+ heure "HH:MM[:SS]") -> Date locale. Fallback : timestamp "JJ/MM/AAAA HH:mm". */
+function parseLogDate(log: AuditLog): Date | null {
+  const dateStr = (log.date || (log.timestamp || '').split(' ')[0] || '').trim();
+  const timeStr = (log.time || (log.timestamp || '').split(' ')[1] || '00:00').trim();
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dateStr);
+  if (!m) return null;
+  const [hh = '0', mi = '0', ss = '0'] = timeStr.split(':');
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(hh) || 0, Number(mi) || 0, Number(ss) || 0);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/** Temps relatif fr ("Il y a 2 minutes") — amélioration UX, spec Cartographie1.md. */
+function relativeTime(dt: Date | null): string {
+  if (!dt) return '';
+  const diffSec = Math.floor((Date.now() - dt.getTime()) / 1000);
+  if (diffSec < 0) return '';
+  if (diffSec < 60) return 'À l’instant';
+  const min = Math.floor(diffSec / 60);
+  if (min < 60) return `Il y a ${min} minute${min > 1 ? 's' : ''}`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `Il y a ${h} heure${h > 1 ? 's' : ''}`;
+  const days = Math.floor(h / 24);
+  if (days < 30) return `Il y a ${days} jour${days > 1 ? 's' : ''}`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `Il y a ${months} mois`;
+  const years = Math.floor(months / 12);
+  return `Il y a ${years} an${years > 1 ? 's' : ''}`;
+}
+
+function getLogDateDisplay(log: AuditLog): { date: string; time: string } {
+  return {
+    date: log.date || (log.timestamp || '').split(' ')[0] || '—',
+    time: log.time || (log.timestamp || '').split(' ')[1] || '—'
+  };
+}
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
 export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   auditLogs,
   logs,
   userRole = 'admin',
-  onClearLogs,
+  zoneNames = [],
   onExportLogs
 }) => {
   const allLogs = auditLogs || logs || [];
@@ -84,28 +155,92 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLogDetail, setSelectedLogDetail] = useState<AuditLog | null>(null);
 
+  // Filtres avancés (spec Cartographie1.md)
+  const [datePreset, setDatePreset] = useState<DatePreset>('all');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
+  const [actionFilter, setActionFilter] = useState<ActionFilter>('all');
+  const [zoneFilter, setZoneFilter] = useState('all');
+
+  // Zones proposées dans le filtre : zones de l'application + zones présentes dans les journaux
+  const availableZones = useMemo(() => {
+    const set = new Set<string>(zoneNames);
+    allLogs.forEach((l) => {
+      if (l.zoneName) set.add(l.zoneName);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
+  }, [zoneNames, allLogs]);
+
   // Filtered logs calculation
   const filteredLogs = useMemo(() => {
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+    // Semaine commençant le lundi
+    const weekStart = new Date(todayStart.getTime() - ((todayStart.getDay() + 6) % 7) * 86400000);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const customFromDate = customFrom ? startOfDay(new Date(customFrom)) : null;
+    const customToDate = customTo ? new Date(startOfDay(new Date(customTo)).getTime() + 86400000 - 1) : null;
+    const actionPattern = ACTION_FILTER_OPTIONS.find((o) => o.value === actionFilter)?.pattern ?? null;
+
     return allLogs.filter((log) => {
       // Category filter
       if (selectedCategory !== 'all' && log.category !== selectedCategory) {
         return false;
       }
 
-      // Search query filter
+      // Role filter
+      if (roleFilter !== 'all' && log.userRole !== roleFilter) {
+        return false;
+      }
+
+      // Action filter (par mot-clé de l'action réalisée)
+      if (actionPattern && !actionPattern.test(log.action || '')) {
+        return false;
+      }
+
+      // Zone filter
+      if (zoneFilter !== 'all') {
+        const z = zoneFilter.toLowerCase();
+        const matchesZone =
+          (log.zoneName || '').toLowerCase() === z ||
+          (log.category === 'zone' && ((log.targetName || '').toLowerCase() === z || (log.targetItem || '').toLowerCase() === z));
+        if (!matchesZone) return false;
+      }
+
+      // Date filter
+      if (datePreset !== 'all') {
+        const dt = parseLogDate(log);
+        if (!dt) return false;
+        if (datePreset === 'today' && dt < todayStart) return false;
+        if (datePreset === 'yesterday' && (dt < yesterdayStart || dt >= todayStart)) return false;
+        if (datePreset === 'week' && dt < weekStart) return false;
+        if (datePreset === 'month' && dt < monthStart) return false;
+        if (datePreset === 'custom') {
+          if (customFromDate && dt < customFromDate) return false;
+          if (customToDate && dt > customToDate) return false;
+        }
+      }
+
+      // Search query filter (utilisateur, membre, zone, action, catégorie...)
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const fullText = [
           log.userName,
+          ROLE_LABELS[log.userRole] || log.userRole,
           log.action,
+          CATEGORY_CONFIG[log.category]?.label || log.category,
+          log.targetName || '',
           log.targetItem || '',
           log.zoneName || '',
           log.champModifie || '',
           log.ancienneValeur || '',
           log.nouvelleValeur || '',
           log.details || '',
-          log.date,
-          log.time
+          log.date || '',
+          log.time || '',
+          log.timestamp || ''
         ]
           .join(' ')
           .toLowerCase();
@@ -115,31 +250,52 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
       return true;
     });
-  }, [logs, selectedCategory, searchQuery]);
+  }, [allLogs, selectedCategory, searchQuery, datePreset, customFrom, customTo, roleFilter, actionFilter, zoneFilter]);
+
+  // Lignes d'export (les filtres appliqués sont conservés — spec Cartographie1.md)
+  const buildExportRows = () =>
+    filteredLogs.map((l) => {
+      const { date, time } = getLogDateDisplay(l);
+      return {
+        'Date': date,
+        'Heure': time,
+        'Utilisateur': l.userName,
+        'Rôle': ROLE_LABELS[l.userRole] || l.userRole,
+        'Catégorie': (CATEGORY_CONFIG[l.category]?.label || l.category).replace('Journal des ', ''),
+        'Action réalisée': l.action,
+        'Élément concerné': l.targetItem || l.targetName || '-',
+        'Zone': l.zoneName || '-',
+        'Champ modifié': l.champModifie || '',
+        'Ancienne valeur': l.ancienneValeur || '',
+        'Nouvelle valeur': l.nouvelleValeur || '',
+        'Détails': l.details || ''
+      };
+    });
+
+  // Export logs to Excel (.xlsx)
+  const handleExportXlsx = () => {
+    if (filteredLogs.length === 0) return;
+    const worksheet = XLSX.utils.json_to_sheet(buildExportRows());
+    worksheet['!cols'] = [
+      { wch: 11 }, { wch: 9 }, { wch: 20 }, { wch: 14 }, { wch: 14 },
+      { wch: 28 }, { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 50 }
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Journaux MDF');
+    XLSX.writeFile(workbook, `journal_activite_mdf_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    onExportLogs?.(filteredLogs.length);
+  };
 
   // Export logs to CSV
   const handleExportCSV = () => {
     if (filteredLogs.length === 0) return;
 
-    const headers = ['ID', 'Date', 'Heure', 'Utilisateur', 'Rôle', 'Catégorie', 'Action', 'Élément Concerné', 'Zone', 'Champ Modifié', 'Ancienne Valeur', 'Nouvelle Valeur', 'Détails'];
-    
-    const rows = filteredLogs.map((l) => [
-      l.id,
-      l.date,
-      l.time,
-      `"${l.userName.replace(/"/g, '""')}"`,
-      l.userRole,
-      l.category,
-      `"${l.action.replace(/"/g, '""')}"`,
-      `"${(l.targetItem || '').replace(/"/g, '""')}"`,
-      `"${(l.zoneName || '').replace(/"/g, '""')}"`,
-      `"${(l.champModifie || '').replace(/"/g, '""')}"`,
-      `"${(l.ancienneValeur || '').replace(/"/g, '""')}"`,
-      `"${(l.nouvelleValeur || '').replace(/"/g, '""')}"`,
-      `"${(l.details || '').replace(/"/g, '""')}"`
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';'), ...rows.map((e) => e.join(';'))].join('\n');
+    const rows = buildExportRows();
+    const headers = Object.keys(rows[0]);
+    const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const csvContent =
+      'data:text/csv;charset=utf-8,﻿' +
+      [headers.join(';'), ...rows.map((r) => headers.map((h) => escape((r as Record<string, string>)[h])).join(';'))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -147,7 +303,11 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    onExportLogs?.(filteredLogs.length);
   };
+
+  const selectClass =
+    'px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer';
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -167,7 +327,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Traçabilité complète des actions effectuées dans l’application Mbok de France
+              Traçabilité complète et horodatée (Europe/Paris) des actions effectuées — historique officiel, jamais supprimé
             </p>
           </div>
         </div>
@@ -175,27 +335,21 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
         {/* Top Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
           <button
+            onClick={handleExportXlsx}
+            disabled={filteredLogs.length === 0}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl border border-emerald-700 transition-all disabled:opacity-50"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Exporter Excel ({filteredLogs.length})</span>
+          </button>
+          <button
             onClick={handleExportCSV}
             disabled={filteredLogs.length === 0}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-2xl border border-slate-200 transition-all disabled:opacity-50"
           >
             <Download className="w-4 h-4 text-emerald-700" />
-            <span>Exporter CSV ({filteredLogs.length})</span>
+            <span>Exporter CSV</span>
           </button>
-
-          {userRole === 'admin' && onClearLogs && (
-            <button
-              onClick={() => {
-                if (window.confirm('Voulez-vous vraiment effacer l’historique des journaux ?')) {
-                  onClearLogs();
-                }
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-2xl border border-rose-200 transition-all"
-            >
-              <Trash2 className="w-4 h-4 text-rose-600" />
-              <span>Effacer journaux</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -242,29 +396,84 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-emerald-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher par utilisateur, action, membre..."
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
-            >
-              ✕
-            </button>
-          )}
+      <div className="bg-white rounded-2xl p-4 border border-emerald-200 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher : utilisateur, membre, zone, action, catégorie..."
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <div className="text-xs text-slate-500 font-semibold flex items-center gap-2 self-end sm:self-auto">
+            <Filter className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Affichage de <strong className="text-slate-900">{filteredLogs.length}</strong> journal(aux)</span>
+          </div>
         </div>
 
-        <div className="text-xs text-slate-500 font-semibold flex items-center gap-2 self-end sm:self-auto">
-          <Filter className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Affichage de <strong className="text-slate-900">{filteredLogs.length}</strong> journal(aux)</span>
+        {/* Filtres avancés : date, rôle, action, zone */}
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+          <select value={datePreset} onChange={(e) => setDatePreset(e.target.value as DatePreset)} className={selectClass} aria-label="Filtre par date">
+            {DATE_PRESET_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+
+          {datePreset === 'custom' && (
+            <div className="flex items-center gap-1.5">
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className={selectClass} aria-label="Date de début" />
+              <span className="text-xs text-slate-400 font-bold">→</span>
+              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className={selectClass} aria-label="Date de fin" />
+            </div>
+          )}
+
+          <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as 'all' | UserRole)} className={selectClass} aria-label="Filtre par rôle">
+            <option value="all">Tous les rôles</option>
+            <option value="admin">Administrateur</option>
+            <option value="referent">Référent</option>
+            <option value="user">Lecteur</option>
+          </select>
+
+          <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value as ActionFilter)} className={selectClass} aria-label="Filtre par action">
+            {ACTION_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+
+          <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)} className={selectClass} aria-label="Filtre par zone">
+            <option value="all">Toutes les zones</option>
+            {availableZones.map((z) => (
+              <option key={z} value={z}>{z}</option>
+            ))}
+          </select>
+
+          {(datePreset !== 'all' || roleFilter !== 'all' || actionFilter !== 'all' || zoneFilter !== 'all') && (
+            <button
+              onClick={() => {
+                setDatePreset('all');
+                setCustomFrom('');
+                setCustomTo('');
+                setRoleFilter('all');
+                setActionFilter('all');
+                setZoneFilter('all');
+              }}
+              className="px-3 py-2 text-xs font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors"
+            >
+              ✕ Réinitialiser les filtres
+            </button>
+          )}
         </div>
       </div>
 
@@ -277,7 +486,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             </div>
             <p className="text-sm font-bold text-slate-700">Aucune entrée trouvée dans les journaux</p>
             <p className="text-xs text-slate-400">
-              {searchQuery ? 'Essayez de modifier votre terme de recherche.' : 'Aucune activité n’a encore été enregistrée dans cette catégorie.'}
+              {searchQuery ? 'Essayez de modifier votre terme de recherche ou vos filtres.' : 'Aucune activité ne correspond aux filtres sélectionnés.'}
             </p>
           </div>
         ) : (
@@ -285,11 +494,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-emerald-100 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider">
-                  <th className="py-3.5 px-4">Horodatage</th>
+                  <th className="py-3.5 px-4">Date</th>
+                  <th className="py-3.5 px-4">Heure</th>
                   <th className="py-3.5 px-4">Utilisateur</th>
+                  <th className="py-3.5 px-4">Rôle</th>
                   <th className="py-3.5 px-4">Catégorie</th>
-                  <th className="py-3.5 px-4">Action Réalisée</th>
-                  <th className="py-3.5 px-4">Élément / Zone</th>
+                  <th className="py-3.5 px-4">Action réalisée</th>
+                  <th className="py-3.5 px-4">Élément concerné</th>
                   <th className="py-3.5 px-4">Détails de la modification</th>
                   <th className="py-3.5 px-4 text-right pr-6">Fiche</th>
                 </tr>
@@ -298,32 +509,45 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 {filteredLogs.map((log) => {
                   const cfg = CATEGORY_CONFIG[log.category] || CATEGORY_CONFIG.all;
                   const Icon = cfg.icon;
+                  const { date, time } = getLogDateDisplay(log);
+                  const relative = relativeTime(parseLogDate(log));
 
                   return (
                     <tr key={log.id} className="hover:bg-emerald-50/40 transition-colors group">
-                      {/* Date & Time */}
+                      {/* Date */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 font-bold text-slate-900">
                           <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>{log.date}</span>
-                          <span className="text-slate-400 font-normal">à {log.time}</span>
+                          <span>{date}</span>
                         </div>
+                        {relative && (
+                          <span className="block text-[10px] text-emerald-700 font-semibold mt-0.5 pl-5">
+                            {relative}
+                          </span>
+                        )}
                       </td>
 
-                      {/* User */}
+                      {/* Heure */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="space-y-0.5">
-                          <span className="font-bold text-slate-900 block">{log.userName}</span>
-                          <span className={`inline-block px-2 py-0.2 rounded-md text-[9px] font-black uppercase ${
-                            log.userRole === 'admin'
-                              ? 'bg-purple-100 text-purple-900'
-                              : log.userRole === 'referent'
-                              ? 'bg-blue-100 text-blue-900'
-                              : 'bg-slate-100 text-slate-700'
-                          }`}>
-                            {log.userRole === 'admin' ? 'Administrateur' : log.userRole === 'referent' ? 'Référent' : 'Utilisateur'}
-                          </span>
-                        </div>
+                        <span className="font-bold text-slate-900 font-mono">{time}</span>
+                      </td>
+
+                      {/* Utilisateur */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="font-bold text-slate-900">{log.userName}</span>
+                      </td>
+
+                      {/* Rôle */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className={`inline-block px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
+                          log.userRole === 'admin'
+                            ? 'bg-purple-100 text-purple-900'
+                            : log.userRole === 'referent'
+                            ? 'bg-blue-100 text-blue-900'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {ROLE_LABELS[log.userRole] || log.userRole}
+                        </span>
                       </td>
 
                       {/* Category Badge */}
@@ -341,12 +565,14 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                         </span>
                       </td>
 
-                      {/* Target Item / Zone */}
+                      {/* Élément concerné */}
                       <td className="py-3.5 px-4">
-                        {log.targetItem && (
+                        {(log.targetItem || log.targetName) ? (
                           <span className="font-bold text-emerald-950 block">
-                            {log.targetItem}
+                            {log.targetItem || log.targetName}
                           </span>
+                        ) : (
+                          <span className="text-slate-400">-</span>
                         )}
                         {log.zoneName && (
                           <span className="text-[10px] text-slate-500 font-medium block">
@@ -414,20 +640,29 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             <div className="p-6 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Date & Heure</span>
-                  <span className="font-bold text-slate-900">{selectedLogDetail.date} à {selectedLogDetail.time}</span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Date & Heure (Europe/Paris)</span>
+                  <span className="font-bold text-slate-900">
+                    {getLogDateDisplay(selectedLogDetail).date} à {getLogDateDisplay(selectedLogDetail).time}
+                  </span>
+                  {relativeTime(parseLogDate(selectedLogDetail)) && (
+                    <span className="block text-[10px] text-emerald-700 font-semibold mt-0.5">
+                      {relativeTime(parseLogDate(selectedLogDetail))}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 font-bold uppercase block">Utilisateur</span>
-                  <span className="font-bold text-slate-900">{selectedLogDetail.userName} ({selectedLogDetail.userRole})</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedLogDetail.userName} ({ROLE_LABELS[selectedLogDetail.userRole] || selectedLogDetail.userRole})
+                  </span>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <span className="text-[10px] text-slate-400 font-bold uppercase block">Action & Catégorie</span>
                 <p className="font-extrabold text-slate-900 text-sm font-['Outfit']">{selectedLogDetail.action}</p>
-                {selectedLogDetail.targetItem && (
-                  <p className="text-slate-700 font-medium">Élément concerné : <strong>{selectedLogDetail.targetItem}</strong></p>
+                {(selectedLogDetail.targetItem || selectedLogDetail.targetName) && (
+                  <p className="text-slate-700 font-medium">Élément concerné : <strong>{selectedLogDetail.targetItem || selectedLogDetail.targetName}</strong></p>
                 )}
                 {selectedLogDetail.zoneName && (
                   <p className="text-slate-700 font-medium">Zone : <strong>{selectedLogDetail.zoneName}</strong></p>
