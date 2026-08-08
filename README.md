@@ -116,8 +116,10 @@ cartographie-mdf/
 # Installation des dépendances
 npm install
 
-# Lancement en mode développement (Port 3000)
-npm run dev
+# Lancement en mode développement
+npm run dev              # Bureau / Cartographie → http://localhost:3000
+npm run dev:formulaire   # Formulaire public     → http://localhost:3002
+npm run dev:api          # API backend           → http://localhost:3001
 
 # Vérification du typage
 npm run lint

@@ -1,6 +1,6 @@
 # Documentation API REST — Cartographie MDF
 
-> Base : `http://localhost:3001/api` (dev local). Le frontend Vite (port 3000) est autorisé par CORS.
+> Base : `http://localhost:3001/api` (dev local). Les deux frontends Vite (Bureau port 3000, Formulaire port 3002) sont autorisés par CORS.
 > Sauf mention contraire, toutes les routes exigent le header `Authorization: Bearer <accessToken>` (JWT Supabase obtenu au login).
 > Les réponses utilisent les types canoniques de `shared/types/index.ts` (camelCase français). Le champ `password` n'apparaît **jamais** en sortie.
 >
@@ -81,7 +81,7 @@ Upsert bulk. → 204. Le parsing Excel et le géocodage restent côté client (f
 ## 9. Demandes d'adhésion / mise à jour (formulaire public)
 
 Alimente le module « Demandes » de l'espace bureau et le formulaire public
-(`?app=formulaire`). Table `demandes` (migration `003_demandes.sql`).
+(application séparée servie sur le port 3002). Table `demandes` (migration `003_demandes.sql`).
 
 | Route | Accès | Comportement |
 |---|---|---|

@@ -29,12 +29,17 @@ import { LoginScreen } from '../components/LoginScreen';
 import { DemandesView } from '../modules/demandes/DemandesView';
 import { DemandeService } from '../services/demandeService';
 import { DemandeMember } from '../types';
-import { AppFormulaire } from '../../../web-formulaire/src/app/AppFormulaire';
 import { exportToExcel, exportToCsv } from '../utils/excelUtils';
 import { ApiService } from '../services/apiService';
 import { FRENCH_ZONES } from '../modules/membres/AdminMemberFormModal';
 import { geocodeVille, calculateCityOffsetCoordinates } from '../services/geocodingService';
 import { CheckCircle2, MapPin, Users, ArrowRight, Layers, FileText, ExternalLink } from 'lucide-react';
+
+// URL de l'application Formulaire publique. Les deux applications sont servies
+// séparément : Bureau/Cartographie sur le port 3000, Formulaire sur le 3002.
+const FORMULAIRE_URL: string =
+  ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_FORMULAIRE_URL) ??
+  `${window.location.protocol}//${window.location.hostname}:3002`;
 
 const LOCAL_STORAGE_KEY = 'mbok_de_france_members_v1';
 const LOCAL_STORAGE_UPDATE_KEY = 'mbok_de_france_last_update_v1';
@@ -405,39 +410,13 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Mode of App: 'bureau' (Cartographie MDF Admin) or 'formulaire' (Public Member Portal)
-  const [appMode, setAppMode] = useState<'bureau' | 'formulaire'>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const appParam = params.get('app');
-      if (appParam === 'formulaire' || window.location.pathname.includes('/formulaire')) {
-        return 'formulaire';
-      }
-    }
-    return 'bureau';
-  });
-
-  const switchAppMode = (mode: 'bureau' | 'formulaire') => {
-    setAppMode(mode);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('app', mode);
-      window.history.pushState({}, '', url.toString());
-    }
-  };
-
+  // L'application Formulaire est désormais servée séparément (port 3002) :
+  // les anciens liens ?app=formulaire ou /formulaire sont redirigés vers elle.
   useEffect(() => {
-    const handlePopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      const appParam = params.get('app');
-      if (appParam === 'formulaire') {
-        setAppMode('formulaire');
-      } else if (appParam === 'bureau' || appParam === 'cartographie') {
-        setAppMode('bureau');
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('app') === 'formulaire' || window.location.pathname.includes('/formulaire')) {
+      window.location.replace(FORMULAIRE_URL);
+    }
   }, []);
 
   // Demandes State — cache localStorage au démarrage, vérité serveur ensuite
@@ -1693,11 +1672,6 @@ export default function App() {
     showToast(`Filtre appliqué : ${zoneName}`);
   };
 
-  // Public Member Form Application (Accessible directly via ?app=formulaire or /formulaire without requiring login)
-  if (appMode === 'formulaire') {
-    return <AppFormulaire onSwitchToBureau={() => switchAppMode('bureau')} logoUrl={appSettings.logoUrl} />;
-  }
-
   if (!currentUser) {
     return (
       <LoginScreen
@@ -1729,13 +1703,15 @@ export default function App() {
           )}
         </div>
 
-        <button
-          onClick={() => switchAppMode('formulaire')}
+        <a
+          href={FORMULAIRE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           className="hover:text-white bg-slate-800 hover:bg-emerald-800 text-emerald-300 font-bold px-3 py-1 rounded-lg border border-emerald-700/50 transition-all flex items-center gap-1.5 text-[11px] cursor-pointer"
         >
           <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Ouvrir l'application Formulaire (?app=formulaire)</span>
-        </button>
+          <span>Ouvrir l'application Formulaire</span>
+        </a>
       </div>
 
       {/* Top Header */}

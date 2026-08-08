@@ -7,7 +7,9 @@ Salut ! 🎉 Grosse mise à jour sur **Cartographie MDF** : l'appli ne stocke pl
 **Supabase** = une base de données PostgreSQL hébergée dans le cloud (comme un Google Drive, mais pour des données). Notre base est **déjà créée et remplie** — les membres, zones et comptes y sont stockés. Concrètement :
 
 ```
-Ton navigateur (React, port 3000)  →  API locale (Express, port 3001)  →  Supabase (cloud)
+Bureau/Cartographie (React, port 3000) ─┐
+                                        ├→  API locale (Express, port 3001)  →  Supabase (cloud)
+Formulaire public (React, port 3002)  ──┘
 ```
 
 Le frontend ne parle **jamais** directement à Supabase : il passe par l'API qui tourne sur ta machine et qui vérifie qui tu es et ce que tu as le droit de faire. Les clés dans le fichier `.env` sont le « mot de passe » qui permet à l'API de parler à Supabase. **Comme on partage la même base cloud, tout ce que tu crées/modifies, je le vois aussi (et inversement).**
@@ -32,15 +34,20 @@ Le frontend ne parle **jamais** directement à Supabase : il passe par l'API qui
 
 ## ▶️ Lancer l'appli (à chaque fois)
 
-Ouvre **deux terminaux** dans le dossier du projet :
+Ouvre **trois terminaux** dans le dossier du projet (le formulaire est facultatif si tu ne travailles que sur le bureau) :
 
 ```powershell
 # Terminal 1 — le backend (laisse-le tourner)
-npm run dev:api      # → "API Cartographie MDF démarrée sur http://localhost:3001"
+npm run dev:api          # → "API Cartographie MDF démarrée sur http://localhost:3001"
 
-# Terminal 2 — le frontend
-npm run dev          # → ouvre http://localhost:3000 dans ton navigateur
+# Terminal 2 — l'application Bureau / Cartographie
+npm run dev              # → ouvre http://localhost:3000 dans ton navigateur
+
+# Terminal 3 — l'application Formulaire public (séparée)
+npm run dev:formulaire   # → ouvre http://localhost:3002 dans ton navigateur
 ```
+
+Les deux applications sont désormais **séparées** : la Cartographie (espace bureau, avec connexion) sur `http://localhost:3000` et le Formulaire public (inscriptions / mises à jour des membres) sur `http://localhost:3002`. L'ancien accès `?app=formulaire` redirige automatiquement vers le port 3002.
 
 Connexion : identifiant **`bilal`** — je t'envoie le mot de passe en privé.
 

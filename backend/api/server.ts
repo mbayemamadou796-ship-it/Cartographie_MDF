@@ -6,9 +6,12 @@ import { logger } from '../utils/logger';
 
 const app = express();
 const PORT = Number(process.env.API_PORT ?? 3001);
-const CORS_ORIGIN = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
+// Deux frontends distincts consomment l'API : le Bureau/Cartographie (3000)
+// et le Formulaire public (3002). CORS_ORIGIN accepte une liste séparée par
+// des virgules pour surcharger en production.
+const CORS_ORIGIN = process.env.CORS_ORIGIN ?? 'http://localhost:3000,http://localhost:3002';
 
-app.use(cors({ origin: CORS_ORIGIN }));
+app.use(cors({ origin: CORS_ORIGIN.split(',').map(o => o.trim()) }));
 // Limite haute : les photos de membres et le logo peuvent être des data-URLs
 // base64 (jusqu'à 5 Mo pièce) transportées dans les PUT bulk.
 app.use(express.json({ limit: '50mb' }));

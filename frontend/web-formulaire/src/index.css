@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* Composants partagés importés depuis web-cartographie (hors racine Vite du
+   formulaire) : on les déclare explicitement pour que Tailwind détecte leurs
+   classes utilitaires. */
+@source "../../web-cartographie/src/services";
+@source "../../web-cartographie/src/utils";
+@source "../../web-cartographie/src/modules/parametres";
+
+/* Custom Scrollbar for Fresh Mint theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f0f8f3;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #a7f3d0;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6ee7b7;
+}
