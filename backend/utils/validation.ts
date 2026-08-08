@@ -67,7 +67,7 @@ export const appUserSchema = z.object({
   email: z.string().trim().min(3).max(320),
   username: z.string().trim().min(1).max(120),
   password: z.string().max(255).optional(),   // write-only -> Supabase Auth
-  role: z.enum(['user', 'referent', 'admin']),
+  role: z.enum(['user', 'referent', 'admin', 'super_admin']),
   region: z.string().max(200).optional(),
   assignedZoneIds: z.array(z.string().max(120)).optional(),
   active: z.boolean().default(true),

@@ -79,7 +79,7 @@ export const demandeService = {
    * automatique du frontend peut les déclencher sans intention).
    */
   async bulkUpsert(demandes: DemandeMember[], actor: AppUser): Promise<void> {
-    if (actor.role !== 'admin') return;
+    if (actor.role !== 'admin' && actor.role !== 'super_admin') return;
     if (demandes.length === 0) return;
     const { error } = await supabaseAdmin()
       .from('demandes')

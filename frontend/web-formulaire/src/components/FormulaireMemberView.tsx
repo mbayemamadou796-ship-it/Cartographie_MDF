@@ -8,6 +8,7 @@ import {
 import { DemandeMember, CustomField } from '@shared/types';
 import { DemandeService } from '../../../web-cartographie/src/services/demandeService';
 import { ApiService } from '../../../web-cartographie/src/services/apiService';
+import { getVillesForZone } from '../../../web-cartographie/src/utils/geocoding';
 import { LogoMbok } from '../../../web-cartographie/src/modules/parametres/LogoMbok';
 import { 
   UserPlus, 
@@ -628,13 +629,19 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Saint-Denis, Rennes, Lyon, Marseille..."
+                    list="villes-zone-formulaire"
+                    placeholder={formData.zone ? `Villes de la zone ${formData.zone}...` : 'Ex: Saint-Denis, Rennes, Lyon, Marseille...'}
                     value={formData.ville}
                     onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
                     className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium ${
                       errors.ville ? 'border-rose-300 bg-rose-50' : 'border-emerald-200'
                     }`}
                   />
+                  <datalist id="villes-zone-formulaire">
+                    {getVillesForZone(formData.zone).map((v) => (
+                      <option key={v} value={v} />
+                    ))}
+                  </datalist>
                   {errors.ville && <p className="text-[11px] text-rose-600 mt-1 font-semibold">{errors.ville}</p>}
                 </div>
 

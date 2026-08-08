@@ -36,6 +36,16 @@ const CITY_COORDINATES: Record<string, { lat: number; lng: number; dept: string;
   'argenteuil': { lat: 48.9479, lng: 2.2467, dept: 'Val-d\'Oise (95)', region: 'Île-de-France' },
   'nanterre': { lat: 48.8924, lng: 2.2071, dept: 'Hauts-de-Seine (92)', region: 'Île-de-France' },
   'créteil': { lat: 48.7904, lng: 2.4556, dept: 'Val-de-Marne (94)', region: 'Île-de-France' },
+  'pontoise': { lat: 49.0508, lng: 2.1006, dept: 'Val-d\'Oise (95)', region: 'Île-de-France' },
+  'cergy': { lat: 49.0364, lng: 2.0761, dept: 'Val-d\'Oise (95)', region: 'Île-de-France' },
+  'sarcelles': { lat: 48.9979, lng: 2.3782, dept: 'Val-d\'Oise (95)', region: 'Île-de-France' },
+  'évry-courcouronnes': { lat: 48.6296, lng: 2.4419, dept: 'Essonne (91)', region: 'Île-de-France' },
+  'evry-courcouronnes': { lat: 48.6296, lng: 2.4419, dept: 'Essonne (91)', region: 'Île-de-France' },
+  'melun': { lat: 48.5421, lng: 2.6554, dept: 'Seine-et-Marne (77)', region: 'Île-de-France' },
+  'meaux': { lat: 48.9603, lng: 2.8883, dept: 'Seine-et-Marne (77)', region: 'Île-de-France' },
+  'vitry-sur-seine': { lat: 48.7875, lng: 2.3928, dept: 'Val-de-Marne (94)', region: 'Île-de-France' },
+  'aulnay-sous-bois': { lat: 48.9385, lng: 2.4936, dept: 'Seine-Saint-Denis (93)', region: 'Île-de-France' },
+  'colombes': { lat: 48.9226, lng: 2.2523, dept: 'Hauts-de-Seine (92)', region: 'Île-de-France' },
 
   // Bretagne
   'rennes': { lat: 48.1173, lng: -1.6778, dept: 'Ille-et-Vilaine (35)', region: 'Bretagne' },
@@ -134,6 +144,38 @@ const CITY_COORDINATES: Record<string, { lat: number; lng: number; dept: string;
   'saint-denis (réunion)': { lat: -20.8821, lng: 55.4504, dept: 'La Réunion (974)', region: 'Outre-Mer (DROM-COM)' },
   'mamoudzou': { lat: -12.7806, lng: 45.2278, dept: 'Mayotte (976)', region: 'Outre-Mer (DROM-COM)' }
 };
+
+// ---------------------------------------------------------------------------
+// Villes proposées par Zone MDF (formulaires membre / utilisateur / demande).
+// Noms d'affichage alignés sur les clés de CITY_COORDINATES : chaque ville
+// proposée est donc géocodable hors-ligne. La saisie libre reste possible.
+// ---------------------------------------------------------------------------
+
+export const VILLES_PAR_ZONE: Record<string, string[]> = {
+  'Île-de-France': ['Paris', 'Saint-Denis', 'Argenteuil', 'Pontoise', 'Cergy', 'Sarcelles', 'Boulogne-Billancourt', 'Versailles', 'Montreuil', 'Nanterre', 'Créteil', 'Évry-Courcouronnes', 'Melun', 'Meaux', 'Vitry-sur-Seine', 'Aulnay-sous-Bois', 'Colombes'],
+  'Bretagne': ['Rennes', 'Brest', 'Quimper', 'Lorient', 'Vannes', 'Saint-Malo', 'Saint-Brieuc'],
+  'Pays de la Loire': ['Nantes', 'Angers', 'Le Mans', 'Saint-Nazaire', 'La Roche-sur-Yon'],
+  'Normandie': ['Rouen', 'Caen', 'Le Havre', 'Cherbourg', 'Évreux'],
+  'Auvergne-Rhône-Alpes': ['Lyon', 'Grenoble', 'Saint-Étienne', 'Clermont-Ferrand', 'Annecy', 'Chambéry', 'Villeurbanne'],
+  'Nouvelle-Aquitaine': ['Bordeaux', 'Limoges', 'Poitiers', 'Pau', 'La Rochelle'],
+  'Occitanie': ['Toulouse', 'Montpellier', 'Nîmes', 'Perpignan', 'Béziers'],
+  'Provence-Alpes-Côte d\'Azur': ['Marseille', 'Nice', 'Toulon', 'Aix-en-Provence', 'Avignon', 'Cannes'],
+  'Hauts-de-France': ['Lille', 'Amiens', 'Roubaix', 'Tourcoing', 'Dunkerque', 'Calais'],
+  'Grand Est': ['Strasbourg', 'Reims', 'Metz', 'Nancy', 'Mulhouse', 'Troyes'],
+  'Bourgogne-Franche-Comté': ['Dijon', 'Besançon', 'Belfort'],
+  'Centre-Val de Loire': ['Orléans', 'Tours', 'Bourges'],
+  'Corse': ['Ajaccio', 'Bastia'],
+  'Outre-Mer (DROM-COM)': ['Pointe-à-Pitre', 'Fort-de-France', 'Cayenne', 'Saint-Denis (Réunion)', 'Mamoudzou']
+};
+
+/** Villes proposées pour une zone MDF ; toutes les villes connues si zone vide/inconnue. */
+export function getVillesForZone(zone?: string): string[] {
+  const z = (zone || '').trim();
+  if (z && VILLES_PAR_ZONE[z]) return VILLES_PAR_ZONE[z];
+  const match = Object.keys(VILLES_PAR_ZONE).find((k) => k.toLowerCase() === z.toLowerCase());
+  if (match) return VILLES_PAR_ZONE[match];
+  return Object.values(VILLES_PAR_ZONE).flat();
+}
 
 export async function geocodeLocation(
   ville: string,

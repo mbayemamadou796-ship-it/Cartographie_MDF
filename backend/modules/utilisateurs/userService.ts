@@ -118,9 +118,14 @@ export const userService = {
     const target = (rows ?? []).find(r => r.id === id);
     if (!target) return {};
 
-    const remainingAdmins = (rows ?? []).filter(r => r.id !== id && r.role === 'admin' && r.active !== false);
-    if (target.role === 'admin' && remainingAdmins.length === 0) {
+    const adminRoles = ['admin', 'super_admin'];
+    const remainingAdmins = (rows ?? []).filter(r => r.id !== id && adminRoles.includes(r.role as string) && r.active !== false);
+    if (adminRoles.includes(target.role as string) && remainingAdmins.length === 0) {
       return { conflict: 'Impossible de supprimer le dernier administrateur.' };
+    }
+    // Un super admin ne peut être supprimé que par un autre super admin.
+    if (target.role === 'super_admin' && actor.role !== 'super_admin') {
+      return { conflict: 'Seul un super administrateur peut supprimer un super administrateur.' };
     }
 
     const { error: delError } = await supabase.from('app_users').delete().eq('id', id);

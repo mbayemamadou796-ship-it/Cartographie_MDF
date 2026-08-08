@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AppSettings, UserRole } from '../../types';
 import { Settings, Save, RefreshCw, CheckCircle2, Shield, Info, Map, Camera, Upload, Trash2 } from 'lucide-react';
 import { LogoMbok } from './LogoMbok';
@@ -21,8 +21,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [formData, setFormData] = useState<AppSettings>(settings);
   const [savedMsg, setSavedMsg] = useState('');
 
+  // Champs éditables du formulaire (le logo suit son propre flux d'upload)
+  const editableOf = (s: AppSettings) => ({
+    appName: s.appName,
+    associationName: s.associationName,
+    tagline: s.tagline,
+    defaultCountry: s.defaultCountry,
+    mapDefaultZoom: s.mapDefaultZoom
+  });
+
+  const isDirty = useMemo(
+    () => JSON.stringify(editableOf(formData)) !== JSON.stringify(editableOf(settings)),
+    [formData, settings]
+  );
+
+  // Les paramètres serveur peuvent arriver après le montage (hydratation
+  // bootstrap) : tant que le formulaire n'a pas été modifié, on le resynchronise
+  // pour ne pas écraser la vérité serveur avec des valeurs périmées.
+  useEffect(() => {
+    setFormData((prev) =>
+      JSON.stringify(editableOf(prev)) === JSON.stringify(editableOf(settings))
+        ? { ...settings }
+        : { ...prev, logoUrl: settings.logoUrl }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isDirty) return;
     onUpdateSettings(formData);
     setSavedMsg('Paramètres enregistrés avec succès !');
     setTimeout(() => setSavedMsg(''), 3000);
@@ -246,14 +273,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-end">
+        {/* Submit Button — actif uniquement quand une modification est en attente */}
+        <div className="flex items-center justify-end gap-3">
+          {isDirty && (
+            <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
+              Modifications non enregistrées
+            </span>
+          )}
           <button
             type="submit"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#2be39d] via-[#48c92a] to-[#8de02d] hover:brightness-105 text-emerald-950 font-bold rounded-2xl shadow-xs transition-all active:scale-95 text-xs"
+            disabled={!isDirty}
+            className={`inline-flex items-center gap-2 px-6 py-2.5 font-bold rounded-2xl shadow-xs transition-all text-xs ${
+              isDirty
+                ? 'bg-gradient-to-r from-[#2be39d] via-[#48c92a] to-[#8de02d] hover:brightness-105 text-emerald-950 active:scale-95 cursor-pointer'
+                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+            }`}
           >
             <Save className="w-4 h-4" />
-            <span>Enregistrer les paramètres</span>
+            <span>{isDirty ? 'Enregistrer les modifications' : 'Aucune modification'}</span>
           </button>
         </div>
 

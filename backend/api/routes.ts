@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { authRouter } from '../auth/authController';
-import { requireAuth, requireRole, AuthedRequest } from '../auth/authMiddleware';
+import { requireAuth, requireRole, isAdminLevel, AuthedRequest } from '../auth/authMiddleware';
 import { publicDemandeRateLimiter, publicTrackingRateLimiter } from '../auth/rateLimit';
 import { logger } from '../utils/logger';
 import { memberService } from '../modules/membres/memberService';
@@ -49,7 +49,8 @@ apiRouter.use('/auth', authRouter);
 // --------------------------------------------------------------------------
 apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
   const actor = req.appUser as AppUser;
-  const isAdmin = actor.role === 'admin';
+  const isSuper = actor.role === 'super_admin';
+  const adminLevel = isAdminLevel(actor.role);
 
   const [settings, members, zones, demandes, users, importLogs, auditLogs] = await Promise.all([
     settingsService.get(),
@@ -62,9 +63,11 @@ apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
       logger.error(`bootstrap demandes indisponibles: ${e.message}`);
       return null;
     }),
-    isAdmin ? userService.list() : Promise.resolve([] as AppUser[]),
-    isAdmin ? excelService.listImportLogs() : Promise.resolve([]),
-    isAdmin ? auditService.list() : Promise.resolve([])
+    // Gestion des utilisateurs et journal d'audit : super admin uniquement.
+    // Historique d'imports : niveau admin (l'onglet Import/Export reste admin).
+    isSuper ? userService.list() : Promise.resolve([] as AppUser[]),
+    adminLevel ? excelService.listImportLogs() : Promise.resolve([]),
+    isSuper ? auditService.list() : Promise.resolve([])
   ]);
 
   res.json({ settings, members, zones, demandes, users, importLogs, auditLogs, currentUser: actor });
@@ -105,7 +108,7 @@ apiRouter.delete('/zones/:id', requireAuth, requireRole('admin'), asyncHandler(a
 // la synchro automatique du frontend peut les déclencher sans intention.
 // --------------------------------------------------------------------------
 apiRouter.put('/users', requireAuth, asyncHandler(async (req, res) => {
-  if ((req.appUser as AppUser).role !== 'admin') {
+  if ((req.appUser as AppUser).role !== 'super_admin') {
     res.status(204).end();
     return;
   }
@@ -119,7 +122,7 @@ apiRouter.put('/users', requireAuth, asyncHandler(async (req, res) => {
   res.status(204).end();
 }));
 
-apiRouter.delete('/users/:id', requireAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+apiRouter.delete('/users/:id', requireAuth, requireRole('super_admin'), asyncHandler(async (req, res) => {
   const result = await userService.remove(req.params.id as string, req.appUser as AppUser);
   if (result.conflict) {
     res.status(409).json({ error: result.conflict });
@@ -176,7 +179,7 @@ apiRouter.post('/audit-logs', requireAuth, asyncHandler(async (req, res) => {
 // Historique des imports Excel
 // --------------------------------------------------------------------------
 apiRouter.put('/import-logs', requireAuth, asyncHandler(async (req, res) => {
-  if ((req.appUser as AppUser).role !== 'admin') {
+  if (!isAdminLevel((req.appUser as AppUser).role)) {
     res.status(204).end();
     return;
   }
@@ -189,13 +192,18 @@ apiRouter.put('/import-logs', requireAuth, asyncHandler(async (req, res) => {
 // --------------------------------------------------------------------------
 // Paramètres de l'association
 // --------------------------------------------------------------------------
+// Paramètres : réservés au super admin (l'admin n'a plus l'onglet Paramètres).
+// Exception : lastUpdateDate est un horodatage technique déclenché par les
+// actions membres — les admins peuvent le mettre à jour.
 apiRouter.put('/settings', requireAuth, asyncHandler(async (req, res) => {
-  if ((req.appUser as AppUser).role !== 'admin') {
+  const role = (req.appUser as AppUser).role;
+  if (!isAdminLevel(role)) {
     res.status(204).end();
     return;
   }
   const parsed = settingsSchema.safeParse(req.body);
   if (!parsed.success) return badRequest(res, 'Payload paramètres invalide.');
-  await settingsService.update(parsed.data);
+  const payload = role === 'super_admin' ? parsed.data : { lastUpdateDate: parsed.data.lastUpdateDate };
+  await settingsService.update(payload);
   res.status(204).end();
 }));

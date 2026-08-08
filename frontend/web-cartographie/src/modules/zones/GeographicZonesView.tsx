@@ -548,6 +548,15 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
                         <strong className="text-slate-900">
                           {zone.referentName || (zone.referentUserId && users?.find(u => u.id === zone.referentUserId)?.name) || 'Non assigné'}
                         </strong>
+                        {!zone.referentName && !zone.referentUserId && userRole === 'admin' && (
+                          <button
+                            onClick={(e) => handleOpenEditZone(zone, e)}
+                            className="ml-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-extrabold transition-colors cursor-pointer"
+                            title="Choisir un référent parmi les utilisateurs de l'application"
+                          >
+                            Définir un référent
+                          </button>
+                        )}
                       </div>
 
                       {zone.description && (

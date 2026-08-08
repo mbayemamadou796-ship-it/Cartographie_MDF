@@ -215,7 +215,11 @@ export default function App() {
       } catch {}
       return updated;
     });
-    ApiService.saveSettings(newSettings);
+    ApiService.saveSettings(newSettings).then((ok) => {
+      if (!ok && ApiService.hasSession()) {
+        showToast('⚠️ Paramètres enregistrés localement mais non synchronisés avec le serveur.');
+      }
+    });
   };
 
   // Members State with LocalStorage Persistence
@@ -375,6 +379,25 @@ export default function App() {
   // Role State (Derived from currentUser or defaulted to 'user')
   const [userRole, setUserRole] = useState<UserRole>(() => currentUser?.role || 'user');
 
+  // Hiérarchie des rôles : le super_admin a tous les droits d'un admin, plus
+  // les onglets sensibles (Utilisateurs, Journaux, Qualité, Paramètres) que
+  // l'admin ne voit plus. Les composants enfants ne connaissent que le rôle
+  // "effectif" (super_admin => admin) ; seuls la navigation et le Header
+  // reçoivent le rôle réel.
+  const isAdminLevel = userRole === 'admin' || userRole === 'super_admin';
+  const componentRole: UserRole = isAdminLevel ? 'admin' : userRole;
+
+  /** Onglets autorisés selon le rôle réel. */
+  const getAllowedTabs = (role: UserRole): string[] => {
+    if (role === 'super_admin') {
+      return ['dashboard', 'directory', 'zones', 'demandes', 'users', 'quality', 'import_export', 'audit_logs', 'settings'];
+    }
+    if (role === 'admin') {
+      return ['dashboard', 'directory', 'zones', 'demandes', 'import_export'];
+    }
+    return ['dashboard', 'directory', 'zones', 'demandes'];
+  };
+
   // Keep role in sync with currentUser
   useEffect(() => {
     if (currentUser) {
@@ -462,15 +485,12 @@ export default function App() {
     return demandes.filter((d) => d.status === 'EN_ATTENTE').length;
   }, [demandes]);
 
-  // Security Guard: Reset active tab for non-admin users if viewing an admin-only tab
+  // Security Guard: Reset active tab if viewing a tab not allowed for the role
   useEffect(() => {
-    const allowedTabs = userRole === 'admin'
-      ? ['dashboard', 'directory', 'zones', 'demandes', 'users', 'quality', 'import_export', 'audit_logs', 'settings']
-      : ['dashboard', 'directory', 'zones', 'demandes'];
-
-    if (!allowedTabs.includes(activeTab)) {
+    if (!getAllowedTabs(userRole).includes(activeTab)) {
       setActiveTab('directory');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userRole, activeTab]);
 
   // Handlers for Demandes (Inscription / Updates) Validation
@@ -845,9 +865,11 @@ export default function App() {
           DemandeService.saveDemandes(d.demandes);
           setDemandes(d.demandes);
         }
-        if (currentUser.role === 'admin') {
-          if (d.users.length > 0) setUsers(d.users);
+        if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
           setImportLogs(d.importLogs);
+        }
+        if (currentUser.role === 'super_admin') {
+          if (d.users.length > 0) setUsers(d.users);
           setAuditLogs(d.auditLogs);
         }
       })
@@ -924,12 +946,8 @@ export default function App() {
     setCurrentUser(loggedUser);
     setUserRole(loggedUser.role);
 
-    // Security reset: Ensure non-admin users start on 'directory' or 'dashboard'
-    const allowedTabs = loggedUser.role === 'admin'
-      ? ['dashboard', 'directory', 'zones', 'users', 'quality', 'import_export', 'audit_logs', 'settings']
-      : ['dashboard', 'directory', 'zones'];
-
-    if (!allowedTabs.includes(activeTab)) {
+    // Security reset: Ensure users start on a tab allowed for their role
+    if (!getAllowedTabs(loggedUser.role).includes(activeTab)) {
       setActiveTab('directory');
     }
 
@@ -960,7 +978,7 @@ export default function App() {
     showToast('Vous avez été déconnecté.');
   };
 
-  const handleAddUser = (user: Omit<AppUser, 'id' | 'lastLogin'>) => {
+  const handleAddUser = (user: Omit<AppUser, 'id' | 'lastLogin'>, memberInfo: { ville: string }) => {
     const newUser: AppUser = {
       ...user,
       id: `usr-${Date.now()}`,
@@ -968,7 +986,66 @@ export default function App() {
     };
     setUsers((prev) => [newUser, ...prev]);
     addAuditLog('user', 'Création d\'un compte utilisateur', `Création du compte "${newUser.name}" (Rôle: ${newUser.role}, Région: ${newUser.region || 'Non spécifiée'})`, 'info', newUser.id, newUser.name);
-    showToast(`Utilisateur "${user.name}" créé avec succès.`);
+
+    // Règle MDF : tout utilisateur est aussi membre. On relie le compte au
+    // membre existant portant le même e-mail, sinon on crée automatiquement
+    // sa fiche membre dans la zone correspondante (géolocalisée par la ville).
+    const email = (newUser.email || '').trim().toLowerCase();
+    const existingMember = email
+      ? members.find((m) => (m.email || '').trim().toLowerCase() === email)
+      : undefined;
+
+    if (existingMember) {
+      addAuditLog('member', 'Liaison utilisateur-membre', `Compte "${newUser.name}" relié au membre existant ${existingMember.prenom} ${existingMember.nom}`, 'info', existingMember.id, `${existingMember.prenom} ${existingMember.nom}`);
+      showToast(`Utilisateur "${user.name}" créé et relié au membre existant "${existingMember.prenom} ${existingMember.nom}".`);
+      return;
+    }
+
+    const zoneName = newUser.region || 'Île-de-France';
+    const ville = memberInfo.ville || '';
+    const cityCoords = geocodeVille(ville, zoneName);
+    const offsetCoords = calculateCityOffsetCoordinates(
+      ville,
+      members.map((m) => ({ id: m.id, latitude: m.latitude ?? 0, longitude: m.longitude ?? 0, ville: m.ville || '' }))
+    );
+
+    const roleLabel =
+      newUser.role === 'super_admin' ? 'Super Administrateur MDF'
+      : newUser.role === 'admin' ? 'Administrateur MDF'
+      : newUser.role === 'referent' ? 'Référent de Zone MDF'
+      : 'Membre Mbok de France';
+
+    const linkedMember: Member = {
+      id: `mdf-usr-${Date.now()}`,
+      nom: newUser.nom || '',
+      prenom: newUser.prenom || '',
+      email: newUser.email,
+      telephone: '',
+      ville,
+      zone: zoneName,
+      region: zoneName,
+      pays: 'France',
+      fonction: roleLabel,
+      organisation: 'Mbok de France',
+      situationProfessionnelle: roleLabel,
+      latitude: offsetCoords ? offsetCoords.latitude : cityCoords.latitude,
+      longitude: offsetCoords ? offsetCoords.longitude : cityCoords.longitude,
+      champsPersonnalises: []
+    };
+    setMembers((prev) => [linkedMember, ...prev]);
+
+    // Rattachement immédiat à la zone MDF correspondante
+    setCustomZones((prev) =>
+      prev.map((z) =>
+        z.name.trim().toLowerCase() === zoneName.trim().toLowerCase() && !z.memberIds.includes(linkedMember.id)
+          ? { ...z, memberIds: [...z.memberIds, linkedMember.id] }
+          : z
+      )
+    );
+
+    addAuditLog('member', 'Création automatique d\'un membre', `Fiche membre créée automatiquement pour l'utilisateur "${newUser.name}" (Zone ${zoneName}, ${ville})`, 'info', linkedMember.id, `${linkedMember.prenom} ${linkedMember.nom}`, zoneName);
+    recordDataUpdate();
+    showToast(`Utilisateur "${user.name}" créé et ajouté comme membre de la Zone ${zoneName}.`);
   };
 
   const handleUpdateUser = (userId: string, updates: Partial<AppUser>) => {
@@ -1267,6 +1344,27 @@ export default function App() {
     });
   };
 
+  /**
+   * Synchronise l'utilisateur nommé référent d'une zone : la zone est ajoutée
+   * à ses attributions et un simple utilisateur est promu au rôle Référent.
+   */
+  const syncReferentAssignment = (zoneId: string, referentUserId?: string) => {
+    if (!referentUserId) return;
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== referentUserId) return u;
+        const assigned = u.assignedZoneIds || [];
+        const nextRole: UserRole = u.role === 'user' ? 'referent' : u.role;
+        if (assigned.includes(zoneId) && nextRole === u.role) return u;
+        return { ...u, role: nextRole, assignedZoneIds: assigned.includes(zoneId) ? assigned : [...assigned, zoneId] };
+      })
+    );
+    const target = users.find((u) => u.id === referentUserId);
+    if (target && target.role === 'user') {
+      addAuditLog('user', 'Promotion en Référent', `"${target.name || target.username}" promu Référent suite à son attribution de zone`, 'info', target.id, target.name);
+    }
+  };
+
   // Custom Zone Actions
   const handleAddZone = (newZone: Omit<CustomZone, 'id' | 'createdAt'>) => {
     const created: CustomZone = {
@@ -1275,6 +1373,7 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
     setCustomZones((prev) => [created, ...prev]);
+    syncReferentAssignment(created.id, created.referentUserId);
     addAuditLog('zone', 'Création de zone', `Zone "${created.name}" créée`, 'info', created.id, created.name, created.name);
     showToast(`Zone "${created.name}" créée avec succès.`);
   };
@@ -1283,6 +1382,7 @@ export default function App() {
     setCustomZones((prev) =>
       prev.map((z) => (z.id === zoneId ? { ...z, ...updates } : z))
     );
+    syncReferentAssignment(zoneId, updates.referentUserId);
     const target = customZones.find((z) => z.id === zoneId);
     addAuditLog('zone', 'Mise à jour de zone', `Zone "${updates.name || target?.name || zoneId}" mise à jour`, 'info', zoneId, target?.name, updates.name || target?.name);
     showToast('Zone mise à jour.');
@@ -1334,7 +1434,7 @@ export default function App() {
 
   // Add / Edit Member Handler
   const handleSaveMember = (memberData: Omit<Member, 'id'> & { id?: string }) => {
-    if (userRole !== 'admin') {
+    if (!isAdminLevel) {
       showToast("Action réservée aux administrateurs.");
       return;
     }
@@ -1381,7 +1481,7 @@ export default function App() {
 
   // Delete Member Handler
   const handleDeleteMember = (memberId: string) => {
-    if (userRole !== 'admin') {
+    if (!isAdminLevel) {
       showToast("Action réservée aux administrateurs.");
       return;
     }
@@ -1693,7 +1793,7 @@ export default function App() {
               customZones={customZones}
               lastUpdateDate={lastUpdateDate}
               activeQualityFilter={filters.qualityFilter}
-              userRole={userRole}
+              userRole={componentRole}
               referentZoneNames={referentZoneNames}
               referentUser={currentUser}
               onSelectQualityFilter={(qf) => {
@@ -1777,7 +1877,7 @@ export default function App() {
               <MemberList
                 members={filteredAndSortedMembers}
                 selectedMemberId={selectedMemberId}
-                userRole={userRole}
+                userRole={componentRole}
                 onSelectMember={(member) => {
                   setSelectedMemberId(member.id);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1803,7 +1903,7 @@ export default function App() {
           <GeographicZonesView
             members={scopedMembers}
             customZones={userRole === 'referent' ? referentZones : customZones}
-            userRole={userRole}
+            userRole={componentRole}
             users={users}
             currentUserId={currentUser?.id}
             assignedZoneIds={currentUser?.assignedZoneIds}
@@ -1826,7 +1926,7 @@ export default function App() {
         {activeTab === 'demandes' && (
           <DemandesView
             demandes={demandes}
-            userRole={userRole}
+            userRole={componentRole}
             onValiderDemande={handleValiderDemande}
             onRefuserDemande={handleRefuserDemande}
           />
@@ -1835,7 +1935,7 @@ export default function App() {
         {/* Tab 4: Gestion des Utilisateurs */}
         {activeTab === 'users' && (
           <UserManagementView
-            currentRole={userRole}
+            currentRole={componentRole}
             users={users}
             customZones={customZones}
             onAddUser={handleAddUser}
@@ -1861,7 +1961,7 @@ export default function App() {
           <DataQualityView
             members={scopedMembers}
             customZones={customZones}
-            userRole={userRole}
+            userRole={componentRole}
             onEditMember={(m) => {
               setMemberToEdit(m);
               setIsFormModalOpen(true);
@@ -1877,7 +1977,7 @@ export default function App() {
         {activeTab === 'import_export' && (
           <ImportExportView
             members={filteredAndSortedMembers}
-            userRole={userRole}
+            userRole={componentRole}
             importLogs={importLogs}
             onImportSuccess={handleImportSuccess}
             onClearLogs={() => {
@@ -1891,7 +1991,7 @@ export default function App() {
         {activeTab === 'settings' && (
           <SettingsView
             settings={appSettings}
-            userRole={userRole}
+            userRole={componentRole}
             onUpdateSettings={handleUpdateSettings}
             onOpenEditLogoModal={() => setIsEditLogoModalOpen(true)}
             onResetToInitialMembers={() => {
@@ -1916,7 +2016,7 @@ export default function App() {
       <MemberModal
         member={activeDetailsMember}
         customZones={customZones}
-        userRole={userRole}
+        userRole={componentRole}
         onClose={() => setActiveDetailsMember(null)}
         onSelectOnMap={(m) => {
           setSelectedMemberId(m.id);
@@ -1933,7 +2033,7 @@ export default function App() {
       {/* Admin Member Form Modal (Add / Edit) */}
       <AdminMemberFormModal
         isOpen={isFormModalOpen}
-        userRole={userRole}
+        userRole={componentRole}
         memberToEdit={memberToEdit}
         targetZoneName={targetZoneNameForNewMember}
         defaultGeo={defaultGeoForNewMember}

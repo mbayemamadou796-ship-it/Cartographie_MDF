@@ -22,5 +22,7 @@
 - [x] Finaliser l'intégration des clés Supabase (`.env`).
 - [x] Intégrer le frontend amélioré (module Demandes + application web-formulaire) depuis Cartographie_MDF1.
 - [x] Backend des demandes d'adhésion : table `demandes` (`003_demandes.sql`), endpoints publics (soumission + suivi rate-limités) et bureau (bootstrap, `PUT /api/demandes` admin), synchronisation frontend.
-- [ ] ⚠️ Exécuter `backend/database/migrations/003_demandes.sql` dans Supabase > SQL Editor (sans cela, les demandes restent en localStorage uniquement).
+- [x] ⚠️ Exécuter `backend/database/migrations/003_demandes.sql` dans Supabase > SQL Editor (fait le 08/08/2026).
+- [x] Rôle `super_admin` (tous droits) + restriction des onglets admin ; lien utilisateur⇄membre automatique ; villes proposées par zone ; géolocalisation auto par ville ; référents assignables sur les zones orphelines ; correctif enregistrement des paramètres.
+- [ ] ⚠️ Exécuter `backend/database/migrations/004_super_admin.sql` dans Supabase > SQL Editor (sans cela, `bilal` reste simple admin et perd les onglets Utilisateurs / Journaux / Paramètres).
 - [ ] Exécuter des tests de charge sur les imports massifs Excel (> 5000 enregistrements).

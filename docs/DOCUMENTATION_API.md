@@ -55,12 +55,17 @@ Hydratation complète du frontend en un appel :
 | `PUT /api/zones` (`CustomZone[]`) | admin, referent (ses zones, pas de création) | Upsert bulk. → 204 |
 | `DELETE /api/zones/:id` | admin | Supprime la zone (jamais ses membres). → 204 |
 
-## 6. Utilisateurs (admin)
+## 6. Utilisateurs (super admin)
+
+> **Hiérarchie des rôles** (migration `004_super_admin.sql`) : `user` < `referent` < `admin` < `super_admin`.
+> Le super admin a tous les droits. L'admin conserve membres, zones, demandes et
+> import/export, mais **perd** la gestion des utilisateurs, le journal d'audit,
+> la maintenance/qualité et les paramètres (imposé côté API).
 
 | Route | Comportement |
 |---|---|
-| `PUT /api/users` (`AppUser[]`, `password` optionnel par entrée) | Upsert bulk. Un `password` fourni est routé vers l'**Auth Admin API Supabase** (création du compte Auth ou changement de mot de passe), jamais stocké en table. → 204, ou 207 `{ errors: [] }` si certains comptes ont échoué. Non-admin : no-op 204. |
-| `DELETE /api/users/:id` | Supprime le compte applicatif **et** le compte Supabase Auth lié. 409 si : suppression de son propre compte, ou du dernier administrateur actif. → 204 |
+| `PUT /api/users` (`AppUser[]`, `password` optionnel par entrée) | Upsert bulk. Un `password` fourni est routé vers l'**Auth Admin API Supabase** (création du compte Auth ou changement de mot de passe), jamais stocké en table. → 204, ou 207 `{ errors: [] }` si certains comptes ont échoué. Non-super-admin : no-op 204. |
+| `DELETE /api/users/:id` | Super admin uniquement. Supprime le compte applicatif **et** le compte Supabase Auth lié. 409 si : suppression de son propre compte, du dernier administrateur actif, ou d'un super admin par un non-super-admin. → 204 |
 
 ## 7. Journal d'audit
 
@@ -87,7 +92,7 @@ Alimente le module « Demandes » de l'espace bureau et le formulaire public
 
 ## 10. Paramètres
 
-### `PUT /api/settings` — admin (non-admin : no-op 204)
+### `PUT /api/settings` — super admin (admin : seul `lastUpdateDate` est appliqué ; autres rôles : no-op 204)
 `Partial<AppSettings> & { lastUpdateDate?: string }` — merge sur la ligne unique. `logoUrl` accepte une data-URL base64 (limite globale de payload : 50 Mo). → 204.
 
 ## Erreurs

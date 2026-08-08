@@ -9,10 +9,15 @@ export const APP_METADATA = {
 };
 
 export const ROLE_LABELS: Record<UserRole, { label: string; badgeClass: string; description: string }> = {
+  super_admin: {
+    label: 'Super Administrateur',
+    badgeClass: 'bg-purple-600 text-white border-purple-700',
+    description: 'Tous les droits : gestion des utilisateurs, journaux, maintenance et paramètres.'
+  },
   admin: {
     label: 'Administrateur',
     badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-    description: 'Accès complet au système, gestion des membres, zones, utilisateurs et paramètres.'
+    description: 'Gestion des membres, zones, demandes et imports (sans utilisateurs, journaux ni paramètres).'
   },
   referent: {
     label: 'Référent Régional',

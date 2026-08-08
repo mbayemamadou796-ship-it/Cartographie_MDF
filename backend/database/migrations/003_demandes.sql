@@ -59,3 +59,4 @@ create trigger demandes_updated before update on demandes
 alter table demandes enable row level security;
 
 grant all privileges on table demandes to service_role;
+

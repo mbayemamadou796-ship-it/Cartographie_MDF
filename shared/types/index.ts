@@ -154,7 +154,7 @@ export interface FilterState {
   sortBy: SortOption;
 }
 
-export type UserRole = 'user' | 'referent' | 'admin';
+export type UserRole = 'user' | 'referent' | 'admin' | 'super_admin';
 
 export interface AppUser {
   id: string;

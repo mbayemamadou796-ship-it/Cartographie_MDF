@@ -55,12 +55,19 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
   }
 }
 
+/** Vrai pour les rôles de niveau administrateur (admin et super_admin). */
+export function isAdminLevel(role: UserRole | undefined): boolean {
+  return role === 'admin' || role === 'super_admin';
+}
+
 /**
  * Restreint la route aux rôles listés. Toujours placé APRÈS requireAuth.
+ * Le super_admin passe toutes les restrictions (hiérarchie au-dessus d'admin).
  */
 export function requireRole(...roles: UserRole[]) {
   return (req: AuthedRequest, res: Response, next: NextFunction): void => {
-    if (!req.appUser || !roles.includes(req.appUser.role)) {
+    const role = req.appUser?.role;
+    if (!req.appUser || (role !== 'super_admin' && !roles.includes(role as UserRole))) {
       res.status(403).json({ error: 'Accès refusé : privilèges insuffisants.' });
       return;
     }

@@ -76,9 +76,14 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
     }
   ];
 
-  const visibleTabs = userRole === 'admin'
-    ? tabs
-    : tabs.filter((t) => ['dashboard', 'directory', 'zones', 'demandes'].includes(t.id));
+  // super_admin : tous les onglets. admin : sans Utilisateurs & Droits,
+  // Maintenance & Qualité, Journaux d'activité et Paramètres.
+  const visibleTabs =
+    userRole === 'super_admin'
+      ? tabs
+      : userRole === 'admin'
+      ? tabs.filter((t) => ['dashboard', 'directory', 'zones', 'demandes', 'import_export'].includes(t.id))
+      : tabs.filter((t) => ['dashboard', 'directory', 'zones', 'demandes'].includes(t.id));
 
   return (
     <div className="bg-white border-b border-emerald-200 sticky top-[61px] z-20 shadow-2xs">

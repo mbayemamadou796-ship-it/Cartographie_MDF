@@ -314,9 +314,15 @@ export class ApiService {
     );
   }
 
-  static saveSettings(partial: Partial<AppSettings> & { lastUpdateDate?: string }): void {
-    request('/settings', { method: 'PUT', body: partial }).catch(e =>
-      console.warn('[ApiService] saveSettings impossible', e)
-    );
+  /** Renvoie true si la sauvegarde serveur a réussi (false = cache local seulement). */
+  static async saveSettings(partial: Partial<AppSettings> & { lastUpdateDate?: string }): Promise<boolean> {
+    try {
+      const res = await request('/settings', { method: 'PUT', body: partial });
+      if (!res.ok) console.warn(`[ApiService] saveSettings refusé (${res.status})`);
+      return res.ok;
+    } catch (e) {
+      console.warn('[ApiService] saveSettings impossible', e);
+      return false;
+    }
   }
 }

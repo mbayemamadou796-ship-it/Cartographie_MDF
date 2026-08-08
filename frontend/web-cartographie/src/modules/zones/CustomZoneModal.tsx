@@ -33,7 +33,9 @@ export const CustomZoneModal: React.FC<CustomZoneModalProps> = ({
   const [referentUserId, setReferentUserId] = useState('');
   const [error, setError] = useState('');
 
-  const potentialReferents = users.filter((u) => u.active && (u.role === 'referent' || u.role === 'admin'));
+  // Tous les utilisateurs actifs de l'application peuvent être nommés référent
+  // d'une zone ; un simple utilisateur est alors promu au rôle Référent.
+  const potentialReferents = users.filter((u) => u.active);
 
   useEffect(() => {
     if (zoneToEdit) {
@@ -142,10 +144,14 @@ export const CustomZoneModal: React.FC<CustomZoneModalProps> = ({
               <option value="">-- Aucun référent attribué --</option>
               {potentialReferents.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.prenom} {u.nom} ({u.username}) {u.role === 'admin' ? '[Admin]' : '[Référent]'}
+                  {u.prenom} {u.nom} ({u.username}){' '}
+                  {u.role === 'super_admin' ? '[Super Admin]' : u.role === 'admin' ? '[Admin]' : u.role === 'referent' ? '[Référent]' : '[Utilisateur — sera promu Référent]'}
                 </option>
               ))}
             </select>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Le référent choisi reçoit automatiquement cette zone dans ses attributions ; un simple utilisateur est promu au rôle Référent.
+            </p>
           </div>
 
           <div>

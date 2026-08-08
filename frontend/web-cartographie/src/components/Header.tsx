@@ -43,8 +43,8 @@ export const Header: React.FC<HeaderProps> = ({
               size="md"
               showText={true}
               logoUrl={logoUrl}
-              editable={userRole === 'admin'}
-              onEditClick={userRole === 'admin' ? onEditLogoClick : undefined}
+              editable={userRole === 'admin' || userRole === 'super_admin'}
+              onEditClick={userRole === 'admin' || userRole === 'super_admin' ? onEditLogoClick : undefined}
               associationName={associationName}
               tagline={tagline}
             />
@@ -88,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Admin Action Buttons */}
-            {userRole === 'admin' && (
+            {(userRole === 'admin' || userRole === 'super_admin') && (
               <>
                 <button
                   onClick={onOpenImportModal}
@@ -113,7 +113,12 @@ export const Header: React.FC<HeaderProps> = ({
                     {currentUser.name}
                   </span>
                   <span className="text-[10px] font-extrabold text-emerald-800 flex items-center gap-0.5">
-                    {userRole === 'admin' ? (
+                    {userRole === 'super_admin' ? (
+                      <>
+                        <ShieldCheck className="w-3 h-3 text-purple-600 inline" />
+                        <span>Super Administrateur</span>
+                      </>
+                    ) : userRole === 'admin' ? (
                       <>
                         <ShieldCheck className="w-3 h-3 text-emerald-600 inline" />
                         <span>Administrateur</span>

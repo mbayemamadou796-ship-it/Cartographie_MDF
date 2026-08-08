@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserRole, AppUser, CustomZone } from '../../types';
 import { FRENCH_ZONES } from '../membres/AdminMemberFormModal';
+import { getVillesForZone } from '../../utils/geocoding';
 import {
   Users,
   UserPlus,
@@ -23,7 +24,7 @@ interface UserManagementViewProps {
   currentRole: UserRole;
   users: AppUser[];
   customZones?: CustomZone[];
-  onAddUser: (user: Omit<AppUser, 'id' | 'lastLogin'>) => void;
+  onAddUser: (user: Omit<AppUser, 'id' | 'lastLogin'>, memberInfo: { ville: string }) => void;
   onUpdateUser: (userId: string, updates: Partial<AppUser>) => void;
   onDeleteUser: (userId: string) => void;
   onSwitchRole: (role: UserRole) => void;
@@ -61,6 +62,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [formConfirmPassword, setFormConfirmPassword] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('user');
   const [formRegion, setFormRegion] = useState('');
+  const [formVille, setFormVille] = useState('');
   const [formAssignedZoneIds, setFormAssignedZoneIds] = useState<string[]>([]);
   const [formActive, setFormActive] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
@@ -75,6 +77,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormConfirmPassword('');
     setFormRole('user');
     setFormRegion('Île-de-France');
+    setFormVille('');
     setFormAssignedZoneIds([]);
     setFormActive(true);
     setFormError(null);
@@ -91,6 +94,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormConfirmPassword(user.password || '');
     setFormRole(user.role);
     setFormRegion(user.region || '');
+    setFormVille('');
     setFormAssignedZoneIds(user.assignedZoneIds || []);
     setFormActive(user.active);
     setFormError(null);
@@ -113,6 +117,10 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     }
 
     if (!editingUser) {
+      if (!formVille.trim()) {
+        setFormError('La ville de résidence est obligatoire : tout utilisateur est aussi enregistré comme membre MDF de sa zone.');
+        return;
+      }
       if (!formPassword) {
         setFormError('Le mot de passe est obligatoire pour la création d\'un utilisateur.');
         return;
@@ -144,19 +152,22 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         active: formActive
       });
     } else {
-      onAddUser({
-        nom: formNom.trim(),
-        prenom: formPrenom.trim(),
-        name: fullName,
-        email: formEmail.trim(),
-        username: formUsername.trim(),
-        password: formPassword,
-        role: formRole,
-        region: formRegion.trim(),
-        assignedZoneIds: formRole === 'referent' ? formAssignedZoneIds : [],
-        active: formActive,
-        createdAt: new Date().toLocaleDateString('fr-FR')
-      });
+      onAddUser(
+        {
+          nom: formNom.trim(),
+          prenom: formPrenom.trim(),
+          name: fullName,
+          email: formEmail.trim(),
+          username: formUsername.trim(),
+          password: formPassword,
+          role: formRole,
+          region: formRegion.trim(),
+          assignedZoneIds: formRole === 'referent' ? formAssignedZoneIds : [],
+          active: formActive,
+          createdAt: new Date().toLocaleDateString('fr-FR')
+        },
+        { ville: formVille.trim() }
+      );
     }
 
     setIsModalOpen(false);
@@ -294,7 +305,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
         <div className="flex items-center gap-4 text-xs font-semibold text-slate-600">
           <span>Comptes totaux : <strong className="text-slate-900">{users.length}</strong></span>
-          <span>Administrateurs : <strong className="text-emerald-700">{users.filter((u) => u.role === 'admin').length}</strong></span>
+          <span>Administrateurs : <strong className="text-emerald-700">{users.filter((u) => u.role === 'admin' || u.role === 'super_admin').length}</strong></span>
           <span>Utilisateurs : <strong className="text-slate-700">{users.filter((u) => u.role === 'user').length}</strong></span>
           <span>Actifs : <strong className="text-emerald-700">{users.filter((u) => u.active).length}</strong></span>
         </div>
@@ -350,7 +361,11 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
                     {/* Role */}
                     <td className="p-4">
-                      {user.role === 'admin' ? (
+                      {user.role === 'super_admin' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-600 text-white border border-purple-700">
+                          <ShieldCheck className="w-3 h-3 text-white" /> Super Admin
+                        </span>
+                      ) : user.role === 'admin' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-900 border border-purple-300">
                           <ShieldCheck className="w-3 h-3 text-purple-700" /> Administrateur
                         </span>
@@ -487,6 +502,18 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
               </div>
             )}
 
+            {!editingUser && (
+              <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex items-start gap-2 text-emerald-900 text-[11px] font-medium leading-relaxed">
+                <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Règle MDF :</strong> tout utilisateur (référent ou administrateur) doit être membre de
+                  l'association. À la création du compte, l'application <strong>relie l'utilisateur au membre existant
+                  portant le même e-mail</strong>, ou <strong>crée automatiquement sa fiche membre</strong> dans la zone
+                  choisie.
+                </span>
+              </div>
+            )}
+
             <form onSubmit={handleSaveUser} className="space-y-3.5 text-xs">
               
               {/* Nom & Prenom */}
@@ -536,7 +563,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Région <span className="text-rose-500">*</span>
+                    Zone MDF (Région) <span className="text-rose-500">*</span>
                   </label>
                   <select
                     value={formRegion}
@@ -549,6 +576,32 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                   </select>
                 </div>
               </div>
+
+              {/* Ville de résidence (création uniquement : sert à la fiche membre liée) */}
+              {!editingUser && (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Ville de résidence <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    list="villes-zone-utilisateur"
+                    value={formVille}
+                    onChange={(e) => setFormVille(e.target.value)}
+                    placeholder={`Villes de la zone ${formRegion || 'sélectionnée'}...`}
+                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
+                  />
+                  <datalist id="villes-zone-utilisateur">
+                    {getVillesForZone(formRegion).map((v) => (
+                      <option key={v} value={v} />
+                    ))}
+                  </datalist>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Nécessaire pour la fiche membre : la géolocalisation est calculée automatiquement à partir de la ville.
+                  </p>
+                </div>
+              )}
 
               {/* Identifiant */}
               <div>
@@ -606,7 +659,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                   >
                     <option value="user">Utilisateur (Consultation seule)</option>
                     <option value="referent">Référent (Gestion de zone attribuée)</option>
-                    <option value="admin">Administrateur (Accès global & Audit)</option>
+                    <option value="admin">Administrateur (Gestion des membres & zones)</option>
+                    <option value="super_admin">Super Administrateur (Tous les droits)</option>
                   </select>
                 </div>
 

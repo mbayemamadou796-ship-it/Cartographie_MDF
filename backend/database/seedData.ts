@@ -31,7 +31,7 @@ export const SEED_ROOT_ADMIN_USER: Omit<AppUser, 'password'> = {
   name: ROOT_ADMIN.displayName,
   email: ROOT_ADMIN.email,
   username: ROOT_ADMIN.username,
-  role: 'admin',
+  role: 'super_admin',
   active: true,
   lastLogin: 'Nouveau'
 };

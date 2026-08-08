@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Member, CustomField } from '../../types';
 import { X, Save, Compass, Loader2, Plus, Trash2, Sliders, Upload, Camera } from 'lucide-react';
-import { geocodeLocation } from '../../utils/geocoding';
+import { geocodeLocation, getVillesForZone } from '../../utils/geocoding';
 
 export const FRENCH_ZONES = [
   'Auvergne-Rhône-Alpes',
@@ -163,36 +163,6 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
       ...prev,
       champsPersonnalises: (prev.champsPersonnalises || []).filter((f) => f.id !== id)
     }));
-  };
-
-  const handleAutoGeocode = async (overrideData?: typeof formData) => {
-    const dataToUse = overrideData || formData;
-    if (!dataToUse.ville && !dataToUse.zone) {
-      setErrorMsg('Veuillez entrer au moins une ville de résidence ou une zone pour géolocaliser.');
-      return;
-    }
-    setIsGeocoding(true);
-    setErrorMsg('');
-    try {
-      const result = await geocodeLocation(
-        dataToUse.ville || '',
-        dataToUse.departement || '',
-        dataToUse.pays || 'France',
-        dataToUse.zone || dataToUse.region || ''
-      );
-      setFormData((prev) => ({
-        ...prev,
-        latitude: result.latitude,
-        longitude: result.longitude,
-        departement: prev.departement || result.dept || prev.departement,
-        region: prev.region || result.region || prev.region,
-        zone: prev.zone || result.region || prev.zone
-      }));
-    } catch {
-      setErrorMsg('Impossible de trouver les coordonnées exactes. Vous pouvez les saisir manuellement.');
-    } finally {
-      setIsGeocoding(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -519,31 +489,18 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
             )}
           </div>
 
-          {/* Section 4: Localisation Cartographique (Ville & Département) */}
+          {/* Section 4: Ville de Résidence (géolocalisation automatique) */}
           <div className="space-y-3 pt-1">
             <div className="flex items-center justify-between pb-1 border-b border-emerald-200">
               <h4 className="font-bold text-emerald-800 uppercase tracking-wider text-[10px]">
-                4. Ville de Résidence & Localisation Cartographique
+                4. Ville de Résidence dans la Zone
               </h4>
-
-              <button
-                type="button"
-                onClick={handleAutoGeocode}
-                disabled={isGeocoding}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50"
-              >
-                {isGeocoding ? (
-                  <>
-                    <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />
-                    <span>Calcul GPS...</span>
-                  </>
-                ) : (
-                  <>
-                    <Compass className="w-3 h-3 text-emerald-600" />
-                    <span>Obtenir coordonnées GPS</span>
-                  </>
-                )}
-              </button>
+              {isGeocoding && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800">
+                  <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />
+                  <span>Calcul GPS...</span>
+                </span>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -552,11 +509,20 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
                 <input
                   type="text"
                   required
+                  list="villes-zone-mdf"
                   value={formData.ville}
                   onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
-                  placeholder="Ex: Saint-Denis, Rennes, Nantes, Lyon..."
+                  placeholder={formData.zone ? `Villes de la zone ${formData.zone}...` : 'Ex: Saint-Denis, Rennes, Nantes, Lyon...'}
                   className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
                 />
+                <datalist id="villes-zone-mdf">
+                  {getVillesForZone(formData.zone).map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Villes proposées selon la Zone MDF choisie — la saisie d'une autre commune reste possible.
+                </p>
               </div>
 
               <div>
@@ -569,28 +535,14 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
                   className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none"
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Latitude (GPS)</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={formData.latitude}
-                  onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 font-mono focus:bg-white focus:border-emerald-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Longitude (GPS)</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={formData.longitude}
-                  onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 font-mono focus:bg-white focus:border-emerald-500 outline-none"
-                />
-              </div>
+            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 font-medium flex items-start gap-2">
+              <Compass className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+              <span>
+                Les coordonnées GPS du membre sont <strong>calculées automatiquement</strong> à partir de la ville de
+                résidence, avec un léger décalage aléatoire pour distinguer les membres d'une même ville sur la carte.
+              </span>
             </div>
           </div>
 
