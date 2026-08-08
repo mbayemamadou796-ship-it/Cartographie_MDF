@@ -20,4 +20,7 @@
 - [x] Développer l'API Backend Express (auth Supabase, bootstrap, PUT bulk membres/zones/users, audit, imports, settings) — `npm run dev:api`.
 - [x] Câbler le frontend sur l'API (couche données uniquement : `apiService.ts`, `App.tsx`) sans toucher au design.
 - [x] Finaliser l'intégration des clés Supabase (`.env`).
+- [x] Intégrer le frontend amélioré (module Demandes + application web-formulaire) depuis Cartographie_MDF1.
+- [x] Backend des demandes d'adhésion : table `demandes` (`003_demandes.sql`), endpoints publics (soumission + suivi rate-limités) et bureau (bootstrap, `PUT /api/demandes` admin), synchronisation frontend.
+- [ ] ⚠️ Exécuter `backend/database/migrations/003_demandes.sql` dans Supabase > SQL Editor (sans cela, les demandes restent en localStorage uniquement).
 - [ ] Exécuter des tests de charge sur les imports massifs Excel (> 5000 enregistrements).

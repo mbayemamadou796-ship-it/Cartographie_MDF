@@ -9,7 +9,7 @@
  * - les dates affichées (timestamp fr-FR, lastLogin, createdAt ISO...) sont
  *   des chaînes stockées telles quelles, jamais converties.
  */
-import { Member, CustomZone, AppUser, AuditLog, ImportLog, AppSettings, CustomField, UserRole, AuditLogCategory } from '../../shared/types/index';
+import { Member, CustomZone, AppUser, AuditLog, ImportLog, AppSettings, CustomField, UserRole, AuditLogCategory, DemandeMember, DemandeType, DemandeStatus } from '../../shared/types/index';
 
 type Row = Record<string, unknown>;
 
@@ -160,6 +160,82 @@ export function appUserToDb(u: AppUser, authUserId?: string | null): Row {
   };
   if (authUserId !== undefined) row.auth_user_id = authUserId;
   return row;
+}
+
+// ---------------------------------------------------------------------------
+// DemandeMember
+// ---------------------------------------------------------------------------
+
+export function demandeFromDb(row: Row): DemandeMember {
+  return compact({
+    id: str(row.id),
+    type: (str(row.type) || 'INSCRIPTION') as DemandeType,
+    status: (str(row.status) || 'EN_ATTENTE') as DemandeStatus,
+    createdAt: str(row.created_at_iso),
+    updatedAt: optStr(row.updated_at_iso),
+    validatedAt: optStr(row.validated_at),
+    validatedBy: optStr(row.validated_by),
+    rejectionReason: optStr(row.rejection_reason),
+    targetMemberId: optStr(row.target_member_id),
+    nom: str(row.nom),
+    prenom: str(row.prenom),
+    email: str(row.email),
+    telephone: str(row.telephone),
+    adresse: optStr(row.adresse),
+    codePostal: optStr(row.code_postal),
+    ville: str(row.ville),
+    departement: optStr(row.departement),
+    region: optStr(row.region),
+    zone: optStr(row.zone),
+    pays: optStr(row.pays),
+    situationProfessionnelle: optStr(row.situation_professionnelle),
+    domaineEtude: optStr(row.domaine_etude),
+    anneeArriveeFrance: optStr(row.annee_arrivee_france),
+    organisation: optStr(row.organisation),
+    fonction: optStr(row.fonction),
+    photo: optStr(row.photo),
+    latitude: optNum(row.latitude),
+    longitude: optNum(row.longitude),
+    champsPersonnalises: Array.isArray(row.champs_personnalises) && row.champs_personnalises.length > 0
+      ? (row.champs_personnalises as CustomField[])
+      : undefined,
+    notes: optStr(row.notes)
+  }) as DemandeMember;
+}
+
+export function demandeToDb(d: DemandeMember): Row {
+  return {
+    id: d.id,
+    type: d.type,
+    status: d.status,
+    created_at_iso: d.createdAt,
+    updated_at_iso: d.updatedAt ?? null,
+    validated_at: d.validatedAt ?? null,
+    validated_by: d.validatedBy ?? null,
+    rejection_reason: d.rejectionReason ?? null,
+    target_member_id: d.targetMemberId ?? null,
+    nom: d.nom ?? '',
+    prenom: d.prenom ?? '',
+    email: d.email ?? '',
+    telephone: d.telephone ?? '',
+    adresse: d.adresse ?? null,
+    code_postal: d.codePostal ?? null,
+    ville: d.ville ?? '',
+    departement: d.departement ?? null,
+    region: d.region ?? null,
+    zone: d.zone ?? null,
+    pays: d.pays ?? null,
+    situation_professionnelle: d.situationProfessionnelle ?? null,
+    domaine_etude: d.domaineEtude ?? null,
+    annee_arrivee_france: d.anneeArriveeFrance ?? null,
+    organisation: d.organisation ?? null,
+    fonction: d.fonction ?? null,
+    photo: d.photo ?? null,
+    latitude: d.latitude ?? null,
+    longitude: d.longitude ?? null,
+    champs_personnalises: d.champsPersonnalises ?? [],
+    notes: d.notes ?? null
+  };
 }
 
 // ---------------------------------------------------------------------------

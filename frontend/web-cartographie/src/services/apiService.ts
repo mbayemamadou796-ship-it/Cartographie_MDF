@@ -1,4 +1,4 @@
-import { Member, AppUser, CustomZone, AuditLog, ImportLog, AppSettings } from '../types';
+import { Member, AppUser, CustomZone, AuditLog, ImportLog, AppSettings, DemandeMember } from '../types';
 
 /**
  * Client HTTP du backend Express + Supabase (couche données uniquement).
@@ -28,6 +28,7 @@ export interface BootstrapData {
   settings: AppSettings & { lastUpdateDate?: string };
   members: Member[];
   zones: CustomZone[];
+  demandes: DemandeMember[] | null;   // null si la table demandes n'existe pas encore
   users: AppUser[];
   importLogs: ImportLog[];
   auditLogs: AuditLog[];
@@ -201,6 +202,7 @@ export class ApiService {
     const data = (await res.json()) as BootstrapData;
     snapshots.members = JSON.stringify(data.members);
     snapshots.zones = JSON.stringify(data.zones);
+    snapshots.demandes = JSON.stringify(data.demandes ?? []);
     snapshots.users = JSON.stringify(data.users);
     snapshots.importLogs = JSON.stringify(data.importLogs);
     bootstrapped = true;
@@ -218,6 +220,66 @@ export class ApiService {
 
   static syncZones(zones: CustomZone[]): void {
     scheduleSync('zones', '/zones', zones);
+  }
+
+  static syncDemandes(demandes: DemandeMember[]): void {
+    scheduleSync('demandes', '/demandes', demandes);
+  }
+
+  /**
+   * Rafraîchit les demandes depuis le serveur (vérité serveur : les
+   * soumissions du formulaire public arrivent hors de cette session).
+   * Alimente le snapshot anti-écho ; null si API indisponible / pas de session.
+   */
+  static async fetchDemandes(): Promise<DemandeMember[] | null> {
+    if (!loadTokens()) return null;
+    try {
+      const res = await request('/demandes');
+      if (!res.ok) return null;
+      const demandes = (await res.json()) as DemandeMember[];
+      snapshots.demandes = JSON.stringify(demandes);
+      return demandes;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Soumission d'une demande depuis le formulaire public (aucune
+   * authentification requise). Renvoie la demande enregistrée par le serveur,
+   * ou null si l'API est injoignable (le localStorage sert alors de secours).
+   */
+  static async submitPublicDemande(demande: DemandeMember): Promise<DemandeMember | null> {
+    try {
+      const res = await fetch(`${API_URL}/api/public/demandes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(demande)
+      });
+      if (!res.ok) {
+        console.warn(`[ApiService] Soumission de demande refusée (${res.status})`);
+        return null;
+      }
+      return (await res.json()) as DemandeMember;
+    } catch (e) {
+      console.warn('[ApiService] Soumission de demande impossible (API hors ligne ?)', e);
+      return null;
+    }
+  }
+
+  /**
+   * Suivi public d'une demande par identifiant exact (aucune authentification).
+   * Renvoie un sous-ensemble des champs (statut, motif de refus...), ou null
+   * si introuvable / API injoignable.
+   */
+  static async trackPublicDemande(id: string): Promise<Partial<DemandeMember> | null> {
+    try {
+      const res = await fetch(`${API_URL}/api/public/demandes/${encodeURIComponent(id)}`);
+      if (!res.ok) return null;
+      return (await res.json()) as Partial<DemandeMember>;
+    } catch {
+      return null;
+    }
   }
 
   static syncUsers(users: AppUser[]): void {

@@ -417,68 +417,46 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Demandes State with LocalStorage Persistence
-  const [demandes, setDemandes] = useState<DemandeMember[]>(() => {
-    const existing = DemandeService.getDemandes();
-    if (existing && existing.length > 0) {
-      return existing;
-    }
-    // Seed sample pending demandes if empty for initial test
-    const initialDemandes: DemandeMember[] = [
-      {
-        id: 'dem-001',
-        type: 'INSCRIPTION',
-        status: 'EN_ATTENTE',
-        createdAt: new Date(Date.now() - 3600000 * 3).toISOString(),
-        nom: 'Diallo',
-        prenom: 'Mariama',
-        email: 'mariama.diallo@exemple.fr',
-        telephone: '06 12 34 56 78',
-        ville: 'Nantes',
-        departement: '44',
-        situationProfessionnelle: 'Employé(e)',
-        domaineEtude: 'Communication & Marketing',
-        organisation: 'Nantes Métropole',
-        fonction: 'Chargée de communication'
-      },
-      {
-        id: 'dem-002',
-        type: 'MISE_A_JOUR',
-        status: 'EN_ATTENTE',
-        createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-        nom: 'Sow',
-        prenom: 'Ibrahima',
-        email: 'ibrahima.sow@exemple.fr',
-        telephone: '07 88 99 00 11',
-        ville: 'Lyon',
-        departement: '69',
-        situationProfessionnelle: 'Entrepreneur / Indépendant',
-        domaineEtude: 'Informatique & Réseaux',
-        organisation: 'Sow Digital Agency',
-        notes: 'Déménagement récent à Lyon.'
-      }
-    ];
-    DemandeService.saveDemandes(initialDemandes);
-    return initialDemandes;
-  });
+  // Demandes State — cache localStorage au démarrage, vérité serveur ensuite
+  const [demandes, setDemandes] = useState<DemandeMember[]>(() => DemandeService.getDemandes());
 
-  // Real-time synchronization for pending demandes between Formulaire App and Cartographie Admin
+  // Synchronisation temps réel même navigateur (formulaire public -> bureau) :
+  // 'storage' couvre les autres onglets, 'mbok_demandes_updated' l'onglet courant.
   useEffect(() => {
     const syncDemandesFromStorage = () => {
-      const latest = DemandeService.getDemandes();
-      setDemandes(latest);
+      setDemandes(DemandeService.getDemandes());
     };
 
     window.addEventListener('storage', syncDemandesFromStorage);
     window.addEventListener('mbok_demandes_updated', syncDemandesFromStorage);
-    const interval = setInterval(syncDemandesFromStorage, 1000);
 
     return () => {
       window.removeEventListener('storage', syncDemandesFromStorage);
       window.removeEventListener('mbok_demandes_updated', syncDemandesFromStorage);
-      clearInterval(interval);
     };
   }, []);
+
+  // Rafraîchissement périodique depuis le backend : les soumissions du
+  // formulaire public faites depuis d'autres appareils arrivent par ici.
+  useEffect(() => {
+    if (!currentUser || !ApiService.hasSession()) return;
+
+    const refresh = async () => {
+      const serverDemandes = await ApiService.fetchDemandes();
+      if (serverDemandes) {
+        DemandeService.saveDemandes(serverDemandes);
+        setDemandes(serverDemandes);
+      }
+    };
+
+    const interval = setInterval(refresh, 15000);
+    return () => clearInterval(interval);
+  }, [currentUser?.id]);
+
+  // Synchronisation backend des changements d'état (validation, refus...)
+  useEffect(() => {
+    ApiService.syncDemandes(demandes);
+  }, [demandes]);
 
   const pendingDemandesCount = useMemo(() => {
     return demandes.filter((d) => d.status === 'EN_ATTENTE').length;
@@ -675,25 +653,16 @@ export default function App() {
     );
     setDemandes(updatedDemandesList);
 
-    // 5. Audit Log
-    const log: AuditLog = {
-      id: `log-val-${Date.now()}`,
-      timestamp: new Date().toLocaleDateString('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
-      category: 'member',
-      action: 'Validation Inscription Membre',
-      details: `Demande de ${newMember.prenom} ${newMember.nom} validée et intégrée dans la Zone ${assignedZone}`,
-      userId: currentUser?.id || 'usr-admin',
-      userName: currentUser?.name || 'Administrateur MDF',
-      userRole: userRole,
-      severity: 'info'
-    };
-    setAuditLogs((prev) => [log, ...prev]);
+    // 5. Audit Log (envoyé aussi au backend via addAuditLog)
+    addAuditLog(
+      'member',
+      'Validation Inscription Membre',
+      `Demande de ${newMember.prenom} ${newMember.nom} validée et intégrée dans la Zone ${assignedZone}`,
+      'info',
+      newMemberId,
+      `${newMember.prenom} ${newMember.nom}`.trim(),
+      assignedZone
+    );
 
     recordDataUpdate();
     showToast(`Demande de ${newMember.prenom} ${newMember.nom} validée et intégrée à la Zone ${assignedZone} !`);
@@ -708,24 +677,13 @@ export default function App() {
     );
     setDemandes(updatedDemandesList);
 
-    const log: AuditLog = {
-      id: `log-ref-${Date.now()}`,
-      timestamp: new Date().toLocaleDateString('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
-      category: 'member',
-      action: 'Refus Demande Membre',
-      details: `Demande ${demandeId} refusée. Motif : ${reason || 'Information non conforme'}`,
-      userId: currentUser?.id || 'usr-admin',
-      userName: currentUser?.name || 'Administrateur MDF',
-      userRole: userRole,
-      severity: 'warning'
-    };
-    setAuditLogs((prev) => [log, ...prev]);
+    addAuditLog(
+      'member',
+      'Refus Demande Membre',
+      `Demande ${demandeId} refusée. Motif : ${reason || 'Information non conforme'}`,
+      'warning',
+      demandeId
+    );
 
     showToast('La demande a été refusée.');
   };
@@ -883,6 +841,10 @@ export default function App() {
         if (lastUpdateDate) setLastUpdateDate(lastUpdateDate);
         setMembers(d.members);
         setCustomZones(d.zones);
+        if (Array.isArray(d.demandes)) {
+          DemandeService.saveDemandes(d.demandes);
+          setDemandes(d.demandes);
+        }
         if (currentUser.role === 'admin') {
           if (d.users.length > 0) setUsers(d.users);
           setImportLogs(d.importLogs);

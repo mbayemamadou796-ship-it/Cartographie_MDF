@@ -98,6 +98,54 @@ export const auditLogSchema = z.object({
   severity: z.enum(['info', 'warning', 'danger']).optional()
 });
 
+export const demandeSchema = z.object({
+  id: z.string().min(1).max(120),
+  type: z.enum(['INSCRIPTION', 'MISE_A_JOUR']),
+  status: z.enum(['EN_ATTENTE', 'VALIDEE', 'REFUSEE']),
+  createdAt: z.string().max(60),
+  updatedAt: z.string().max(60).optional(),
+  validatedAt: z.string().max(60).optional(),
+  validatedBy: z.string().max(300).optional(),
+  rejectionReason: z.string().max(2000).optional(),
+  targetMemberId: z.string().max(120).optional(),
+  nom: z.string().max(300),
+  prenom: z.string().max(300).default(''),
+  email: z.string().max(320).default(''),
+  telephone: z.string().max(100).default(''),
+  adresse: z.string().max(500).optional(),
+  codePostal: z.string().max(50).optional(),
+  ville: z.string().max(200).default(''),
+  departement: z.string().max(200).optional(),
+  region: z.string().max(200).optional(),
+  zone: z.string().max(200).optional(),
+  pays: z.string().max(200).optional(),
+  situationProfessionnelle: z.string().max(300).optional(),
+  domaineEtude: z.string().max(300).optional(),
+  anneeArriveeFrance: z.string().max(50).optional(),
+  organisation: z.string().max(300).optional(),
+  fonction: z.string().max(300).optional(),
+  photo: z.string().optional(),           // URL ou data-URL base64 (<= 5 Mo)
+  latitude: z.number().finite().optional(),
+  longitude: z.number().finite().optional(),
+  champsPersonnalises: z.array(customFieldSchema).optional(),
+  notes: z.string().max(5000).optional()
+});
+
+export const demandesArraySchema = z.array(demandeSchema).max(20000);
+
+/**
+ * Création via le formulaire public (non authentifié) : le client ne contrôle
+ * ni le statut ni les champs de validation — ils sont forcés côté serveur.
+ * La photo est bornée (data-URL base64 <= ~5 Mo) car l'endpoint est public.
+ */
+export const publicDemandeSchema = demandeSchema
+  .omit({ status: true, validatedAt: true, validatedBy: true, rejectionReason: true, updatedAt: true })
+  .extend({
+    nom: z.string().trim().min(1).max(300),
+    email: z.string().trim().min(3).max(320),
+    photo: z.string().max(7_000_000).optional()
+  });
+
 export const importLogSchema = z.object({
   id: z.string().min(1).max(120),
   filename: z.string().max(500),

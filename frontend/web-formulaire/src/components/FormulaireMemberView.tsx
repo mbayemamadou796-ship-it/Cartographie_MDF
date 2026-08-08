@@ -7,6 +7,7 @@ import {
 } from '@shared/config/memberFields';
 import { DemandeMember, CustomField } from '@shared/types';
 import { DemandeService } from '../../../web-cartographie/src/services/demandeService';
+import { ApiService } from '../../../web-cartographie/src/services/apiService';
 import { LogoMbok } from '../../../web-cartographie/src/modules/parametres/LogoMbok';
 import { 
   UserPlus, 
@@ -198,15 +199,36 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
     }
   };
 
-  const handleSearchTracking = (e: React.FormEvent) => {
+  const handleSearchTracking = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trackingId.trim()) return;
+    const query = trackingId.trim();
+    if (!query) return;
+
+    // Vérité serveur d'abord : le statut est mis à jour par les admins depuis
+    // un autre appareil. Le suivi serveur n'est possible que par identifiant.
+    if (query.toLowerCase().startsWith('dem-')) {
+      const fromApi = await ApiService.trackPublicDemande(query);
+      if (fromApi && fromApi.id) {
+        const locals = DemandeService.getDemandes();
+        const idx = locals.findIndex((d) => d.id === fromApi.id);
+        const merged = idx !== -1 ? { ...locals[idx], ...fromApi } : (fromApi as DemandeMember);
+        if (idx !== -1) {
+          locals[idx] = merged as DemandeMember;
+          DemandeService.saveDemandes(locals);
+        }
+        setTrackedDemande(merged as DemandeMember);
+        setTrackingSearched(true);
+        return;
+      }
+    }
+
+    // Secours local (même navigateur) : recherche par id, email ou téléphone.
     const demandes = DemandeService.getDemandes();
     const found = demandes.find(
       (d) =>
-        d.id.toLowerCase() === trackingId.trim().toLowerCase() ||
-        d.email.toLowerCase() === trackingId.trim().toLowerCase() ||
-        d.telephone.includes(trackingId.trim())
+        d.id.toLowerCase() === query.toLowerCase() ||
+        d.email.toLowerCase() === query.toLowerCase() ||
+        d.telephone.includes(query)
     );
     setTrackedDemande(found || null);
     setTrackingSearched(true);

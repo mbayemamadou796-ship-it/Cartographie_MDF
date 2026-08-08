@@ -1,7 +1,10 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { authRouter } from '../auth/authController';
 import { requireAuth, requireRole, AuthedRequest } from '../auth/authMiddleware';
+import { publicDemandeRateLimiter, publicTrackingRateLimiter } from '../auth/rateLimit';
+import { logger } from '../utils/logger';
 import { memberService } from '../modules/membres/memberService';
+import { demandeService } from '../modules/demandes/demandeService';
 import { zoneService } from '../modules/zones/zoneService';
 import { userService, IncomingAppUser } from '../modules/utilisateurs/userService';
 import { auditService } from '../modules/journaux/auditService';
@@ -13,9 +16,11 @@ import {
   appUsersArraySchema,
   auditLogSchema,
   importLogsArraySchema,
-  settingsSchema
+  settingsSchema,
+  demandesArraySchema,
+  publicDemandeSchema
 } from '../utils/validation';
-import { AppUser, AuditLog, CustomZone, Member } from '../../shared/types/index';
+import { AppUser, AuditLog, CustomZone, DemandeMember, Member } from '../../shared/types/index';
 
 /** Express 4 ne remonte pas les rejets de promesses : wrapper systématique. */
 function asyncHandler(fn: (req: AuthedRequest, res: Response) => Promise<void>): RequestHandler {
@@ -46,16 +51,23 @@ apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
   const actor = req.appUser as AppUser;
   const isAdmin = actor.role === 'admin';
 
-  const [settings, members, zones, users, importLogs, auditLogs] = await Promise.all([
+  const [settings, members, zones, demandes, users, importLogs, auditLogs] = await Promise.all([
     settingsService.get(),
     memberService.list(),
     zoneService.list(),
+    // Tolérant : si la migration 003_demandes.sql n'a pas encore été exécutée,
+    // le reste de l'hydratation doit continuer à fonctionner (demandes: null
+    // => le frontend conserve son cache local sans l'écraser).
+    demandeService.list().catch((e: Error) => {
+      logger.error(`bootstrap demandes indisponibles: ${e.message}`);
+      return null;
+    }),
     isAdmin ? userService.list() : Promise.resolve([] as AppUser[]),
     isAdmin ? excelService.listImportLogs() : Promise.resolve([]),
     isAdmin ? auditService.list() : Promise.resolve([])
   ]);
 
-  res.json({ settings, members, zones, users, importLogs, auditLogs, currentUser: actor });
+  res.json({ settings, members, zones, demandes, users, importLogs, auditLogs, currentUser: actor });
 }));
 
 // --------------------------------------------------------------------------
@@ -113,6 +125,40 @@ apiRouter.delete('/users/:id', requireAuth, requireRole('admin'), asyncHandler(a
     res.status(409).json({ error: result.conflict });
     return;
   }
+  res.status(204).end();
+}));
+
+// --------------------------------------------------------------------------
+// Demandes d'adhésion / mise à jour
+// --------------------------------------------------------------------------
+
+// Soumission depuis le formulaire public : PAS d'authentification, mais
+// rate-limiting par IP et statut forcé à EN_ATTENTE côté service.
+apiRouter.post('/public/demandes', publicDemandeRateLimiter, asyncHandler(async (req, res) => {
+  const parsed = publicDemandeSchema.safeParse(req.body);
+  if (!parsed.success) return badRequest(res, 'Payload demande invalide.');
+  const created = await demandeService.createPublic(parsed.data as DemandeMember);
+  res.status(201).json(created);
+}));
+
+// Suivi public d'une demande par son identifiant exact ('dem-...').
+apiRouter.get('/public/demandes/:id', publicTrackingRateLimiter, asyncHandler(async (req, res) => {
+  const demande = await demandeService.trackById(req.params.id as string);
+  if (!demande) {
+    res.status(404).json({ error: 'Demande introuvable.' });
+    return;
+  }
+  res.json(demande);
+}));
+
+apiRouter.get('/demandes', requireAuth, asyncHandler(async (_req, res) => {
+  res.json(await demandeService.list());
+}));
+
+apiRouter.put('/demandes', requireAuth, asyncHandler(async (req, res) => {
+  const parsed = demandesArraySchema.safeParse(req.body);
+  if (!parsed.success) return badRequest(res, 'Payload demandes invalide.');
+  await demandeService.bulkUpsert(parsed.data as DemandeMember[], req.appUser as AppUser);
   res.status(204).end();
 }));
 

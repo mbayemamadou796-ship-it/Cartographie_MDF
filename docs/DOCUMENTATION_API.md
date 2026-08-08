@@ -73,7 +73,19 @@ La lecture passe par `/api/bootstrap` (admin uniquement, 500 entrées max, plus 
 ### `PUT /api/import-logs` (`ImportLog[]`) — admin (non-admin : no-op 204)
 Upsert bulk. → 204. Le parsing Excel et le géocodage restent côté client (frontend figé) : l'API ne fait que persister les résultats.
 
-## 9. Paramètres
+## 9. Demandes d'adhésion / mise à jour (formulaire public)
+
+Alimente le module « Demandes » de l'espace bureau et le formulaire public
+(`?app=formulaire`). Table `demandes` (migration `003_demandes.sql`).
+
+| Route | Accès | Comportement |
+|---|---|---|
+| `POST /api/public/demandes` (`DemandeMember` sans statut) | **public**, rate-limité (10 / 15 min / IP) | Crée une demande. Statut forcé à `EN_ATTENTE`, champs de validation ignorés, insert strict (jamais d'écrasement d'une demande existante). → 201 + demande enregistrée |
+| `GET /api/public/demandes/:id` | **public**, rate-limité (60 / 15 min / IP) | Suivi par identifiant exact (`dem-...`) : sous-ensemble des champs (statut, motif de refus...), jamais la photo. → 200 ou 404 |
+| `GET /api/demandes` | authentifié | Liste complète, plus récentes d'abord. Aussi incluse dans `/api/bootstrap` (`demandes`, `null` si la migration 003 n'a pas été exécutée). |
+| `PUT /api/demandes` (`DemandeMember[]`) | admin (non-admin : no-op 204) | Upsert bulk (validation / refus depuis l'espace bureau). → 204 |
+
+## 10. Paramètres
 
 ### `PUT /api/settings` — admin (non-admin : no-op 204)
 `Partial<AppSettings> & { lastUpdateDate?: string }` — merge sur la ligne unique. `logoUrl` accepte une data-URL base64 (limite globale de payload : 50 Mo). → 204.

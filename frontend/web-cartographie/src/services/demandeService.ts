@@ -1,7 +1,19 @@
 import { DemandeMember } from '../types';
+import { ApiService } from './apiService';
 
 const DEMANDES_STORAGE_KEY = 'mbok_de_france_demandes_v1';
 
+/**
+ * Demandes d'adhésion / mise à jour.
+ *
+ * Même philosophie que le reste de l'application : le localStorage est le
+ * cache local (affichage instantané, mode offline), le backend Supabase est
+ * la vérité partagée entre appareils :
+ * - submitDemande (formulaire public, non authentifié) écrit le cache puis
+ *   pousse vers POST /api/public/demandes en arrière-plan ;
+ * - l'espace bureau synchronise l'état via ApiService.syncDemandes /
+ *   fetchDemandes (voir App.tsx).
+ */
 export class DemandeService {
   static getDemandes(): DemandeMember[] {
     try {
@@ -34,6 +46,9 @@ export class DemandeService {
     };
     existing.unshift(newDemande);
     this.saveDemandes(existing);
+    // Envoi vers le backend en arrière-plan : l'expérience du formulaire
+    // public reste identique même si l'API est momentanément indisponible.
+    ApiService.submitPublicDemande(newDemande);
     return newDemande;
   }
 
