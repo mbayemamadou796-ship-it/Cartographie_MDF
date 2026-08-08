@@ -533,7 +533,18 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
                   <select
                     required
                     value={formData.zone}
-                    onChange={(e) => setFormData({ ...formData, zone: e.target.value, region: e.target.value })}
+                    onChange={(e) => {
+                      const zone = e.target.value;
+                      // Changement de zone : on ne conserve la ville que si elle
+                      // appartient à la nouvelle zone (le champ ville est un menu
+                      // déroulant alimenté par getVillesForZone).
+                      setFormData((prev) => ({
+                        ...prev,
+                        zone,
+                        region: zone,
+                        ville: getVillesForZone(zone).includes(prev.ville) ? prev.ville : ''
+                      }));
+                    }}
                     className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium cursor-pointer"
                   >
                     <option value="" disabled>-- Sélectionner une zone --</option>
@@ -626,22 +637,25 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
                   <label className="block font-semibold text-slate-700 mb-1">
                     Ville de résidence (Commune) <span className="text-rose-600">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    list="villes-zone-formulaire"
-                    placeholder={formData.zone ? `Villes de la zone ${formData.zone}...` : 'Ex: Saint-Denis, Rennes, Lyon, Marseille...'}
                     value={formData.ville}
                     onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
-                    className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium ${
+                    className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium cursor-pointer ${
                       errors.ville ? 'border-rose-300 bg-rose-50' : 'border-emerald-200'
                     }`}
-                  />
-                  <datalist id="villes-zone-formulaire">
-                    {getVillesForZone(formData.zone).map((v) => (
-                      <option key={v} value={v} />
+                  >
+                    <option value="" disabled>
+                      {formData.zone ? `-- Villes de la zone ${formData.zone} --` : '-- Sélectionner une ville --'}
+                    </option>
+                    {/* La ville courante (pré-remplie hors liste) reste sélectionnable */}
+                    {[
+                      ...(formData.ville && !getVillesForZone(formData.zone).includes(formData.ville) ? [formData.ville] : []),
+                      ...getVillesForZone(formData.zone)
+                    ].map((v) => (
+                      <option key={v} value={v}>{v}</option>
                     ))}
-                  </datalist>
+                  </select>
                   {errors.ville && <p className="text-[11px] text-rose-600 mt-1 font-semibold">{errors.ville}</p>}
                 </div>
 
