@@ -192,16 +192,15 @@ export const MemberModal: React.FC<MemberModalProps> = ({
               </div>
             )}
 
-            {/* SECTION 4: Adresse & Géolocalisation Cartographique */}
+            {/* SECTION 4: Ville de Résidence & Géolocalisation Cartographique */}
             <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 space-y-2">
               <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 font-['Outfit'] border-b border-emerald-100 pb-1 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                <span>4. Adresse & Géolocalisation</span>
+                <span>4. Ville de Résidence & Géolocalisation</span>
               </div>
 
               <div className="space-y-1 pt-0.5">
-                <p className="font-bold text-slate-900">{member.adresse || 'Adresse non spécifiée'}</p>
-                <p className="text-slate-700 font-medium">{member.codePostal} {member.ville} {member.departement ? `(${member.departement})` : ''}</p>
+                <p className="font-bold text-slate-900">{member.ville || 'Ville non spécifiée'} {member.departement ? `(${member.departement})` : ''}</p>
               </div>
 
               <div className="pt-2 border-t border-emerald-100 flex items-center justify-between text-slate-500 text-[11px]">

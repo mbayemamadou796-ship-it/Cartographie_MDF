@@ -26,10 +26,15 @@ import { AuditLogsView } from '../components/AuditLogsView';
 import { SettingsView } from '../components/SettingsView';
 import { EditLogoModal } from '../components/EditLogoModal';
 import { LoginScreen } from '../components/LoginScreen';
+import { DemandesView } from '../modules/demandes/DemandesView';
+import { DemandeService } from '../services/demandeService';
+import { DemandeMember } from '../types';
+import { AppFormulaire } from '../../../web-formulaire/src/app/AppFormulaire';
 import { exportToExcel, exportToCsv } from '../utils/excelUtils';
 import { ApiService } from '../services/apiService';
 import { FRENCH_ZONES } from '../modules/membres/AdminMemberFormModal';
-import { CheckCircle2, MapPin, Users, ArrowRight } from 'lucide-react';
+import { geocodeVille, calculateCityOffsetCoordinates } from '../services/geocodingService';
+import { CheckCircle2, MapPin, Users, ArrowRight, Layers, FileText, ExternalLink } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'mbok_de_france_members_v1';
 const LOCAL_STORAGE_UPDATE_KEY = 'mbok_de_france_last_update_v1';
@@ -377,16 +382,353 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // Mode of App: 'bureau' (Cartographie MDF Admin) or 'formulaire' (Public Member Portal)
+  const [appMode, setAppMode] = useState<'bureau' | 'formulaire'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const appParam = params.get('app');
+      if (appParam === 'formulaire' || window.location.pathname.includes('/formulaire')) {
+        return 'formulaire';
+      }
+    }
+    return 'bureau';
+  });
+
+  const switchAppMode = (mode: 'bureau' | 'formulaire') => {
+    setAppMode(mode);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('app', mode);
+      window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const appParam = params.get('app');
+      if (appParam === 'formulaire') {
+        setAppMode('formulaire');
+      } else if (appParam === 'bureau' || appParam === 'cartographie') {
+        setAppMode('bureau');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Demandes State with LocalStorage Persistence
+  const [demandes, setDemandes] = useState<DemandeMember[]>(() => {
+    const existing = DemandeService.getDemandes();
+    if (existing && existing.length > 0) {
+      return existing;
+    }
+    // Seed sample pending demandes if empty for initial test
+    const initialDemandes: DemandeMember[] = [
+      {
+        id: 'dem-001',
+        type: 'INSCRIPTION',
+        status: 'EN_ATTENTE',
+        createdAt: new Date(Date.now() - 3600000 * 3).toISOString(),
+        nom: 'Diallo',
+        prenom: 'Mariama',
+        email: 'mariama.diallo@exemple.fr',
+        telephone: '06 12 34 56 78',
+        ville: 'Nantes',
+        departement: '44',
+        situationProfessionnelle: 'Employé(e)',
+        domaineEtude: 'Communication & Marketing',
+        organisation: 'Nantes Métropole',
+        fonction: 'Chargée de communication'
+      },
+      {
+        id: 'dem-002',
+        type: 'MISE_A_JOUR',
+        status: 'EN_ATTENTE',
+        createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+        nom: 'Sow',
+        prenom: 'Ibrahima',
+        email: 'ibrahima.sow@exemple.fr',
+        telephone: '07 88 99 00 11',
+        ville: 'Lyon',
+        departement: '69',
+        situationProfessionnelle: 'Entrepreneur / Indépendant',
+        domaineEtude: 'Informatique & Réseaux',
+        organisation: 'Sow Digital Agency',
+        notes: 'Déménagement récent à Lyon.'
+      }
+    ];
+    DemandeService.saveDemandes(initialDemandes);
+    return initialDemandes;
+  });
+
+  // Real-time synchronization for pending demandes between Formulaire App and Cartographie Admin
+  useEffect(() => {
+    const syncDemandesFromStorage = () => {
+      const latest = DemandeService.getDemandes();
+      setDemandes(latest);
+    };
+
+    window.addEventListener('storage', syncDemandesFromStorage);
+    window.addEventListener('mbok_demandes_updated', syncDemandesFromStorage);
+    const interval = setInterval(syncDemandesFromStorage, 1000);
+
+    return () => {
+      window.removeEventListener('storage', syncDemandesFromStorage);
+      window.removeEventListener('mbok_demandes_updated', syncDemandesFromStorage);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const pendingDemandesCount = useMemo(() => {
+    return demandes.filter((d) => d.status === 'EN_ATTENTE').length;
+  }, [demandes]);
+
   // Security Guard: Reset active tab for non-admin users if viewing an admin-only tab
   useEffect(() => {
     const allowedTabs = userRole === 'admin'
-      ? ['dashboard', 'directory', 'zones', 'users', 'quality', 'import_export', 'audit_logs', 'settings']
-      : ['dashboard', 'directory', 'zones'];
+      ? ['dashboard', 'directory', 'zones', 'demandes', 'users', 'quality', 'import_export', 'audit_logs', 'settings']
+      : ['dashboard', 'directory', 'zones', 'demandes'];
 
     if (!allowedTabs.includes(activeTab)) {
       setActiveTab('directory');
     }
   }, [userRole, activeTab]);
+
+  // Handlers for Demandes (Inscription / Updates) Validation
+  const handleValiderDemande = (demandeId: string, updatedData?: Partial<DemandeMember>) => {
+    const targetDemande = demandes.find((d) => d.id === demandeId);
+    if (!targetDemande) return;
+
+    const dataToUse = { ...targetDemande, ...updatedData };
+
+    // 1. Calculate Geocoding Coordinates
+    const cityCoords = geocodeVille(dataToUse.ville || 'Paris');
+    const offsetCoords = calculateCityOffsetCoordinates(
+      dataToUse.ville || 'Paris',
+      members.map((m) => ({ id: m.id, latitude: m.latitude, longitude: m.longitude, ville: m.ville }))
+    );
+
+    // 2. Automatically Determine MDF Regional Zone based on Zone, Region, City, Departement, or CodePostal
+    const requestedZone = (dataToUse.zone || dataToUse.region || '').trim();
+    const vLower = (dataToUse.ville || '').toLowerCase();
+    const dLower = (dataToUse.departement || '').toLowerCase();
+    const cpLower = (dataToUse.codePostal || '').toLowerCase();
+
+    let assignedZone = 'Île-de-France';
+
+    const directMatch = FRENCH_ZONES.find(
+      (fz) => fz.toLowerCase() === requestedZone.toLowerCase()
+    );
+
+    if (directMatch) {
+      assignedZone = directMatch;
+    } else if (
+      requestedZone.toLowerCase().includes('bretagne') ||
+      vLower.includes('rennes') || vLower.includes('brest') || vLower.includes('quimper') ||
+      vLower.includes('lorient') || vLower.includes('vannes') || vLower.includes('saint-brieuc') ||
+      vLower.includes('saint-malo') || vLower.includes('morlaix') || vLower.includes('fougères') ||
+      dLower.includes('35') || dLower.includes('29') || dLower.includes('56') || dLower.includes('22') ||
+      dLower.includes('ille-et-vilaine') || dLower.includes('finistère') || dLower.includes('finistere') ||
+      dLower.includes('morbihan') || dLower.includes('côtes') || dLower.includes('cotes') ||
+      cpLower.startsWith('35') || cpLower.startsWith('29') || cpLower.startsWith('56') || cpLower.startsWith('22')
+    ) {
+      assignedZone = 'Bretagne';
+    } else if (
+      requestedZone.toLowerCase().includes('auvergne') || requestedZone.toLowerCase().includes('rhône') || requestedZone.toLowerCase().includes('rhone') ||
+      vLower.includes('lyon') || vLower.includes('grenoble') || vLower.includes('saint-étienne') || vLower.includes('saint-etienne') || vLower.includes('clermont') ||
+      dLower.includes('69') || dLower.includes('38') || dLower.includes('42') || dLower.includes('63') || dLower.includes('74') || dLower.includes('73') ||
+      cpLower.startsWith('69') || cpLower.startsWith('38') || cpLower.startsWith('42') || cpLower.startsWith('63') || cpLower.startsWith('74') || cpLower.startsWith('73')
+    ) {
+      assignedZone = 'Auvergne-Rhône-Alpes';
+    } else if (
+      requestedZone.toLowerCase().includes('pays de la loire') || requestedZone.toLowerCase().includes('loire') ||
+      vLower.includes('nantes') || vLower.includes('angers') || vLower.includes('le mans') || vLower.includes('saint-nazaire') ||
+      dLower.includes('44') || dLower.includes('49') || dLower.includes('72') || dLower.includes('85') || dLower.includes('53') ||
+      cpLower.startsWith('44') || cpLower.startsWith('49') || cpLower.startsWith('72') || cpLower.startsWith('85') || cpLower.startsWith('53')
+    ) {
+      assignedZone = 'Pays de la Loire';
+    } else if (
+      requestedZone.toLowerCase().includes('hauts-de-france') || requestedZone.toLowerCase().includes('nord') ||
+      vLower.includes('lille') || vLower.includes('amiens') || vLower.includes('roubaix') || vLower.includes('dunkerque') ||
+      dLower.includes('59') || dLower.includes('62') || dLower.includes('80') || dLower.includes('60') || dLower.includes('02') ||
+      cpLower.startsWith('59') || cpLower.startsWith('62') || cpLower.startsWith('80') || cpLower.startsWith('60') || cpLower.startsWith('02')
+    ) {
+      assignedZone = 'Hauts-de-France';
+    } else if (
+      requestedZone.toLowerCase().includes('grand est') || requestedZone.toLowerCase().includes('alsace') ||
+      vLower.includes('strasbourg') || vLower.includes('reims') || vLower.includes('metz') || vLower.includes('nancy') ||
+      dLower.includes('67') || dLower.includes('68') || dLower.includes('57') || dLower.includes('54') || dLower.includes('51') ||
+      cpLower.startsWith('67') || cpLower.startsWith('68') || cpLower.startsWith('57') || cpLower.startsWith('54') || cpLower.startsWith('51')
+    ) {
+      assignedZone = 'Grand Est';
+    } else if (
+      requestedZone.toLowerCase().includes('nouvelle-aquitaine') || requestedZone.toLowerCase().includes('aquitaine') ||
+      vLower.includes('bordeaux') || vLower.includes('limoges') || vLower.includes('poitiers') || vLower.includes('pau') ||
+      dLower.includes('33') || dLower.includes('87') || dLower.includes('86') || dLower.includes('64') || dLower.includes('17') ||
+      cpLower.startsWith('33') || cpLower.startsWith('87') || cpLower.startsWith('86') || cpLower.startsWith('64') || cpLower.startsWith('17')
+    ) {
+      assignedZone = 'Nouvelle-Aquitaine';
+    } else if (
+      requestedZone.toLowerCase().includes('occitanie') ||
+      vLower.includes('toulouse') || vLower.includes('montpellier') || vLower.includes('nîmes') || vLower.includes('nimes') ||
+      dLower.includes('31') || dLower.includes('34') || dLower.includes('30') || dLower.includes('66') || dLower.includes('11') ||
+      cpLower.startsWith('31') || cpLower.startsWith('34') || cpLower.startsWith('30') || cpLower.startsWith('66') || cpLower.startsWith('11')
+    ) {
+      assignedZone = 'Occitanie';
+    } else if (
+      requestedZone.toLowerCase().includes('provence') || requestedZone.toLowerCase().includes('paca') || requestedZone.toLowerCase().includes('côte d\'azur') ||
+      vLower.includes('marseille') || vLower.includes('nice') || vLower.includes('toulon') || vLower.includes('aix') ||
+      dLower.includes('13') || dLower.includes('06') || dLower.includes('83') || dLower.includes('84') ||
+      cpLower.startsWith('13') || cpLower.startsWith('06') || cpLower.startsWith('83') || cpLower.startsWith('84')
+    ) {
+      assignedZone = 'Provence-Alpes-Côte d\'Azur';
+    } else if (
+      requestedZone.toLowerCase().includes('normandie') ||
+      vLower.includes('rouen') || vLower.includes('caen') || vLower.includes('le havre') ||
+      dLower.includes('76') || dLower.includes('14') || dLower.includes('50') || dLower.includes('27') || dLower.includes('61') ||
+      cpLower.startsWith('76') || cpLower.startsWith('14') || cpLower.startsWith('50') || cpLower.startsWith('27') || cpLower.startsWith('61')
+    ) {
+      assignedZone = 'Normandie';
+    } else if (
+      requestedZone.toLowerCase().includes('bourgogne') || requestedZone.toLowerCase().includes('franche-comté') ||
+      vLower.includes('dijon') || vLower.includes('besançon') || vLower.includes('besancon') ||
+      dLower.includes('21') || dLower.includes('25') || dLower.includes('90') || dLower.includes('71') ||
+      cpLower.startsWith('21') || cpLower.startsWith('25') || cpLower.startsWith('90') || cpLower.startsWith('71')
+    ) {
+      assignedZone = 'Bourgogne-Franche-Comté';
+    } else if (
+      requestedZone.toLowerCase().includes('centre') ||
+      vLower.includes('orléans') || vLower.includes('orleans') || vLower.includes('tours') ||
+      dLower.includes('45') || dLower.includes('37') || dLower.includes('18') || dLower.includes('41') ||
+      cpLower.startsWith('45') || cpLower.startsWith('37') || cpLower.startsWith('18') || cpLower.startsWith('41')
+    ) {
+      assignedZone = 'Centre-Val de Loire';
+    } else if (
+      requestedZone.toLowerCase().includes('corse') ||
+      vLower.includes('ajaccio') || vLower.includes('bastia') ||
+      dLower.includes('20') || cpLower.startsWith('20')
+    ) {
+      assignedZone = 'Corse';
+    }
+
+    const finalZone = assignedZone;
+
+    // 3. Create or update member
+    const newMemberId = targetDemande.targetMemberId || `mdf-validated-${Date.now()}`;
+    const newMember: Member = {
+      id: newMemberId,
+      nom: dataToUse.nom || 'Nom',
+      prenom: dataToUse.prenom || 'Prénom',
+      email: dataToUse.email || '',
+      telephone: dataToUse.telephone || '',
+      adresse: dataToUse.adresse || '',
+      codePostal: dataToUse.codePostal || '',
+      ville: dataToUse.ville || 'Paris',
+      departement: dataToUse.departement,
+      region: finalZone,
+      zone: finalZone,
+      pays: dataToUse.pays || 'France',
+      situationProfessionnelle: dataToUse.situationProfessionnelle,
+      domaineEtude: dataToUse.domaineEtude,
+      anneeArriveeFrance: dataToUse.anneeArriveeFrance,
+      organisation: dataToUse.organisation,
+      fonction: dataToUse.fonction,
+      latitude: offsetCoords ? offsetCoords.latitude : cityCoords.latitude,
+      longitude: offsetCoords ? offsetCoords.longitude : cityCoords.longitude,
+      photo: dataToUse.photo,
+      champsPersonnalises: dataToUse.champsPersonnalises || []
+    };
+
+    setMembers((prev) => {
+      const existingIndex = prev.findIndex(
+        (m) => m.id === newMemberId || (newMember.email && m.email.toLowerCase() === newMember.email.toLowerCase())
+      );
+      if (existingIndex !== -1) {
+        const updated = [...prev];
+        updated[existingIndex] = { ...updated[existingIndex], ...newMember };
+        return updated;
+      }
+      return [newMember, ...prev];
+    });
+
+    // 3b. Instantly add member to matching zone in customZones state
+    setCustomZones((prev) => {
+      return prev.map((z) => {
+        if (z.name.trim().toLowerCase() === finalZone.trim().toLowerCase()) {
+          if (!z.memberIds.includes(newMemberId)) {
+            return {
+              ...z,
+              memberIds: [...z.memberIds, newMemberId]
+            };
+          }
+        }
+        return z;
+      });
+    });
+
+    // 4. Update demand status
+    const updatedDemandesList = DemandeService.updateDemandeStatus(
+      demandeId,
+      'VALIDEE',
+      currentUser?.name || 'Administrateur MDF'
+    );
+    setDemandes(updatedDemandesList);
+
+    // 5. Audit Log
+    const log: AuditLog = {
+      id: `log-val-${Date.now()}`,
+      timestamp: new Date().toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      category: 'member',
+      action: 'Validation Inscription Membre',
+      details: `Demande de ${newMember.prenom} ${newMember.nom} validée et intégrée dans la Zone ${assignedZone}`,
+      userId: currentUser?.id || 'usr-admin',
+      userName: currentUser?.name || 'Administrateur MDF',
+      userRole: userRole,
+      severity: 'info'
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+
+    recordDataUpdate();
+    showToast(`Demande de ${newMember.prenom} ${newMember.nom} validée et intégrée à la Zone ${assignedZone} !`);
+  };
+
+  const handleRefuserDemande = (demandeId: string, reason?: string) => {
+    const updatedDemandesList = DemandeService.updateDemandeStatus(
+      demandeId,
+      'REFUSEE',
+      currentUser?.name || 'Administrateur MDF',
+      reason
+    );
+    setDemandes(updatedDemandesList);
+
+    const log: AuditLog = {
+      id: `log-ref-${Date.now()}`,
+      timestamp: new Date().toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      category: 'member',
+      action: 'Refus Demande Membre',
+      details: `Demande ${demandeId} refusée. Motif : ${reason || 'Information non conforme'}`,
+      userId: currentUser?.id || 'usr-admin',
+      userName: currentUser?.name || 'Administrateur MDF',
+      userRole: userRole,
+      severity: 'warning'
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+
+    showToast('La demande a été refusée.');
+  };
 
   // Users Management State with LocalStorage Persistence
   const [users, setUsers] = useState<AppUser[]>(() => {
@@ -1289,6 +1631,11 @@ export default function App() {
     showToast(`Filtre appliqué : ${zoneName}`);
   };
 
+  // Public Member Form Application (Accessible directly via ?app=formulaire or /formulaire without requiring login)
+  if (appMode === 'formulaire') {
+    return <AppFormulaire onSwitchToBureau={() => switchAppMode('bureau')} logoUrl={appSettings.logoUrl} />;
+  }
+
   if (!currentUser) {
     return (
       <LoginScreen
@@ -1303,6 +1650,32 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f0f8f3] text-slate-800 font-['Plus_Jakarta_Sans',sans-serif]">
       
+      {/* Top Application Mode Switcher Banner */}
+      <div className="bg-slate-900 text-slate-200 py-1.5 px-4 text-xs flex items-center justify-between border-b border-slate-800">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 font-bold text-emerald-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            Espace Bureau Administrateur — Cartographie MDF
+          </span>
+          {pendingDemandesCount > 0 && (
+            <span
+              onClick={() => setActiveTab('demandes')}
+              className="bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full text-[10px] cursor-pointer hover:bg-amber-400 transition-colors animate-pulse"
+            >
+              {pendingDemandesCount} demande(s) en attente
+            </span>
+          )}
+        </div>
+
+        <button
+          onClick={() => switchAppMode('formulaire')}
+          className="hover:text-white bg-slate-800 hover:bg-emerald-800 text-emerald-300 font-bold px-3 py-1 rounded-lg border border-emerald-700/50 transition-all flex items-center gap-1.5 text-[11px] cursor-pointer"
+        >
+          <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Ouvrir l'application Formulaire (?app=formulaire)</span>
+        </button>
+      </div>
+
       {/* Top Header */}
       <Header
         userRole={userRole}
@@ -1332,6 +1705,7 @@ export default function App() {
         }}
         userRole={userRole}
         qualityIssueCount={qualityIssueCount}
+        pendingDemandesCount={pendingDemandesCount}
       />
 
       {/* Collapsible Filters Panel (When opened in directory tab) */}
@@ -1483,6 +1857,16 @@ export default function App() {
             onToggleMemberInZone={handleToggleMemberInZone}
             onOpenAddMemberInZone={handleOpenAddMemberInZone}
             onSelectMemberDetails={(m) => setActiveDetailsMember(m)}
+          />
+        )}
+
+        {/* Tab: Demandes d'inscription & mise à jour */}
+        {activeTab === 'demandes' && (
+          <DemandesView
+            demandes={demandes}
+            userRole={userRole}
+            onValiderDemande={handleValiderDemande}
+            onRefuserDemande={handleRefuserDemande}
           />
         )}
 

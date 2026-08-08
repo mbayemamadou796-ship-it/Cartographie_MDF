@@ -32,7 +32,45 @@ export type SortOption = 'nom_asc' | 'nom_desc' | 'ville_asc' | 'organisation_as
 
 export type QualityFilter = 'all' | 'no_phone' | 'no_email' | 'no_location' | 'duplicates';
 
-export type ActiveTab = 'dashboard' | 'directory' | 'zones' | 'users' | 'quality' | 'import_export' | 'audit_logs' | 'settings';
+export type ActiveTab = 'dashboard' | 'directory' | 'zones' | 'users' | 'quality' | 'demandes' | 'import_export' | 'audit_logs' | 'settings';
+
+export type DemandeType = 'INSCRIPTION' | 'MISE_A_JOUR';
+export type DemandeStatus = 'EN_ATTENTE' | 'VALIDEE' | 'REFUSEE';
+
+export interface DemandeMember {
+  id: string;
+  type: DemandeType;
+  status: DemandeStatus;
+  createdAt: string;
+  updatedAt?: string;
+  validatedAt?: string;
+  validatedBy?: string;
+  rejectionReason?: string;
+  
+  // Member fields
+  targetMemberId?: string; // If type is MISE_A_JOUR
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone: string;
+  adresse?: string;
+  codePostal?: string;
+  ville: string;
+  departement?: string;
+  region?: string;
+  zone?: string;
+  pays?: string;
+  situationProfessionnelle?: string;
+  domaineEtude?: string;
+  anneeArriveeFrance?: string;
+  organisation?: string;
+  fonction?: string;
+  photo?: string;
+  latitude?: number;
+  longitude?: number;
+  champsPersonnalises?: CustomField[];
+  notes?: string;
+}
 
 export type AuditLogCategory = 'auth' | 'member' | 'zone' | 'user' | 'data' | 'system';
 

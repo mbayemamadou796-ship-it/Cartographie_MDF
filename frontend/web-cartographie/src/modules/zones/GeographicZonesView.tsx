@@ -95,26 +95,50 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
 
     if (activeDetailsZone.isCustom && activeDetailsZone.id) {
       const foundZone = customZones.find((z) => z.id === activeDetailsZone.id);
-      if (!foundZone) return [];
-      return foundZone.memberIds
-        .map((id) => membersMap.get(id))
-        .filter((m): m is Member => m !== undefined);
+      const zoneNameLower = (foundZone?.name || activeDetailsZone.name || '').trim().toLowerCase();
+      const memberIdsSet = new Set(foundZone ? foundZone.memberIds : []);
+
+      return members.filter((m) => {
+        if (memberIdsSet.has(m.id)) return true;
+        const mZone = (m.zone || '').trim().toLowerCase();
+        const mRegion = (m.region || '').trim().toLowerCase();
+        if (mZone === zoneNameLower || mRegion === zoneNameLower) return true;
+        if (zoneNameLower === 'bretagne') {
+          const v = (m.ville || '').toLowerCase();
+          const d = (m.departement || '').toLowerCase();
+          const cp = (m.codePostal || '').toLowerCase();
+          if (
+            v.includes('rennes') || v.includes('brest') || v.includes('quimper') ||
+            v.includes('lorient') || v.includes('vannes') || v.includes('saint-brieuc') ||
+            v.includes('saint-malo') || d.includes('35') || d.includes('29') ||
+            d.includes('56') || d.includes('22') || d.includes('ille-et-vilaine') ||
+            d.includes('finistère') || d.includes('finistere') || d.includes('morbihan') ||
+            cp.startsWith('35') || cp.startsWith('29') || cp.startsWith('56') || cp.startsWith('22')
+          ) {
+            return true;
+          }
+        }
+        return false;
+      });
     }
 
     if (activeDetailsZone.zoneType === 'region' && activeDetailsZone.defaultGeo?.region) {
-      return members.filter((m) => (m.region?.trim() || 'Non renseignée') === activeDetailsZone.defaultGeo?.region);
+      const targetReg = activeDetailsZone.defaultGeo.region.toLowerCase().trim();
+      return members.filter((m) => (m.region?.trim() || m.zone?.trim() || '').toLowerCase() === targetReg);
     }
 
     if (activeDetailsZone.zoneType === 'departement' && activeDetailsZone.defaultGeo?.departement) {
-      return members.filter((m) => (m.departement?.trim() || 'Non renseigné') === activeDetailsZone.defaultGeo?.departement);
+      const targetDept = activeDetailsZone.defaultGeo.departement.toLowerCase().trim();
+      return members.filter((m) => (m.departement?.trim() || '').toLowerCase() === targetDept);
     }
 
     if (activeDetailsZone.zoneType === 'ville' && activeDetailsZone.defaultGeo?.ville) {
-      return members.filter((m) => (m.ville?.trim() || 'Non renseignée') === activeDetailsZone.defaultGeo?.ville);
+      const targetCity = activeDetailsZone.defaultGeo.ville.toLowerCase().trim();
+      return members.filter((m) => (m.ville?.trim() || '').toLowerCase() === targetCity);
     }
 
     return [];
-  }, [activeDetailsZone, customZones, membersMap, members]);
+  }, [activeDetailsZone, customZones, members]);
 
   // Compute stats for Regions, Departments, and Cities
   const zonesData = useMemo(() => {
@@ -438,10 +462,32 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
               {filteredCustomZones.map((zone) => {
                 const colorTheme = COLOR_MAP[zone.color || 'emerald'] || COLOR_MAP.emerald;
 
-                // Resolve live Member objects from memberIds
-                const zoneMembers = zone.memberIds
-                  .map((id) => membersMap.get(id))
-                  .filter((m): m is Member => m !== undefined);
+                // Resolve live Member objects matching memberIds, region/zone name, or geography
+                const memberIdsSet = new Set(zone.memberIds);
+                const zoneNameLower = zone.name.trim().toLowerCase();
+
+                const zoneMembers = members.filter((m) => {
+                  if (memberIdsSet.has(m.id)) return true;
+                  const mZone = (m.zone || '').trim().toLowerCase();
+                  const mRegion = (m.region || '').trim().toLowerCase();
+                  if (mZone === zoneNameLower || mRegion === zoneNameLower) return true;
+                  if (zoneNameLower === 'bretagne') {
+                    const v = (m.ville || '').toLowerCase();
+                    const d = (m.departement || '').toLowerCase();
+                    const cp = (m.codePostal || '').toLowerCase();
+                    if (
+                      v.includes('rennes') || v.includes('brest') || v.includes('quimper') ||
+                      v.includes('lorient') || v.includes('vannes') || v.includes('saint-brieuc') ||
+                      v.includes('saint-malo') || d.includes('35') || d.includes('29') ||
+                      d.includes('56') || d.includes('22') || d.includes('ille-et-vilaine') ||
+                      d.includes('finistère') || d.includes('finistere') || d.includes('morbihan') ||
+                      cp.startsWith('35') || cp.startsWith('29') || cp.startsWith('56') || cp.startsWith('22')
+                    ) {
+                      return true;
+                    }
+                  }
+                  return false;
+                });
 
                 // Geographic Breakdown Calculations
                 const zoneCitiesSet = new Set(zoneMembers.map((m) => m.ville?.trim()).filter(Boolean));
@@ -663,9 +709,17 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
         isOpen={activeDetailsZone !== null}
         zone={activeDetailsZone}
         zoneMembers={activeZoneMembers}
+        allMembers={members}
+        userRole={userRole}
         onClose={() => setActiveDetailsZone(null)}
-        onOpenAddMember={(targetZoneId, targetZoneName, defaultGeo) => {
+        onOpenAddMemberInZone={(targetZoneId, targetZoneName, defaultGeo) => {
           onOpenAddMemberInZone(targetZoneId, targetZoneName, defaultGeo);
+        }}
+        onManageZoneMembers={(zoneId) => {
+          const z = customZones.find((cz) => cz.id === zoneId);
+          if (z) {
+            handleOpenManageMembers(z);
+          }
         }}
         onRemoveMemberFromZone={(zoneId, memberId) => {
           onToggleMemberInZone(zoneId, memberId);
@@ -673,6 +727,13 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
         onSelectMemberDetails={(member) => {
           setActiveDetailsZone(null);
           onSelectMemberDetails(member);
+        }}
+        onFilterOnMap={() => {
+          if (activeDetailsZone) {
+            if (activeDetailsZone.isCustom && activeDetailsZone.id) {
+              onSelectCustomZone(activeDetailsZone.id);
+            }
+          }
         }}
       />
 

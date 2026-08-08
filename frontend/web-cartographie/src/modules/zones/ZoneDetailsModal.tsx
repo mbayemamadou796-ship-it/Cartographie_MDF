@@ -38,10 +38,10 @@ interface ZoneDetailsModalProps {
   isOpen: boolean;
   zone: ZoneDataInfo | null;
   zoneMembers: Member[];
-  allMembers: Member[];
-  userRole: UserRole;
+  allMembers?: Member[];
+  userRole?: UserRole;
   onClose: () => void;
-  onOpenAddMemberInZone: (
+  onOpenAddMemberInZone?: (
     zoneId?: string,
     zoneName?: string,
     defaultGeo?: { region?: string; departement?: string; ville?: string }
@@ -49,7 +49,7 @@ interface ZoneDetailsModalProps {
   onManageZoneMembers?: (zoneId: string) => void;
   onRemoveMemberFromZone?: (zoneId: string, memberId: string) => void;
   onSelectMemberDetails: (member: Member) => void;
-  onFilterOnMap: () => void;
+  onFilterOnMap?: () => void;
 }
 
 const COLOR_THEMES: Record<string, { headerBg: string; badgeBg: string; badgeText: string; accentBorder: string }> = {
@@ -111,27 +111,10 @@ export const ZoneDetailsModal: React.FC<ZoneDetailsModalProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  if (!isOpen || !zone) return null;
-
-  const colorTheme = COLOR_THEMES[zone.color || 'emerald'] || COLOR_THEMES.emerald;
-
-  // Filter members in real-time inside the modal
-  const filteredMembers = zoneMembers.filter((m) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase().trim();
-    return (
-      `${m.prenom} ${m.nom}`.toLowerCase().includes(q) ||
-      m.ville.toLowerCase().includes(q) ||
-      m.organisation.toLowerCase().includes(q) ||
-      m.fonction.toLowerCase().includes(q) ||
-      m.telephone.includes(q) ||
-      m.email.toLowerCase().includes(q)
-    );
-  });
-
-  // Calculate Geographic Distribution for this zone
+  // Calculate Geographic Distribution for this zone unconditionally
   const zoneCitiesMap = useMemo(() => {
     const map = new Map<string, number>();
+    if (!zoneMembers) return map;
     zoneMembers.forEach((m) => {
       const v = m.ville?.trim();
       if (v) {
@@ -142,6 +125,7 @@ export const ZoneDetailsModal: React.FC<ZoneDetailsModalProps> = ({
   }, [zoneMembers]);
 
   const zoneDeptsSet = useMemo(() => {
+    if (!zoneMembers) return new Set<string>();
     return new Set(zoneMembers.map((m) => m.departement?.trim()).filter(Boolean));
   }, [zoneMembers]);
 
@@ -149,8 +133,31 @@ export const ZoneDetailsModal: React.FC<ZoneDetailsModalProps> = ({
     return Array.from(zoneCitiesMap.entries()).sort((a, b) => b[1] - a[1]);
   }, [zoneCitiesMap]);
 
+  // Filter members in real-time inside the modal
+  const filteredMembers = useMemo(() => {
+    if (!zoneMembers) return [];
+    if (!searchQuery.trim()) return zoneMembers;
+    const q = searchQuery.toLowerCase().trim();
+    return zoneMembers.filter((m) => {
+      return (
+        `${m.prenom} ${m.nom}`.toLowerCase().includes(q) ||
+        (m.ville && m.ville.toLowerCase().includes(q)) ||
+        (m.organisation && m.organisation.toLowerCase().includes(q)) ||
+        (m.fonction && m.fonction.toLowerCase().includes(q)) ||
+        (m.telephone && m.telephone.includes(q)) ||
+        (m.email && m.email.toLowerCase().includes(q))
+      );
+    });
+  }, [zoneMembers, searchQuery]);
+
+  if (!isOpen || !zone) return null;
+
+  const colorTheme = COLOR_THEMES[zone.color || 'emerald'] || COLOR_THEMES.emerald;
+
   const handleAddNewMemberClick = () => {
-    onOpenAddMemberInZone(zone.id, zone.name, zone.defaultGeo);
+    if (onOpenAddMemberInZone) {
+      onOpenAddMemberInZone(zone.id, zone.name, zone.defaultGeo);
+    }
   };
 
   return (
@@ -240,7 +247,7 @@ export const ZoneDetailsModal: React.FC<ZoneDetailsModalProps> = ({
             {/* View on Map/Filter */}
             <button
               onClick={() => {
-                onFilterOnMap();
+                if (onFilterOnMap) onFilterOnMap();
                 onClose();
               }}
               className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-950 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl transition-all shrink-0 shadow-2xs"

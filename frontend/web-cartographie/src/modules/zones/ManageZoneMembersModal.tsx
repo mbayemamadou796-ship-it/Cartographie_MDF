@@ -20,20 +20,19 @@ export const ManageZoneMembersModal: React.FC<ManageZoneMembersModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTab, setFilterTab] = useState<'all' | 'in_zone' | 'not_in_zone'>('all');
 
-  if (!isOpen || !zone) return null;
-
-  const currentMemberIds = new Set(zone.memberIds);
+  const currentMemberIds = useMemo(() => new Set(zone ? zone.memberIds : []), [zone]);
 
   const filteredMembers = useMemo(() => {
+    if (!allMembers) return [];
     return allMembers.filter((m) => {
       // Search
       const query = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !query ||
         `${m.prenom} ${m.nom}`.toLowerCase().includes(query) ||
-        m.ville.toLowerCase().includes(query) ||
-        m.organisation.toLowerCase().includes(query) ||
-        m.fonction.toLowerCase().includes(query);
+        (m.ville && m.ville.toLowerCase().includes(query)) ||
+        (m.organisation && m.organisation.toLowerCase().includes(query)) ||
+        (m.fonction && m.fonction.toLowerCase().includes(query));
 
       if (!matchesSearch) return false;
 
@@ -45,6 +44,8 @@ export const ManageZoneMembersModal: React.FC<ManageZoneMembersModalProps> = ({
       return true;
     });
   }, [allMembers, searchQuery, filterTab, currentMemberIds]);
+
+  if (!isOpen || !zone) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">

@@ -69,9 +69,9 @@ export async function parseExcelFile(file: File): Promise<{ members: Member[]; e
           let lat = parseFloat(mappedRow['latitude'] || mappedRow['lat'] || 'NaN');
           let lng = parseFloat(mappedRow['longitude'] || mappedRow['lng'] || mappedRow['lon'] || 'NaN');
 
-          // Always auto-compute latitude and longitude from address, postal code, city, and zone if missing or empty
+          // Always auto-compute latitude and longitude from city, department, and zone if missing or empty
           if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-            const geo = await geocodeLocation(adresse, codePostal, ville, pays, zone);
+            const geo = await geocodeLocation(ville, departement, pays, zone);
             lat = geo.latitude;
             lng = geo.longitude;
           }

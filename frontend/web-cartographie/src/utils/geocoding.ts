@@ -136,13 +136,12 @@ const CITY_COORDINATES: Record<string, { lat: number; lng: number; dept: string;
 };
 
 export async function geocodeLocation(
-  adresse: string,
-  codePostal: string,
   ville: string,
+  departement: string = '',
   pays: string = 'France',
   zoneOrRegion?: string
 ): Promise<{ latitude: number; longitude: number; dept?: string; region?: string }> {
-  const query = [adresse, codePostal, ville, zoneOrRegion, pays].filter(Boolean).join(', ');
+  const query = [ville, departement, zoneOrRegion, pays].filter(Boolean).join(', ');
 
   // Try Nominatim API first with quick timeout
   try {
@@ -215,6 +214,39 @@ export async function geocodeLocation(
   return {
     latitude: Number((baseLat + (Math.random() - 0.5) * 2.5).toFixed(4)),
     longitude: Number((baseLng + (Math.random() - 0.5) * 2.5).toFixed(4))
+  };
+}
+
+export function getOfflineCoordinates(ville: string, zoneOrRegion?: string): { latitude: number; longitude: number; dept?: string; region?: string } {
+  const normalizedVille = (ville || '').trim().toLowerCase();
+  if (CITY_COORDINATES[normalizedVille]) {
+    const info = CITY_COORDINATES[normalizedVille];
+    const jitterLat = (Math.random() - 0.5) * 0.008;
+    const jitterLng = (Math.random() - 0.5) * 0.008;
+    return {
+      latitude: Number((info.lat + jitterLat).toFixed(4)),
+      longitude: Number((info.lng + jitterLng).toFixed(4)),
+      dept: info.dept,
+      region: info.region
+    };
+  }
+
+  const normalizedZone = (zoneOrRegion || '').trim().toLowerCase();
+  if (ZONE_COORDINATES[normalizedZone]) {
+    const info = ZONE_COORDINATES[normalizedZone];
+    const jitterLat = (Math.random() - 0.5) * 0.015;
+    const jitterLng = (Math.random() - 0.5) * 0.015;
+    return {
+      latitude: Number((info.lat + jitterLat).toFixed(4)),
+      longitude: Number((info.lng + jitterLng).toFixed(4)),
+      dept: info.dept,
+      region: info.region
+    };
+  }
+
+  return {
+    latitude: Number((46.6033 + (Math.random() - 0.5) * 2).toFixed(4)),
+    longitude: Number((1.8883 + (Math.random() - 0.5) * 2).toFixed(4))
   };
 }
 

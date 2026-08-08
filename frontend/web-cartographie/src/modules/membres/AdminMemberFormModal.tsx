@@ -19,6 +19,15 @@ export const FRENCH_ZONES = [
   'Provence-Alpes-Côte d\'Azur'
 ];
 
+export const SITUATION_PROFESSIONNELLE_OPTIONS = [
+  'Salarié(e) / Employé(e)',
+  'Étudiant(e)',
+  'Entrepreneur / Indépendant',
+  'En recherche d\'emploi',
+  'Cadre / Dirigeant',
+  'Autre'
+];
+
 interface AdminMemberFormModalProps {
   memberToEdit?: Member | null;
   targetZoneName?: string | null;
@@ -48,8 +57,6 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
     anneeArriveeFrance: '',
     fonction: '',
     organisation: '',
-    adresse: '',
-    codePostal: '',
     ville: '',
     departement: '',
     region: '',
@@ -94,8 +101,6 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
         anneeArriveeFrance: memberToEdit.anneeArriveeFrance || '',
         fonction: memberToEdit.fonction || memberToEdit.situationProfessionnelle || '',
         organisation: memberToEdit.organisation || memberToEdit.domaineEtude || '',
-        adresse: memberToEdit.adresse || '',
-        codePostal: memberToEdit.codePostal || '',
         ville: memberToEdit.ville || '',
         departement: memberToEdit.departement || '',
         region: memberToEdit.region || memberToEdit.zone || '',
@@ -112,13 +117,11 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
         telephone: '',
         email: '',
         zone: targetZoneName || defaultGeo?.region || '',
-        situationProfessionnelle: 'Salarié',
+        situationProfessionnelle: 'Salarié(e) / Employé(e)',
         domaineEtude: 'Informatique',
         anneeArriveeFrance: '',
         fonction: 'Membre Mbok de France',
         organisation: 'Mbok de France',
-        adresse: '',
-        codePostal: '',
         ville: defaultGeo?.ville || '',
         departement: defaultGeo?.departement || '',
         region: defaultGeo?.region || '',
@@ -164,17 +167,16 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
 
   const handleAutoGeocode = async (overrideData?: typeof formData) => {
     const dataToUse = overrideData || formData;
-    if (!dataToUse.ville && !dataToUse.adresse && !dataToUse.zone) {
-      setErrorMsg('Veuillez entrer au moins une ville, une adresse ou une zone pour géolocaliser.');
+    if (!dataToUse.ville && !dataToUse.zone) {
+      setErrorMsg('Veuillez entrer au moins une ville de résidence ou une zone pour géolocaliser.');
       return;
     }
     setIsGeocoding(true);
     setErrorMsg('');
     try {
       const result = await geocodeLocation(
-        dataToUse.adresse || '',
-        dataToUse.codePostal || '',
         dataToUse.ville || '',
+        dataToUse.departement || '',
         dataToUse.pays || 'France',
         dataToUse.zone || dataToUse.region || ''
       );
@@ -205,12 +207,11 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
     let finalLng = formData.longitude;
     const zoneValue = formData.zone || formData.region || 'Île-de-France';
 
-    // Auto-calculate latitude and longitude from address, city, postal code and zone if missing or default
+    // Auto-calculate latitude and longitude from city, department and zone if missing or default
     try {
       const geoResult = await geocodeLocation(
-        formData.adresse || '',
-        formData.codePostal || '',
         formData.ville || '',
+        formData.departement || '',
         formData.pays || 'France',
         zoneValue
       );
@@ -357,7 +358,7 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
                   required
                   value={formData.prenom}
                   onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
-                  placeholder="Ex: Aïssatou"
+                  placeholder="Ex: Souleymane"
                   className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
                 />
               </div>
@@ -369,7 +370,7 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
                   required
                   value={formData.nom}
                   onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                  placeholder="Ex: Diallo"
+                  placeholder="Ex: Ndiaye"
                   className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
                 />
               </div>
@@ -391,7 +392,7 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="Ex: aissatou.diallo@example.com"
+                  placeholder="Ex: souleymane.ndiaye@example.com"
                   className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
                 />
               </div>
@@ -425,13 +426,19 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Situation professionnelle</label>
-                <input
-                  type="text"
+                <select
                   value={formData.situationProfessionnelle}
                   onChange={(e) => setFormData({ ...formData, situationProfessionnelle: e.target.value, fonction: e.target.value })}
-                  placeholder="Ex: Étudiant, Salarié, Cadre, Indépendant, En recherche..."
-                  className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                />
+                  className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium cursor-pointer"
+                >
+                  <option value="" disabled>-- Sélectionner une situation --</option>
+                  {SITUATION_PROFESSIONNELLE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                  {formData.situationProfessionnelle && !SITUATION_PROFESSIONNELLE_OPTIONS.includes(formData.situationProfessionnelle) && (
+                    <option value={formData.situationProfessionnelle}>{formData.situationProfessionnelle}</option>
+                  )}
+                </select>
               </div>
 
               <div>
@@ -512,11 +519,11 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
             )}
           </div>
 
-          {/* Section 4: Localisation & Adresse pour la Cartographie */}
+          {/* Section 4: Localisation Cartographique (Ville & Département) */}
           <div className="space-y-3 pt-1">
             <div className="flex items-center justify-between pb-1 border-b border-emerald-200">
               <h4 className="font-bold text-emerald-800 uppercase tracking-wider text-[10px]">
-                4. Adresse & Géolocalisation Cartographique
+                4. Ville de Résidence & Localisation Cartographique
               </h4>
 
               <button
@@ -539,29 +546,7 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2">
-                <label className="block font-semibold text-slate-700 mb-1">Adresse postale</label>
-                <input
-                  type="text"
-                  value={formData.adresse}
-                  onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
-                  placeholder="Ex: 12 Rue Gabriel Péri"
-                  className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Code Postal</label>
-                <input
-                  type="text"
-                  value={formData.codePostal}
-                  onChange={(e) => setFormData({ ...formData, codePostal: e.target.value })}
-                  placeholder="Ex: 93200"
-                  className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none"
-                />
-              </div>
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Ville de résidence (Commune) *</label>
                 <input
@@ -580,7 +565,7 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
                   type="text"
                   value={formData.departement}
                   onChange={(e) => setFormData({ ...formData, departement: e.target.value })}
-                  placeholder="Ex: Seine-Saint-Denis (93)"
+                  placeholder="Ex: Seine-Saint-Denis (93), Ille-et-Vilaine (35)"
                   className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none"
                 />
               </div>

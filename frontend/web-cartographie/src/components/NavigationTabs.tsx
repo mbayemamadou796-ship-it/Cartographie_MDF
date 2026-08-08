@@ -1,19 +1,21 @@
 import React from 'react';
 import { ActiveTab, UserRole } from '../types';
-import { LayoutDashboard, MapPin, Globe, Users, AlertTriangle, FileSpreadsheet, History, Settings } from 'lucide-react';
+import { LayoutDashboard, MapPin, Globe, Users, AlertTriangle, FileSpreadsheet, History, Settings, FileText } from 'lucide-react';
 
 interface NavigationTabsProps {
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
   userRole: UserRole;
   qualityIssueCount: number;
+  pendingDemandesCount?: number;
 }
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   activeTab,
   onTabChange,
   userRole,
-  qualityIssueCount
+  qualityIssueCount,
+  pendingDemandesCount = 0
 }) => {
   const tabs = [
     {
@@ -33,6 +35,13 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
       label: 'Zones géographiques',
       icon: Globe,
       badge: null
+    },
+    {
+      id: 'demandes' as ActiveTab,
+      label: 'Demandes Inscription',
+      icon: FileText,
+      badge: pendingDemandesCount > 0 ? pendingDemandesCount : null,
+      badgeColor: 'bg-amber-500 text-white'
     },
     {
       id: 'users' as ActiveTab,
@@ -69,7 +78,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
 
   const visibleTabs = userRole === 'admin'
     ? tabs
-    : tabs.filter((t) => ['dashboard', 'directory', 'zones'].includes(t.id));
+    : tabs.filter((t) => ['dashboard', 'directory', 'zones', 'demandes'].includes(t.id));
 
   return (
     <div className="bg-white border-b border-emerald-200 sticky top-[61px] z-20 shadow-2xs">

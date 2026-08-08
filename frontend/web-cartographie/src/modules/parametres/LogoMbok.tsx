@@ -4,6 +4,7 @@ import { Camera } from 'lucide-react';
 interface LogoMbokProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showText?: boolean;
+  showBadge?: boolean;
   className?: string;
   logoUrl?: string;
   editable?: boolean;
@@ -15,6 +16,7 @@ interface LogoMbokProps {
 export const LogoMbok: React.FC<LogoMbokProps> = ({
   size = 'md',
   showText = true,
+  showBadge = true,
   className = '',
   logoUrl,
   editable = false,
@@ -128,9 +130,11 @@ export const LogoMbok: React.FC<LogoMbokProps> = ({
             <h1 className={`font-extrabold tracking-tight text-emerald-950 ${dimensions.title} font-['Outfit']`}>
               {renderTitle()}
             </h1>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#3fb222]/15 text-[#2b7e16] border border-[#3fb222]/30 shadow-xs hidden sm:inline-flex">
-              Annuaire & Carte
-            </span>
+            {showBadge && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#3fb222]/15 text-[#2b7e16] border border-[#3fb222]/30 shadow-xs hidden sm:inline-flex">
+                Annuaire & Carte
+              </span>
+            )}
           </div>
           <p className={`text-[#2f6e18] font-bold italic font-['Kalam',cursive] tracking-wide ${dimensions.motto}`}>
             {tagline}
