@@ -1,5 +1,6 @@
 import React from 'react';
 import { Camera } from 'lucide-react';
+import defaultLogo from '@assets/logo-mdf.jpeg';
 
 interface LogoMbokProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -53,65 +54,13 @@ export const LogoMbok: React.FC<LogoMbokProps> = ({
         }`}
         title={onEditClick ? "Cliquer pour modifier la photo / logo" : undefined}
       >
-        {/* Crisp Inner Circle */}
+        {/* Crisp Inner Circle — logo officiel MDF par défaut, photo personnalisée sinon */}
         <div className="w-full h-full rounded-full bg-white flex items-center justify-center relative overflow-hidden shadow-inner">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={associationName}
-              className="w-full h-full object-cover rounded-full"
-            />
-          ) : (
-            /* Default Emblem SVG */
-            <svg viewBox="0 0 200 200" className="w-full h-full p-1" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="100" cy="72" r="54" fill="#eaf8e4" stroke="#5da722" strokeWidth="2.5" />
-              <path
-                d="M 88,52 C 95,48 108,48 116,58 C 122,66 126,78 120,92 C 114,104 102,112 94,115 C 88,110 82,98 84,86 C 82,72 82,60 88,52 Z"
-                fill="#5da722"
-                opacity="0.88"
-              />
-              <path
-                d="M 52,50 Q 64,36 78,42 Q 86,52 80,66 Q 66,78 56,72 Q 48,60 52,50 Z"
-                fill="#5da722"
-                opacity="0.88"
-              />
-              <path
-                d="M 124,42 Q 138,40 146,54 Q 148,70 136,80 Q 128,68 124,42 Z"
-                fill="#5da722"
-                opacity="0.88"
-              />
-              <g transform="translate(100, 72) scale(0.68)">
-                <path
-                  d="M -48,32 L -18,2 C -12,-4 -2,-6 5,2 L 18,16 C 24,22 22,30 14,34 L -24,48 Z"
-                  fill="#4a2e19"
-                />
-                <path
-                  d="M 48,32 L 18,2 C 12,-4 2,-6 -5,2 L -18,16 C -24,22 -22,30 -14,34 L 24,48 Z"
-                  fill="#613b20"
-                />
-                <path
-                  d="M -14,10 C -9,2 9,2 14,10 C 18,16 12,24 0,24 C -12,24 -18,16 -14,10 Z"
-                  fill="#331e10"
-                />
-                <path
-                  d="M -8,14 C -4,8 4,8 8,14 C 10,18 6,22 0,22 C -6,22 -10,18 -8,14 Z"
-                  fill="#52321b"
-                />
-              </g>
-              <path id="globe-text-arc" d="M 40,126 A 62,62 0 0,0 160,126" fill="none" />
-              <text className="text-[13px] font-bold fill-[#2f6812]" style={{ fontFamily: 'Caveat, Kalam, cursive' }} textAnchor="middle">
-                <textPath href="#globe-text-arc" startOffset="50%">
-                  Mbok de France
-                </textPath>
-              </text>
-              <text x="100" y="152" textAnchor="middle" fill="#2a5e10" className="text-[14px] font-bold" style={{ fontFamily: 'Kalam, Caveat, cursive' }}>
-                Mbok de France
-              </text>
-              <text x="100" y="172" textAnchor="middle" fill="#2a5e10" className="text-[12px] font-semibold" style={{ fontFamily: 'Kalam, Caveat, cursive' }}>
-                au service de la fraternité !
-              </text>
-            </svg>
-          )}
+          <img
+            src={logoUrl || defaultLogo}
+            alt={associationName}
+            className="w-full h-full object-cover rounded-full"
+          />
 
           {/* Hover Overlay Icon when editable (allows changing logo photo on click) */}
           {(editable || onEditClick) && (
