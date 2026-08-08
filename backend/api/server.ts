@@ -5,7 +5,9 @@ import { apiRouter } from './routes';
 import { logger } from '../utils/logger';
 
 const app = express();
-const PORT = Number(process.env.API_PORT ?? 3001);
+// PORT est imposé par les hébergeurs (Render, Railway...) ; API_PORT reste la
+// variable utilisée en développement local (3001 par défaut).
+const PORT = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
 // Deux frontends distincts consomment l'API : le Bureau/Cartographie (3000)
 // et le Formulaire public (3002). CORS_ORIGIN accepte une liste séparée par
 // des virgules pour surcharger en production.
