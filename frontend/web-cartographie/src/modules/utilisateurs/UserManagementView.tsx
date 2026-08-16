@@ -480,262 +480,273 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
       {/* MODAL: Add / Edit User */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl border border-emerald-200 w-full max-w-lg overflow-hidden p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-emerald-200 w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
             
-            <div className="flex items-center justify-between border-b border-emerald-100 pb-3">
-              <h3 className="text-lg font-bold text-slate-900 font-['Outfit']">
-                {editingUser ? 'Modifier l\'utilisateur' : 'Créer un nouvel utilisateur'}
-              </h3>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-emerald-100 bg-slate-50/70 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-emerald-100 text-emerald-800 rounded-xl">
+                  <UserPlus className="w-4 h-4 text-emerald-700" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 font-['Outfit']">
+                  {editingUser ? 'Modifier l\'utilisateur' : 'Créer un nouvel utilisateur'}
+                </h3>
+              </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-all cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {formError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2 text-rose-800 text-xs">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            {!editingUser && (
-              <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex items-start gap-2 text-emerald-900 text-[11px] font-medium leading-relaxed">
-                <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Règle MDF :</strong> tout utilisateur (référent ou administrateur) doit être membre de
-                  l'association. À la création du compte, l'application <strong>relie l'utilisateur au membre existant
-                  portant le même e-mail</strong>, ou <strong>crée automatiquement sa fiche membre</strong> dans la zone
-                  choisie.
-                </span>
-              </div>
-            )}
-
-            <form onSubmit={handleSaveUser} className="space-y-3.5 text-xs">
-              
-              {/* Nom & Prenom */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Prénom <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formPrenom}
-                    onChange={(e) => setFormPrenom(e.target.value)}
-                    placeholder="Ex: Mamadou"
-                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                  />
+            {/* Modal Body (Scrollable) */}
+            <div className="overflow-y-auto px-5 py-4 space-y-3 text-xs flex-1">
+              {formError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2 text-rose-800 text-xs">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{formError}</span>
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Nom <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formNom}
-                    onChange={(e) => setFormNom(e.target.value)}
-                    placeholder="Ex: Mbaye"
-                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                  />
-                </div>
-              </div>
+              )}
 
-              {/* Email & Region */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Adresse e-mail <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={formEmail}
-                    onChange={(e) => setFormEmail(e.target.value)}
-                    placeholder="Ex: membre@mbokdefrance.org"
-                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Zone MDF (Région) <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={formRegion}
-                    onChange={(e) => setFormRegion(e.target.value)}
-                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                  >
-                    {FRENCH_ZONES.map((z) => (
-                      <option key={z} value={z}>{z}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Ville de résidence (création uniquement : sert à la fiche membre liée) */}
               {!editingUser && (
+                <div className="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex items-start gap-2 text-emerald-900 text-[11px] font-medium leading-relaxed">
+                  <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Règle MDF :</strong> tout utilisateur (référent ou administrateur) doit être membre de
+                    l'association. À la création du compte, l'application <strong>relie l'utilisateur au membre existant
+                    portant le même e-mail</strong>, ou <strong>crée automatiquement sa fiche membre</strong> dans la zone
+                    choisie.
+                  </span>
+                </div>
+              )}
+
+              <form id="user-form" onSubmit={handleSaveUser} className="space-y-3">
+                {/* Nom & Prenom */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Prénom <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formPrenom}
+                      onChange={(e) => setFormPrenom(e.target.value)}
+                      placeholder="Ex: Mamadou"
+                      className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Nom <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formNom}
+                      onChange={(e) => setFormNom(e.target.value)}
+                      placeholder="Ex: Mbaye"
+                      className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Email & Region */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Adresse e-mail <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={formEmail}
+                      onChange={(e) => setFormEmail(e.target.value)}
+                      placeholder="Ex: membre@mbokdefrance.org"
+                      className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Zone MDF (Région) <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={formRegion}
+                      onChange={(e) => setFormRegion(e.target.value)}
+                      className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs cursor-pointer"
+                    >
+                      {FRENCH_ZONES.map((z) => (
+                        <option key={z} value={z}>{z}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Ville de résidence (création uniquement : sert à la fiche membre liée) */}
+                {!editingUser && (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Ville de résidence <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      list="villes-zone-utilisateur"
+                      value={formVille}
+                      onChange={(e) => setFormVille(e.target.value)}
+                      placeholder={`Villes de la zone ${formRegion || 'sélectionnée'}...`}
+                      className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs"
+                    />
+                    <datalist id="villes-zone-utilisateur">
+                      {getVillesForZone(formRegion).map((v) => (
+                        <option key={v} value={v} />
+                      ))}
+                    </datalist>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Nécessaire pour la fiche membre : la géolocalisation est calculée automatiquement à partir de la ville.
+                    </p>
+                  </div>
+                )}
+
+                {/* Identifiant */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Ville de résidence <span className="text-rose-500">*</span>
+                    Identifiant de connexion <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    list="villes-zone-utilisateur"
-                    value={formVille}
-                    onChange={(e) => setFormVille(e.target.value)}
-                    placeholder={`Villes de la zone ${formRegion || 'sélectionnée'}...`}
-                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                  />
-                  <datalist id="villes-zone-utilisateur">
-                    {getVillesForZone(formRegion).map((v) => (
-                      <option key={v} value={v} />
-                    ))}
-                  </datalist>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Nécessaire pour la fiche membre : la géolocalisation est calculée automatiquement à partir de la ville.
-                  </p>
-                </div>
-              )}
-
-              {/* Identifiant */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Identifiant de connexion <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formUsername}
-                  onChange={(e) => setFormUsername(e.target.value)}
-                  placeholder="Ex: mmbaye"
-                  className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium font-mono"
-                />
-              </div>
-
-              {/* Password Fields */}
-              <div className="grid grid-cols-2 gap-3 p-3 bg-emerald-50/50 rounded-2xl border border-emerald-100">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Mot de passe {!editingUser && <span className="text-rose-500">*</span>}
-                  </label>
-                  <input
-                    type="password"
-                    required={!editingUser}
-                    value={formPassword}
-                    onChange={(e) => setFormPassword(e.target.value)}
-                    placeholder={editingUser ? "Inchangé si vide" : "••••••••"}
-                    className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:border-emerald-500 outline-none font-medium"
+                    value={formUsername}
+                    onChange={(e) => setFormUsername(e.target.value)}
+                    placeholder="Ex: mmbaye"
+                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium font-mono text-xs"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Confirmer le mot de passe {!editingUser && <span className="text-rose-500">*</span>}
-                  </label>
-                  <input
-                    type="password"
-                    required={!editingUser}
-                    value={formConfirmPassword}
-                    onChange={(e) => setFormConfirmPassword(e.target.value)}
-                    placeholder={editingUser ? "Inchangé si vide" : "••••••••"}
-                    className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:border-emerald-500 outline-none font-medium"
-                  />
+
+                {/* Password Fields */}
+                <div className="grid grid-cols-2 gap-2.5 p-2.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                      Mot de passe {!editingUser && <span className="text-rose-500">*</span>}
+                    </label>
+                    <input
+                      type="password"
+                      required={!editingUser}
+                      value={formPassword}
+                      onChange={(e) => setFormPassword(e.target.value)}
+                      placeholder={editingUser ? "Inchangé si vide" : "••••••••"}
+                      className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:border-emerald-500 outline-none font-medium text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                      Confirmer le mot de passe {!editingUser && <span className="text-rose-500">*</span>}
+                    </label>
+                    <input
+                      type="password"
+                      required={!editingUser}
+                      value={formConfirmPassword}
+                      onChange={(e) => setFormConfirmPassword(e.target.value)}
+                      placeholder={editingUser ? "Inchangé si vide" : "••••••••"}
+                      className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:border-emerald-500 outline-none font-medium text-xs"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Role & Status */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Rôle d'accès *</label>
-                  <select
-                    value={formRole}
-                    onChange={(e) => setFormRole(e.target.value as UserRole)}
-                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                  >
-                    <option value="user">Utilisateur (Consultation seule)</option>
-                    <option value="referent">Référent (Gestion de zone attribuée)</option>
-                    <option value="admin">Administrateur (Gestion des membres & zones)</option>
-                    <option value="super_admin">Super Administrateur (Tous les droits)</option>
-                  </select>
+                {/* Role & Status */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Rôle d'accès *</label>
+                    <select
+                      value={formRole}
+                      onChange={(e) => setFormRole(e.target.value as UserRole)}
+                      className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs cursor-pointer"
+                    >
+                      <option value="user">Utilisateur (Consultation seule)</option>
+                      <option value="referent">Référent (Gestion de zone attribuée)</option>
+                      <option value="admin">Administrateur (Gestion des membres & zones)</option>
+                      <option value="super_admin">Super Administrateur (Tous les droits)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Statut du compte</label>
+                    <select
+                      value={formActive ? 'active' : 'inactive'}
+                      onChange={(e) => setFormActive(e.target.value === 'active')}
+                      className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs cursor-pointer"
+                    >
+                      <option value="active">Actif (Autorisé)</option>
+                      <option value="inactive">Inactif (Bloqué)</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Statut du compte</label>
-                  <select
-                    value={formActive ? 'active' : 'inactive'}
-                    onChange={(e) => setFormActive(e.target.value === 'active')}
-                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                  >
-                    <option value="active">Actif (Autorisé)</option>
-                    <option value="inactive">Inactif (Bloqué)</option>
-                  </select>
-                </div>
-              </div>
+                {/* Referent Zone Selection */}
+                {formRole === 'referent' && (
+                  <div className="p-2.5 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-1.5">
+                    <label className="block text-[11px] font-bold text-blue-900 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Zones attribuées à ce référent ({formAssignedZoneIds.length})</span>
+                    </label>
+                    <p className="text-[10px] text-blue-700 font-medium">
+                      Ce référent aura un accès exclusif aux membres et statistiques de ces zones.
+                    </p>
 
-              {/* Referent Zone Selection */}
-              {formRole === 'referent' && (
-                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2">
-                  <label className="block text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-blue-600" />
-                    <span>Zones attribuées à ce référent ({formAssignedZoneIds.length})</span>
-                  </label>
-                  <p className="text-[11px] text-blue-700 font-medium leading-relaxed">
-                    Ce référent aura un accès exclusif aux membres et statistiques de ces zones.
-                  </p>
+                    {customZones.length === 0 ? (
+                      <div className="p-2 bg-white rounded-xl border border-blue-200 text-slate-500 text-[10px] italic">
+                        Aucune zone personnalisée disponible.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-1.5 pt-0.5 max-h-28 overflow-y-auto pr-1">
+                        {customZones.map((z) => {
+                          const isChecked = formAssignedZoneIds.includes(z.id);
+                          return (
+                            <label
+                              key={z.id}
+                              className={`p-1.5 rounded-xl border flex items-center gap-2 text-[11px] font-bold transition-all cursor-pointer ${
+                                isChecked
+                                  ? 'bg-blue-100 border-blue-400 text-blue-950 shadow-2xs'
+                                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleToggleZoneAssignment(z.id)}
+                                className="rounded border-blue-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                              />
+                              <span className="truncate">{z.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </form>
+            </div>
 
-                  {customZones.length === 0 ? (
-                    <div className="p-2 bg-white rounded-xl border border-blue-200 text-slate-500 text-[11px] italic">
-                      Aucune zone personnalisée disponible. Créez d'abord des zones dans l'onglet "Zones".
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2 pt-1 max-h-36 overflow-y-auto">
-                      {customZones.map((z) => {
-                        const isChecked = formAssignedZoneIds.includes(z.id);
-                        return (
-                          <label
-                            key={z.id}
-                            className={`p-2 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all cursor-pointer ${
-                              isChecked
-                                ? 'bg-blue-100 border-blue-400 text-blue-950'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleToggleZoneAssignment(z.id)}
-                              className="rounded border-blue-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
-                            />
-                            <span className="truncate">{z.name}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors cursor-pointer"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-[#2be39d] to-[#48c92a] text-emerald-950 font-extrabold rounded-xl shadow-xs hover:brightness-105 transition-all cursor-pointer"
-                >
-                  {editingUser ? 'Mettre à jour' : 'Enregistrer le compte'}
-                </button>
-              </div>
-            </form>
+            {/* Modal Sticky Footer */}
+            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-200 bg-slate-50 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                form="user-form"
+                className="px-5 py-2 bg-gradient-to-r from-[#2be39d] via-[#48c92a] to-[#8de02d] text-emerald-950 font-black rounded-xl text-xs shadow-sm hover:brightness-105 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>{editingUser ? 'Mettre à jour' : 'Enregistrer le compte'}</span>
+              </button>
+            </div>
 
           </div>
         </div>

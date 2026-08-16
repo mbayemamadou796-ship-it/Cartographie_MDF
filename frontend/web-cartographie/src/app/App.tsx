@@ -28,12 +28,14 @@ import { EditLogoModal } from '../components/EditLogoModal';
 import { LoginScreen } from '../components/LoginScreen';
 import { DemandesView } from '../modules/demandes/DemandesView';
 import { DemandeService } from '../services/demandeService';
-import { DemandeMember } from '../types';
+import { DemandeMember, WeeklyReport, ReportingStatus } from '../types';
 import { exportToExcel, exportToCsv } from '../utils/excelUtils';
 import { ApiService } from '../services/apiService';
 import { FRENCH_ZONES } from '../modules/membres/AdminMemberFormModal';
 import { geocodeVille, calculateCityOffsetCoordinates } from '../services/geocodingService';
-import { CheckCircle2, MapPin, Users, ArrowRight, Layers, FileText, ExternalLink } from 'lucide-react';
+import { ReportingsView } from '../modules/reportings/ReportingsView';
+import { ReportingService } from '../services/reportingService';
+import { CheckCircle2, MapPin, Users, ArrowRight, Layers, FileText, ExternalLink, ClipboardList } from 'lucide-react';
 
 // URL de l'application Formulaire publique. Les deux applications sont servies
 // séparément : Bureau/Cartographie sur le port 3000, Formulaire sur le 3002.
@@ -271,15 +273,38 @@ export default function App() {
     ApiService.saveSettings({ lastUpdateDate: formatted });
   };
 
-  // Save members to localStorage (cache) + synchronisation backend
+  // Save members to localStorage (cache) + broadcast + synchronisation backend
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(members));
+      window.dispatchEvent(new CustomEvent('mbok_members_updated', { detail: members }));
     } catch {
       // Ignore quota errors
     }
     ApiService.syncMembers(members);
   }, [members]);
+
+  // Synchronize members across storage events
+  useEffect(() => {
+    const syncMembers = (e: any) => {
+      try {
+        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMembers(parsed);
+          }
+        }
+      } catch {}
+    };
+
+    window.addEventListener('storage', syncMembers);
+    window.addEventListener('mbok_members_updated', syncMembers);
+    return () => {
+      window.removeEventListener('storage', syncMembers);
+      window.removeEventListener('mbok_members_updated', syncMembers);
+    };
+  }, []);
 
   // Custom Zones State with LocalStorage Persistence & Guaranteed 13 Metropolitan Region Cards
   const [customZones, setCustomZones] = useState<CustomZone[]>(() => {
@@ -319,6 +344,7 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_ZONES_KEY, JSON.stringify(customZones));
+      window.dispatchEvent(new CustomEvent('mbok_zones_updated', { detail: customZones }));
     } catch {}
     ApiService.syncZones(customZones);
   }, [customZones]);
@@ -392,15 +418,17 @@ export default function App() {
   const isAdminLevel = userRole === 'admin' || userRole === 'super_admin';
   const componentRole: UserRole = isAdminLevel ? 'admin' : userRole;
 
-  /** Onglets autorisés selon le rôle réel. */
+  /** Onglets autorisés selon le rôle réel. Les Demandes d'inscription sont
+   * réservées aux niveaux admin ; le Reporting est ouvert à tous (saisie
+   * référent / consultation et pilotage côté bureau). */
   const getAllowedTabs = (role: UserRole): string[] => {
     if (role === 'super_admin') {
-      return ['dashboard', 'directory', 'zones', 'demandes', 'users', 'quality', 'import_export', 'audit_logs', 'settings'];
+      return ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'users', 'quality', 'import_export', 'audit_logs', 'settings'];
     }
     if (role === 'admin') {
-      return ['dashboard', 'directory', 'zones', 'demandes', 'import_export'];
+      return ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'import_export'];
     }
-    return ['dashboard', 'directory', 'zones', 'demandes'];
+    return ['dashboard', 'directory', 'zones', 'reportings'];
   };
 
   // Keep role in sync with currentUser
@@ -463,6 +491,97 @@ export default function App() {
   const pendingDemandesCount = useMemo(() => {
     return demandes.filter((d) => d.status === 'EN_ATTENTE').length;
   }, [demandes]);
+
+  // Weekly Reports State with Real-Time Synchronization
+  const [weeklyReports, setWeeklyReports] = useState<WeeklyReport[]>(() => {
+    return ReportingService.getReports();
+  });
+
+  useEffect(() => {
+    const syncReportsFromStorage = () => {
+      const latest = ReportingService.getReports();
+      setWeeklyReports(latest);
+    };
+
+    window.addEventListener('storage', syncReportsFromStorage);
+    window.addEventListener('mbok_reports_updated', syncReportsFromStorage);
+    const interval = setInterval(syncReportsFromStorage, 1000);
+
+    return () => {
+      window.removeEventListener('storage', syncReportsFromStorage);
+      window.removeEventListener('mbok_reports_updated', syncReportsFromStorage);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const pendingReportingsCount = useMemo(() => {
+    if (userRole === 'referent') {
+      // For referent, count their reports that have a Bureau response or pending
+      return weeklyReports.filter(
+        (r) =>
+          (r.referentId === currentUser?.id || r.email === currentUser?.email) &&
+          r.status !== 'TRAITE'
+      ).length;
+    }
+    // For admin, count all reports that need attention (new or need bureau feedback)
+    return weeklyReports.filter(
+      (r) => r.status === 'NOUVEAU' || (r.besoinRetourBureau && r.status !== 'TRAITE')
+    ).length;
+  }, [weeklyReports, userRole, currentUser]);
+
+  const handleCreateWeeklyReport = (reportData: Omit<WeeklyReport, 'id' | 'createdAt' | 'status'>) => {
+    const newReport = ReportingService.addReport(reportData);
+    setWeeklyReports(ReportingService.getReports());
+
+    addAuditLog(
+      'system',
+      'Nouveau reporting hebdomadaire',
+      `Reporting soumis par ${reportData.referentName} pour la Zone ${reportData.zone} (Semaine du ${reportData.semaineLundi})`,
+      reportData.urgenceLevel >= 4 ? 'danger' : reportData.besoinRetourBureau ? 'warning' : 'info',
+      newReport.id,
+      reportData.zone
+    );
+
+    showToast(`Reporting pour la zone ${reportData.zone} transmis avec succès !`);
+  };
+
+  const handleUpdateWeeklyReportStatus = (
+    reportId: string,
+    status: ReportingStatus,
+    bureauNotes?: string
+  ) => {
+    const updated = ReportingService.updateReportStatus(
+      reportId,
+      status,
+      bureauNotes,
+      currentUser?.name || 'Administrateur MDF'
+    );
+    setWeeklyReports(updated);
+
+    const target = updated.find((r) => r.id === reportId);
+
+    addAuditLog(
+      'system',
+      'Mise à jour reporting hebdomadaire',
+      `Statut du reporting de ${target?.referentName || 'la zone'} passé à "${status}"${bureauNotes ? ' avec réponse' : ''}`,
+      'info',
+      reportId,
+      target?.zone
+    );
+
+    showToast(`Statut du reporting mis à jour (${status}).`);
+  };
+
+  const handleDeleteWeeklyReport = (reportId: string) => {
+    if (!isAdminLevel) {
+      showToast("Action réservée aux administrateurs.");
+      return;
+    }
+    const updated = ReportingService.deleteReport(reportId);
+    setWeeklyReports(updated);
+    addAuditLog('system', 'Suppression reporting', `Reporting ${reportId} supprimé`, 'warning', reportId);
+    showToast('Reporting supprimé.');
+  };
 
   // Security Guard: Reset active tab if viewing a tab not allowed for the role
   useEffect(() => {
@@ -1744,6 +1863,7 @@ export default function App() {
         userRole={userRole}
         qualityIssueCount={qualityIssueCount}
         pendingDemandesCount={pendingDemandesCount}
+        pendingReportingsCount={pendingReportingsCount}
       />
 
       {/* Collapsible Filters Panel (When opened in directory tab) */}
@@ -1898,8 +2018,22 @@ export default function App() {
           />
         )}
 
-        {/* Tab: Demandes d'inscription & mise à jour */}
-        {activeTab === 'demandes' && (
+        {/* Tab: Reportings Hebdomadaires des Référents */}
+        {activeTab === 'reportings' && (
+          <ReportingsView
+            reports={weeklyReports}
+            currentUser={currentUser}
+            customZones={customZones}
+            members={members}
+            userRole={componentRole}
+            onSubmitReport={handleCreateWeeklyReport}
+            onUpdateStatus={handleUpdateWeeklyReportStatus}
+            onDeleteReport={handleDeleteWeeklyReport}
+          />
+        )}
+
+        {/* Tab: Demandes d'inscription & mise à jour (niveaux admin uniquement) */}
+        {activeTab === 'demandes' && isAdminLevel && (
           <DemandesView
             demandes={demandes}
             userRole={componentRole}

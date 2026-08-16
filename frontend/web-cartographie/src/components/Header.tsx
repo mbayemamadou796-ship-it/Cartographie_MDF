@@ -15,6 +15,7 @@ interface HeaderProps {
   onEditLogoClick?: () => void;
   currentUser?: AppUser | null;
   onLogout?: () => void;
+  onSwitchPortal?: (portal: 'cartographie' | 'referent' | 'admin' | 'formulaire') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,7 +29,8 @@ export const Header: React.FC<HeaderProps> = ({
   tagline,
   onEditLogoClick,
   currentUser,
-  onLogout
+  onLogout,
+  onSwitchPortal
 }) => {
   const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -51,8 +53,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Action Buttons & Profile (Right aligned) */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            
+          <div className="flex items-center gap-2 sm:gap-2.5">
+
             {/* Export Dropdown */}
             <div className="relative">
               <button

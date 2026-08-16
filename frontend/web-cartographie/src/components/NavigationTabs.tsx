@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActiveTab, UserRole } from '../types';
-import { LayoutDashboard, MapPin, Globe, Users, AlertTriangle, FileSpreadsheet, History, Settings, FileText } from 'lucide-react';
+import { LayoutDashboard, MapPin, Globe, Users, AlertTriangle, FileSpreadsheet, History, Settings, FileText, ClipboardList } from 'lucide-react';
 
 interface NavigationTabsProps {
   activeTab: ActiveTab;
@@ -8,6 +8,7 @@ interface NavigationTabsProps {
   userRole: UserRole;
   qualityIssueCount: number;
   pendingDemandesCount?: number;
+  pendingReportingsCount?: number;
 }
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({
@@ -15,7 +16,8 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   onTabChange,
   userRole,
   qualityIssueCount,
-  pendingDemandesCount = 0
+  pendingDemandesCount = 0,
+  pendingReportingsCount = 0
 }) => {
   const tabs = [
     {
@@ -35,6 +37,13 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
       label: 'Zones géographiques',
       icon: Globe,
       badge: null
+    },
+    {
+      id: 'reportings' as ActiveTab,
+      label: userRole === 'referent' ? 'Reporting' : 'Remontées Référents',
+      icon: ClipboardList,
+      badge: pendingReportingsCount > 0 ? pendingReportingsCount : null,
+      badgeColor: 'bg-emerald-700 text-white'
     },
     {
       id: 'demandes' as ActiveTab,
@@ -78,12 +87,14 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
 
   // super_admin : tous les onglets. admin : sans Utilisateurs & Droits,
   // Maintenance & Qualité, Journaux d'activité et Paramètres.
+  // Les Demandes d'inscription sont réservées aux niveaux admin ;
+  // l'onglet Reporting est visible par tous (saisie référent / suivi bureau).
   const visibleTabs =
     userRole === 'super_admin'
       ? tabs
       : userRole === 'admin'
-      ? tabs.filter((t) => ['dashboard', 'directory', 'zones', 'demandes', 'import_export'].includes(t.id))
-      : tabs.filter((t) => ['dashboard', 'directory', 'zones', 'demandes'].includes(t.id));
+      ? tabs.filter((t) => ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'import_export'].includes(t.id))
+      : tabs.filter((t) => ['dashboard', 'directory', 'zones', 'reportings'].includes(t.id));
 
   return (
     <div className="bg-white border-b border-emerald-200 sticky top-[61px] z-20 shadow-2xs">
