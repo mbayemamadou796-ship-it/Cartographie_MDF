@@ -628,6 +628,10 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                       }}
                       className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs cursor-pointer"
                     >
+                      {/* Une zone au nom hors des 13 régions (ex: « Grand Ouest ») reste affichable */}
+                      {formRegion && !FRENCH_ZONES.includes(formRegion) && (
+                        <option value={formRegion}>{formRegion}</option>
+                      )}
                       {FRENCH_ZONES.map((z) => (
                         <option key={z} value={z}>{z}</option>
                       ))}

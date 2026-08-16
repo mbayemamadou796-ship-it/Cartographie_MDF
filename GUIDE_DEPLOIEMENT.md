@@ -32,6 +32,30 @@ Formulaire (Vercel, statique) ┘
 
 ---
 
+## Étape 0 — Migrations Supabase (avant tout déploiement)
+
+L'API et la base doivent parler le même langage : **toutes les migrations SQL
+doivent être exécutées** dans Supabase avant (ou juste après) chaque mise en
+production. C'est manuel et ça prend 1 minute chacune :
+
+**Supabase → ton projet → SQL Editor → coller le fichier → Run.**
+
+| Migration (dossier `backend/database/migrations/`) | Rôle | État |
+| :--- | :--- | :--- |
+| `001_init.sql` | tables de base (membres, zones, comptes…) | ✅ déjà exécutée |
+| `002_audit_details.sql` | journal d'audit enrichi | ✅ déjà exécutée |
+| `003_demandes.sql` | demandes d'inscription du formulaire public | ✅ déjà exécutée |
+| `004_super_admin.sql` | rôle super admin (bilal) | ✅ déjà exécutée |
+| `005_zone_referents.sql` | référents désignés par membre de zone | ✅ déjà exécutée |
+| `006_weekly_reports.sql` | **reporting hebdomadaire des référents** | ⚠️ **À EXÉCUTER** |
+
+> Règle pour la suite : à chaque nouvelle migration `00X_*.sql` qui apparaît
+> dans un `git pull`, l'exécuter une fois dans le SQL Editor (les scripts sont
+> relançables sans danger). Une seule exécution suffit pour toute l'équipe :
+> vous partagez le même projet Supabase.
+
+---
+
 ## Étape 1 — Déployer l'API sur Render
 
 1. Sur [dashboard.render.com](https://dashboard.render.com) → **New → Web Service** → sélectionne le repo `Cartographie_MDF`.
@@ -129,13 +153,13 @@ Sans cette étape, les navigateurs bloqueront tous les appels des frontends vers
 
 ## ✅ Vérification finale
 
-1. Ouvre `https://mdf-formulaire.vercel.app` → le formulaire s'affiche, soumets une inscription de test → message de confirmation avec un identifiant `dem-...`.
-2. Ouvre `https://mdf-bureau.vercel.app` → connecte-toi (super admin `bilal`) → onglet **Demandes** → la demande de test apparaît (patiente jusqu'à 15 s, le bureau se rafraîchit périodiquement).
-3. Le bouton « Ouvrir l'application Formulaire » du bandeau du bureau ouvre bien l'URL du formulaire.
+1. **Formulaire** : ouvre `https://mdf-formulaire.vercel.app` → soumets une inscription de test → message de confirmation avec un identifiant `dem-...`. Resoumets avec le même e-mail → message « Vous avez déjà envoyé votre demande » (anti-doublon OK).
+2. **Bureau** : ouvre `https://mdf-bureau.vercel.app` → connecte-toi (super admin `bilal`) → onglet **Demandes Inscription** → la demande de test apparaît (patiente jusqu'à 15 s, le bureau se rafraîchit périodiquement).
+3. **Reporting** : onglet **Remontées Référents** → avec un compte référent, soumets un reporting de test → reconnecte-toi en super admin (autre navigateur ou onglet privé) → la remontée apparaît. Si elle ne traverse pas les appareils : la migration `006_weekly_reports.sql` n'a pas été exécutée (étape 0).
 
 ## 🔄 Et ensuite ? C'est automatique
 
-Les trois services sont branchés sur la branche `main` : **chaque `git push` redéploie tout automatiquement** (les deux projets Vercel et Render détectent le commit). Aucune manipulation à refaire.
+Les trois services sont branchés sur la branche `main` : **chaque `git push` redéploie tout automatiquement** (les deux projets Vercel et Render détectent le commit). La seule chose qui reste manuelle : **exécuter les nouvelles migrations SQL** dans Supabase quand il y en a (étape 0).
 
 ## ⚠️ Pièges connus & dépannage
 
