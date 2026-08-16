@@ -19,6 +19,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  // Signature du dernier recadrage automatique : on ne re-cadre que si la
+  // LISTE des membres affichés change réellement (filtres, ajout...), jamais
+  // sur un simple re-render — sinon le zoom manuel de l'utilisateur est perdu.
+  const lastFitSignatureRef = useRef<string>('');
 
   // Initialize Map
   useEffect(() => {
@@ -35,11 +39,12 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     // Custom Zoom control at top right
     L.control.zoom({ position: 'topright' }).addTo(map);
 
-    // CartoDB Voyager / Light tiles for fresh, readable map display
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    // Tuiles OpenStreetMap France : libellés des pays et villes en FRANÇAIS
+    // (les tuiles CartoDB affichaient les noms en anglais).
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> France',
       maxZoom: 19,
-      subdomains: 'abcd'
+      subdomains: 'abc'
     }).addTo(map);
 
     mapRef.current = map;
@@ -156,9 +161,14 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       bounds.extend([member.latitude, member.longitude]);
     });
 
-    // Auto-fit map bounds if no specific member is selected
+    // Auto-fit map bounds if no specific member is selected — uniquement
+    // quand l'ensemble des membres affichés change vraiment.
     if (!selectedMemberId && bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+      const signature = members.map((m) => m.id).sort().join('|');
+      if (signature !== lastFitSignatureRef.current) {
+        lastFitSignatureRef.current = signature;
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+      }
     }
   }, [members, selectedMemberId]);
 

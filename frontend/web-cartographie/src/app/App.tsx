@@ -273,20 +273,24 @@ export default function App() {
     ApiService.saveSettings({ lastUpdateDate: formatted });
   };
 
-  // Save members to localStorage (cache) + broadcast + synchronisation backend
+  // Save members to localStorage (cache) + synchronisation backend.
+  // ⚠️ Ne PAS émettre d'événement custom écouté dans ce même onglet : le
+  // couple dispatch('mbok_members_updated') + listener->setMembers créait une
+  // boucle infinie de re-renders (la carte se recadrait sans arrêt et le zoom
+  // devenait inutilisable).
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(members));
-      window.dispatchEvent(new CustomEvent('mbok_members_updated', { detail: members }));
     } catch {
       // Ignore quota errors
     }
     ApiService.syncMembers(members);
   }, [members]);
 
-  // Synchronize members across storage events
+  // Synchronisation entre onglets uniquement ('storage' ne se déclenche jamais
+  // dans l'onglet qui écrit — pas de boucle possible).
   useEffect(() => {
-    const syncMembers = (e: any) => {
+    const syncMembers = () => {
       try {
         const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (saved) {
@@ -299,10 +303,8 @@ export default function App() {
     };
 
     window.addEventListener('storage', syncMembers);
-    window.addEventListener('mbok_members_updated', syncMembers);
     return () => {
       window.removeEventListener('storage', syncMembers);
-      window.removeEventListener('mbok_members_updated', syncMembers);
     };
   }, []);
 
