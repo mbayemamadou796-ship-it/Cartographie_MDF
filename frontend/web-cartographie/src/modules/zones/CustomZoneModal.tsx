@@ -130,28 +130,14 @@ export const CustomZoneModal: React.FC<CustomZoneModalProps> = ({
             />
           </div>
 
-          {/* Referent Assignment */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Référent de la Zone (Responsable)</span>
-            </label>
-            <select
-              value={referentUserId}
-              onChange={(e) => setReferentUserId(e.target.value)}
-              className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-emerald-500 outline-none font-semibold transition-all"
-            >
-              <option value="">-- Aucun référent attribué --</option>
-              {potentialReferents.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.prenom} {u.nom} ({u.username}){' '}
-                  {u.role === 'super_admin' ? '[Super Admin]' : u.role === 'admin' ? '[Admin]' : u.role === 'referent' ? '[Référent]' : '[Utilisateur — sera promu Référent]'}
-                </option>
-              ))}
-            </select>
-            <p className="text-[10px] text-slate-400 mt-1">
-              Le référent choisi reçoit automatiquement cette zone dans ses attributions ; un simple utilisateur est promu au rôle Référent.
-            </p>
+          {/* Référents : désignés parmi les MEMBRES de la zone, depuis la carte
+              de zone (bouton « Désigner un référent ») — plusieurs possibles. */}
+          <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 font-medium flex items-start gap-2">
+            <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+            <span>
+              Les <strong>référents</strong> se désignent parmi les <strong>membres de la zone</strong>, via le bouton
+              « Désigner un référent » de la carte de zone (plusieurs référents possibles).
+            </span>
           </div>
 
           <div>

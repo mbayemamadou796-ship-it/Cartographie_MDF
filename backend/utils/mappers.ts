@@ -103,6 +103,7 @@ export function zoneFromDb(row: Row): CustomZone {
     description: optStr(row.description),
     color: optStr(row.color),
     memberIds: Array.isArray(row.member_ids) ? (row.member_ids as string[]) : [],
+    referentMemberIds: Array.isArray(row.referent_member_ids) ? (row.referent_member_ids as string[]) : [],
     referentUserId: optStr(row.referent_user_id),
     referentName: optStr(row.referent_name),
     createdAt: str(row.created_at_iso)
@@ -116,6 +117,7 @@ export function zoneToDb(z: CustomZone): Row {
     description: z.description ?? null,
     color: z.color ?? null,
     member_ids: z.memberIds ?? [],
+    referent_member_ids: z.referentMemberIds ?? [],
     referent_user_id: z.referentUserId ?? null,
     referent_name: z.referentName ?? null,
     created_at_iso: z.createdAt ?? new Date().toISOString()

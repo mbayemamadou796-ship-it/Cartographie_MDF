@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Member, CustomZone, UserRole, AppUser } from '../../types';
 import { Layers, Globe, MapPin, Building2, Compass, Plus, Users, ArrowRight, Edit3, Trash2, UserPlus, Eye, UserCheck, ChevronRight } from 'lucide-react';
 import { CustomZoneModal } from './CustomZoneModal';
+import { DesignerReferentModal } from './DesignerReferentModal';
 import { ManageZoneMembersModal } from './ManageZoneMembersModal';
 import { ZoneDetailsModal, ZoneDataInfo } from './ZoneDetailsModal';
 import { StatInlineView } from '../../components/StatDetailModal';
@@ -25,6 +26,8 @@ interface GeographicZonesViewProps {
     defaultGeo?: { region?: string; departement?: string; ville?: string }
   ) => void;
   onSelectMemberDetails: (member: Member) => void;
+  onDesignerReferent?: (zoneId: string, memberId: string) => void;
+  onRetirerReferent?: (zoneId: string, memberId: string) => void;
 }
 
 const COLOR_MAP: Record<string, { bg: string; border: string; text: string; badgeBg: string }> = {
@@ -51,11 +54,17 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
   onSelectCustomZone,
   onSelectZone,
   onOpenAddMemberInZone,
-  onSelectMemberDetails
+  onSelectMemberDetails,
+  onDesignerReferent,
+  onRetirerReferent
 }) => {
   // Modals state
   const [isZoneModalOpen, setIsZoneModalOpen] = useState(false);
   const [zoneToEdit, setZoneToEdit] = useState<CustomZone | null>(null);
+
+  // Désignation des référents (parmi les membres de la zone) — on garde l'id
+  // pour que la modale reflète les mises à jour de la zone en temps réel.
+  const [zoneIdForReferents, setZoneIdForReferents] = useState<string | null>(null);
 
   const [isManageMembersModalOpen, setIsManageMembersModalOpen] = useState(false);
   const [selectedZoneForMembers, setSelectedZoneForMembers] = useState<CustomZone | null>(null);
@@ -541,23 +550,39 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Referent Badge */}
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 w-fit">
-                        <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
-                        <span>Référent : </span>
-                        <strong className="text-slate-900">
-                          {zone.referentName || (zone.referentUserId && users?.find(u => u.id === zone.referentUserId)?.name) || 'Non assigné'}
-                        </strong>
-                        {!zone.referentName && !zone.referentUserId && userRole === 'admin' && (
-                          <button
-                            onClick={(e) => handleOpenEditZone(zone, e)}
-                            className="ml-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-extrabold transition-colors cursor-pointer"
-                            title="Choisir un référent parmi les utilisateurs de l'application"
-                          >
-                            Définir un référent
-                          </button>
-                        )}
-                      </div>
+                      {/* Referent Badge — référents désignés parmi les membres de la zone */}
+                      {(() => {
+                        const referentNames = (zone.referentMemberIds || [])
+                          .map((id) => members.find((m) => m.id === id))
+                          .filter(Boolean)
+                          .map((m) => `${m!.prenom} ${m!.nom}`.trim());
+                        // Compat : ancien référent unique par compte utilisateur
+                        if (referentNames.length === 0 && (zone.referentName || zone.referentUserId)) {
+                          const legacy = zone.referentName || users?.find((u) => u.id === zone.referentUserId)?.name;
+                          if (legacy) referentNames.push(legacy);
+                        }
+                        return (
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 w-fit flex-wrap">
+                            <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span>{referentNames.length > 1 ? 'Référents : ' : 'Référent : '}</span>
+                            <strong className="text-slate-900">
+                              {referentNames.length > 0 ? referentNames.join(', ') : 'Non assigné'}
+                            </strong>
+                            {userRole === 'admin' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setZoneIdForReferents(zone.id);
+                                }}
+                                className="ml-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-extrabold transition-colors cursor-pointer"
+                                title="Désigner un référent parmi les membres de cette zone"
+                              >
+                                {referentNames.length > 0 ? 'Gérer' : 'Désigner un référent'}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {zone.description && (
                         <p className="text-xs text-slate-500 font-medium leading-relaxed pl-1 line-clamp-2">
@@ -691,6 +716,16 @@ export const GeographicZonesView: React.FC<GeographicZonesViewProps> = ({
         users={users}
         onClose={() => setIsZoneModalOpen(false)}
         onSave={handleSaveZoneModal}
+      />
+
+      <DesignerReferentModal
+        isOpen={zoneIdForReferents !== null}
+        zone={customZones.find((z) => z.id === zoneIdForReferents) ?? null}
+        members={members}
+        users={users || []}
+        onDesigner={(zoneId, memberId) => onDesignerReferent?.(zoneId, memberId)}
+        onRetirer={(zoneId, memberId) => onRetirerReferent?.(zoneId, memberId)}
+        onClose={() => setZoneIdForReferents(null)}
       />
 
       <ManageZoneMembersModal

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserRole, AppUser, CustomZone } from '../../types';
+import { UserRole, AppUser, CustomZone, Member } from '../../types';
 import { FRENCH_ZONES } from '../membres/AdminMemberFormModal';
 import { getVillesForZone } from '../../utils/geocoding';
 import {
@@ -24,7 +24,11 @@ interface UserManagementViewProps {
   currentRole: UserRole;
   users: AppUser[];
   customZones?: CustomZone[];
-  onAddUser: (user: Omit<AppUser, 'id' | 'lastLogin'>, memberInfo: { ville: string }) => void;
+  members?: Member[];
+  onAddUser: (
+    user: Omit<AppUser, 'id' | 'lastLogin'>,
+    memberInfo: { ville: string; referentZoneId?: string; referentMemberId?: string }
+  ) => void;
   onUpdateUser: (userId: string, updates: Partial<AppUser>) => void;
   onDeleteUser: (userId: string) => void;
   onSwitchRole: (role: UserRole) => void;
@@ -34,6 +38,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   currentRole,
   users,
   customZones = [],
+  members = [],
   onAddUser,
   onUpdateUser,
   onDeleteUser,
@@ -63,6 +68,9 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [formRole, setFormRole] = useState<UserRole>('user');
   const [formRegion, setFormRegion] = useState('');
   const [formVille, setFormVille] = useState('');
+  // Création d'un référent : zone cible obligatoire, puis membre de cette zone
+  const [formReferentZoneId, setFormReferentZoneId] = useState('');
+  const [formReferentMemberId, setFormReferentMemberId] = useState('');
   const [formAssignedZoneIds, setFormAssignedZoneIds] = useState<string[]>([]);
   const [formActive, setFormActive] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
@@ -78,6 +86,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormRole('user');
     setFormRegion('Île-de-France');
     setFormVille('');
+    setFormReferentZoneId('');
+    setFormReferentMemberId('');
     setFormAssignedZoneIds([]);
     setFormActive(true);
     setFormError(null);
@@ -95,10 +105,35 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormRole(user.role);
     setFormRegion(user.region || '');
     setFormVille('');
+    setFormReferentZoneId('');
+    setFormReferentMemberId('');
     setFormAssignedZoneIds(user.assignedZoneIds || []);
     setFormActive(user.active);
     setFormError(null);
     setIsModalOpen(true);
+  };
+
+  // Flux « la zone est l'élément central » : à la création d'un référent,
+  // on choisit une zone cible puis UNIQUEMENT un membre de cette zone.
+  const referentZone = customZones.find((z) => z.id === formReferentZoneId);
+  const referentZoneMembers = referentZone
+    ? members.filter((m) => referentZone.memberIds.includes(m.id))
+    : [];
+
+  /** Pré-remplit l'identité du compte depuis le membre désigné référent. */
+  const handleSelectReferentMember = (memberId: string) => {
+    setFormReferentMemberId(memberId);
+    const member = members.find((m) => m.id === memberId);
+    if (!member) return;
+    setFormNom(member.nom || '');
+    setFormPrenom(member.prenom || '');
+    setFormEmail(member.email || '');
+    setFormVille(member.ville || '');
+    if (referentZone) setFormRegion(referentZone.name);
+    if (!formUsername.trim()) {
+      const suggestion = `${(member.prenom || '')[0] || ''}${member.nom || ''}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (suggestion) setFormUsername(suggestion);
+    }
   };
 
   const handleToggleZoneAssignment = (zoneId: string) => {
@@ -117,6 +152,10 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     }
 
     if (!editingUser) {
+      if (formRole === 'referent' && (!formReferentZoneId || !formReferentMemberId)) {
+        setFormError('Pour un référent : choisissez d\'abord la zone cible, puis le membre de cette zone à désigner.');
+        return;
+      }
       if (!formVille.trim()) {
         setFormError('La ville de résidence est obligatoire : tout utilisateur est aussi enregistré comme membre MDF de sa zone.');
         return;
@@ -161,12 +200,17 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
           username: formUsername.trim(),
           password: formPassword,
           role: formRole,
-          region: formRegion.trim(),
-          assignedZoneIds: formRole === 'referent' ? formAssignedZoneIds : [],
+          region: formRole === 'referent' && referentZone ? referentZone.name : formRegion.trim(),
+          assignedZoneIds: formRole === 'referent' ? [formReferentZoneId] : [],
           active: formActive,
           createdAt: new Date().toLocaleDateString('fr-FR')
         },
-        { ville: formVille.trim() }
+        {
+          ville: formVille.trim(),
+          ...(formRole === 'referent'
+            ? { referentZoneId: formReferentZoneId, referentMemberId: formReferentMemberId }
+            : {})
+        }
       );
     }
 
@@ -693,8 +737,71 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                   </div>
                 </div>
 
-                {/* Referent Zone Selection */}
-                {formRole === 'referent' && (
+                {/* Création d'un référent : zone cible obligatoire, puis membre de la zone */}
+                {formRole === 'referent' && !editingUser && (
+                  <div className="p-2.5 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2">
+                    <label className="block text-[11px] font-bold text-blue-900 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Désignation du référent — la zone est l'élément central</span>
+                    </label>
+                    <p className="text-[10px] text-blue-700 font-medium">
+                      Choisissez la zone cible, puis le membre de cette zone à désigner : son identité remplit
+                      automatiquement le compte. Un référent appartient toujours à sa zone.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-bold text-blue-900 mb-1 text-[11px]">
+                          Zone cible <span className="text-rose-500">*</span>
+                        </label>
+                        <select
+                          required
+                          value={formReferentZoneId}
+                          onChange={(e) => {
+                            setFormReferentZoneId(e.target.value);
+                            setFormReferentMemberId('');
+                          }}
+                          className="w-full bg-white border border-blue-200 rounded-xl px-3 py-1.5 text-slate-800 focus:border-blue-500 outline-none font-medium text-xs cursor-pointer"
+                        >
+                          <option value="" disabled>-- Sélectionner la zone --</option>
+                          {customZones.map((z) => (
+                            <option key={z.id} value={z.id}>{z.name} ({z.memberIds.length} membre{z.memberIds.length > 1 ? 's' : ''})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-blue-900 mb-1 text-[11px]">
+                          Membre de la zone à désigner <span className="text-rose-500">*</span>
+                        </label>
+                        <select
+                          required
+                          value={formReferentMemberId}
+                          onChange={(e) => handleSelectReferentMember(e.target.value)}
+                          disabled={!formReferentZoneId}
+                          className="w-full bg-white border border-blue-200 rounded-xl px-3 py-1.5 text-slate-800 focus:border-blue-500 outline-none font-medium text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="" disabled>
+                            {formReferentZoneId ? '-- Sélectionner le membre --' : '-- Choisissez d\'abord la zone --'}
+                          </option>
+                          {referentZoneMembers.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.prenom} {m.nom}{m.ville ? ` — ${m.ville}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {formReferentZoneId && referentZoneMembers.length === 0 && (
+                          <p className="text-[10px] text-amber-700 mt-1 font-semibold">
+                            Cette zone n'a aucun membre : ajoutez d'abord le membre dans l'annuaire et sa zone.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Édition d'un référent : zones attribuées (plusieurs possibles) */}
+                {formRole === 'referent' && editingUser && (
                   <div className="p-2.5 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-1.5">
                     <label className="block text-[11px] font-bold text-blue-900 flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-blue-600" />

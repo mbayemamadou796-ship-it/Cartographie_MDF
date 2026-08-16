@@ -26,5 +26,7 @@
 - [x] Rôle `super_admin` (tous droits) + restriction des onglets admin ; lien utilisateur⇄membre automatique ; villes proposées par zone ; géolocalisation auto par ville ; référents assignables sur les zones orphelines ; correctif enregistrement des paramètres.
 - [ ] ⚠️ Exécuter `backend/database/migrations/004_super_admin.sql` dans Supabase > SQL Editor (sans cela, `bilal` reste simple admin et perd les onglets Utilisateurs / Journaux / Paramètres).
 - [x] Intégration du reporting hebdomadaire des référents (module `reportings`, Recharts, restriction des demandes aux admins) depuis Cartographie_MDF1.
+- [x] La zone devient l'élément central de l'affectation des référents : désignation parmi les MEMBRES de la zone (plusieurs référents possibles, `referent_member_ids`), flux inverse depuis Utilisateurs & Droits (zone cible → membre), identité membre distincte du compte utilisateur.
+- [ ] ⚠️ Exécuter `backend/database/migrations/005_zone_referents.sql` dans Supabase > SQL Editor (sans cela, la synchronisation des zones échoue : colonne `referent_member_ids` absente).
 - [ ] ⚠️ Le reporting fonctionne en **localStorage uniquement** : les remontées d'un référent ne sont pas visibles depuis un autre appareil. À brancher sur Supabase (table `weekly_reports` + endpoints), comme cela a été fait pour les demandes.
 - [ ] Exécuter des tests de charge sur les imports massifs Excel (> 5000 enregistrements).

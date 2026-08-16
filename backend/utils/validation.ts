@@ -52,6 +52,7 @@ export const zoneSchema = z.object({
   description: z.string().max(1000).optional(),
   color: z.string().max(50).optional(),
   memberIds: z.array(z.string().max(120)).default([]),
+  referentMemberIds: z.array(z.string().max(120)).optional(),
   referentUserId: z.string().max(120).optional(),
   referentName: z.string().max(300).optional(),
   createdAt: z.string().max(60).default('')

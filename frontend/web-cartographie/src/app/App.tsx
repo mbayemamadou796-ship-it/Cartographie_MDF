@@ -1076,7 +1076,10 @@ export default function App() {
     showToast('Vous avez été déconnecté.');
   };
 
-  const handleAddUser = (user: Omit<AppUser, 'id' | 'lastLogin'>, memberInfo: { ville: string }) => {
+  const handleAddUser = (
+    user: Omit<AppUser, 'id' | 'lastLogin'>,
+    memberInfo: { ville: string; referentZoneId?: string; referentMemberId?: string }
+  ) => {
     const newUser: AppUser = {
       ...user,
       id: `usr-${Date.now()}`,
@@ -1084,6 +1087,25 @@ export default function App() {
     };
     setUsers((prev) => [newUser, ...prev]);
     addAuditLog('user', 'Création d\'un compte utilisateur', `Création du compte "${newUser.name}" (Rôle: ${newUser.role}, Région: ${newUser.region || 'Non spécifiée'})`, 'info', newUser.id, newUser.name);
+
+    // Flux référent « la zone est l'élément central » : le compte est créé
+    // pour un MEMBRE de la zone cible — on le désigne référent de la zone.
+    if (memberInfo.referentZoneId && memberInfo.referentMemberId) {
+      const targetZone = customZones.find((z) => z.id === memberInfo.referentZoneId);
+      setCustomZones((prev) =>
+        prev.map((z) => {
+          if (z.id !== memberInfo.referentZoneId) return z;
+          const current = z.referentMemberIds || [];
+          return current.includes(memberInfo.referentMemberId!)
+            ? z
+            : { ...z, referentMemberIds: [...current, memberInfo.referentMemberId!] };
+        })
+      );
+      const refMember = members.find((m) => m.id === memberInfo.referentMemberId);
+      addAuditLog('zone', 'Désignation d\'un référent', `${refMember ? `${refMember.prenom} ${refMember.nom}` : newUser.name} désigné référent de la Zone ${targetZone?.name || ''} (compte @${newUser.username} créé)`, 'info', memberInfo.referentMemberId, refMember ? `${refMember.prenom} ${refMember.nom}` : newUser.name, targetZone?.name);
+      showToast(`Compte Référent "${user.name}" créé et membre désigné référent de la Zone ${targetZone?.name || ''}.`);
+      return;
+    }
 
     // Règle MDF : tout utilisateur est aussi membre. On relie le compte au
     // membre existant portant le même e-mail, sinon on crée automatiquement
@@ -1484,6 +1506,70 @@ export default function App() {
     const target = customZones.find((z) => z.id === zoneId);
     addAuditLog('zone', 'Mise à jour de zone', `Zone "${updates.name || target?.name || zoneId}" mise à jour`, 'info', zoneId, target?.name, updates.name || target?.name);
     showToast('Zone mise à jour.');
+  };
+
+  /**
+   * Désigne un MEMBRE de la zone comme référent (plusieurs possibles).
+   * L'identité de membre et le compte utilisateur restent distincts : si un
+   * compte existe avec le même e-mail, il reçoit la zone et le rôle Référent ;
+   * sinon l'admin le crée ensuite dans « Utilisateurs & Droits ».
+   */
+  const handleDesignerReferent = (zoneId: string, memberId: string) => {
+    const zone = customZones.find((z) => z.id === zoneId);
+    const member = members.find((m) => m.id === memberId);
+    if (!zone || !member) return;
+
+    setCustomZones((prev) =>
+      prev.map((z) => {
+        if (z.id !== zoneId) return z;
+        const current = z.referentMemberIds || [];
+        if (current.includes(memberId)) return z;
+        return { ...z, referentMemberIds: [...current, memberId] };
+      })
+    );
+
+    // Compte utilisateur lié (par e-mail) : attribution de la zone + promotion
+    const email = (member.email || '').trim().toLowerCase();
+    const linkedUser = email ? users.find((u) => (u.email || '').trim().toLowerCase() === email) : undefined;
+    if (linkedUser) {
+      syncReferentAssignment(zoneId, linkedUser.id);
+    }
+
+    const memberName = `${member.prenom} ${member.nom}`.trim();
+    addAuditLog('zone', 'Désignation d\'un référent', `${memberName} désigné référent de la Zone ${zone.name}`, 'info', memberId, memberName, zone.name);
+    showToast(
+      linkedUser
+        ? `${memberName} désigné référent de la Zone ${zone.name} — son compte @${linkedUser.username} a reçu la zone.`
+        : `${memberName} désigné référent de la Zone ${zone.name}. Créez son compte utilisateur (rôle Référent) pour lui donner les accès.`
+    );
+  };
+
+  /** Retire un référent de la zone (le membre et son compte sont conservés). */
+  const handleRetirerReferent = (zoneId: string, memberId: string) => {
+    const zone = customZones.find((z) => z.id === zoneId);
+    const member = members.find((m) => m.id === memberId);
+    setCustomZones((prev) =>
+      prev.map((z) =>
+        z.id === zoneId
+          ? { ...z, referentMemberIds: (z.referentMemberIds || []).filter((id) => id !== memberId) }
+          : z
+      )
+    );
+    // Retire la zone des attributions du compte lié (sans toucher au rôle)
+    const email = (member?.email || '').trim().toLowerCase();
+    const linkedUser = email ? users.find((u) => (u.email || '').trim().toLowerCase() === email) : undefined;
+    if (linkedUser && (linkedUser.assignedZoneIds || []).includes(zoneId)) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === linkedUser.id
+            ? { ...u, assignedZoneIds: (u.assignedZoneIds || []).filter((id) => id !== zoneId) }
+            : u
+        )
+      );
+    }
+    const memberName = member ? `${member.prenom} ${member.nom}`.trim() : memberId;
+    addAuditLog('zone', 'Retrait d\'un référent', `${memberName} retiré des référents de la Zone ${zone?.name || zoneId}`, 'warning', memberId, memberName, zone?.name);
+    showToast(`${memberName} n'est plus référent de la Zone ${zone?.name || ''}.`);
   };
 
   const handleDeleteZone = (zoneId: string) => {
@@ -1975,6 +2061,8 @@ export default function App() {
             users={users}
             currentUserId={currentUser?.id}
             assignedZoneIds={currentUser?.assignedZoneIds}
+            onDesignerReferent={handleDesignerReferent}
+            onRetirerReferent={handleRetirerReferent}
             onSelectZone={(type, name) => {
               handleResetFilters();
               handleFilterChange({ [type]: name });
@@ -2020,6 +2108,7 @@ export default function App() {
             currentRole={componentRole}
             users={users}
             customZones={customZones}
+            members={members}
             onAddUser={handleAddUser}
             onUpdateUser={handleUpdateUser}
             onDeleteUser={handleDeleteUser}

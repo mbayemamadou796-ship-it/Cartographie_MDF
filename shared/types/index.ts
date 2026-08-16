@@ -183,7 +183,15 @@ export interface CustomZone {
   description?: string;
   color?: string;
   memberIds: string[];
+  /**
+   * Référents désignés parmi les MEMBRES de la zone (plusieurs possibles).
+   * Distinct du compte utilisateur : le membre existe dans l'annuaire,
+   * le compte (rôle referent + assignedZoneIds) donne les droits d'accès.
+   */
+  referentMemberIds?: string[];
+  /** @deprecated ancien référent unique par compte utilisateur (conservé pour compat). */
   referentUserId?: string;
+  /** @deprecated ancien nom du référent unique (conservé pour compat). */
   referentName?: string;
   createdAt: string;
 }
