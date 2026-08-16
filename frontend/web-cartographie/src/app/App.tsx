@@ -492,27 +492,48 @@ export default function App() {
     return demandes.filter((d) => d.status === 'EN_ATTENTE').length;
   }, [demandes]);
 
-  // Weekly Reports State with Real-Time Synchronization
+  // Reportings hebdomadaires — cache localStorage au démarrage, vérité serveur ensuite
   const [weeklyReports, setWeeklyReports] = useState<WeeklyReport[]>(() => {
     return ReportingService.getReports();
   });
 
+  // Synchronisation même navigateur (autres onglets + onglet courant)
   useEffect(() => {
     const syncReportsFromStorage = () => {
-      const latest = ReportingService.getReports();
-      setWeeklyReports(latest);
+      setWeeklyReports(ReportingService.getReports());
     };
 
     window.addEventListener('storage', syncReportsFromStorage);
     window.addEventListener('mbok_reports_updated', syncReportsFromStorage);
-    const interval = setInterval(syncReportsFromStorage, 1000);
 
     return () => {
       window.removeEventListener('storage', syncReportsFromStorage);
       window.removeEventListener('mbok_reports_updated', syncReportsFromStorage);
-      clearInterval(interval);
     };
   }, []);
+
+  // Rafraîchissement périodique depuis le backend : les remontées des
+  // référents et les réponses du bureau arrivent d'autres appareils.
+  useEffect(() => {
+    if (!currentUser || !ApiService.hasSession()) return;
+
+    const refresh = async () => {
+      const serverReports = await ApiService.fetchReports();
+      if (serverReports) {
+        ReportingService.saveReports(serverReports);
+        setWeeklyReports(serverReports);
+      }
+    };
+
+    const interval = setInterval(refresh, 15000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
+
+  // Synchronisation backend des changements (soumissions, statuts, réponses...)
+  useEffect(() => {
+    ApiService.syncReports(weeklyReports);
+  }, [weeklyReports]);
 
   const pendingReportingsCount = useMemo(() => {
     if (userRole === 'referent') {
@@ -579,6 +600,7 @@ export default function App() {
     }
     const updated = ReportingService.deleteReport(reportId);
     setWeeklyReports(updated);
+    ApiService.deleteReport(reportId);
     addAuditLog('system', 'Suppression reporting', `Reporting ${reportId} supprimé`, 'warning', reportId);
     showToast('Reporting supprimé.');
   };
@@ -963,11 +985,17 @@ export default function App() {
           DemandeService.saveDemandes(d.demandes);
           setDemandes(d.demandes);
         }
+        if (Array.isArray(d.reports)) {
+          ReportingService.saveReports(d.reports);
+          setWeeklyReports(d.reports);
+        }
         if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
           setImportLogs(d.importLogs);
+          // super admin : liste complète des comptes ; admin : liste minimale
+          // (identité/rôle/actif) pour fiabiliser la liaison membre <-> compte.
+          if (d.users.length > 0) setUsers(d.users);
         }
         if (currentUser.role === 'super_admin') {
-          if (d.users.length > 0) setUsers(d.users);
           setAuditLogs(d.auditLogs);
         }
       })

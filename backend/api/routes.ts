@@ -5,6 +5,7 @@ import { publicDemandeRateLimiter, publicTrackingRateLimiter } from '../auth/rat
 import { logger } from '../utils/logger';
 import { memberService } from '../modules/membres/memberService';
 import { demandeService } from '../modules/demandes/demandeService';
+import { reportingService } from '../modules/reportings/reportingService';
 import { zoneService } from '../modules/zones/zoneService';
 import { userService, IncomingAppUser } from '../modules/utilisateurs/userService';
 import { auditService } from '../modules/journaux/auditService';
@@ -18,9 +19,10 @@ import {
   importLogsArraySchema,
   settingsSchema,
   demandesArraySchema,
-  publicDemandeSchema
+  publicDemandeSchema,
+  weeklyReportsArraySchema
 } from '../utils/validation';
-import { AppUser, AuditLog, CustomZone, DemandeMember, Member } from '../../shared/types/index';
+import { AppUser, AuditLog, CustomZone, DemandeMember, Member, WeeklyReport } from '../../shared/types/index';
 
 /** Express 4 ne remonte pas les rejets de promesses : wrapper systématique. */
 function asyncHandler(fn: (req: AuthedRequest, res: Response) => Promise<void>): RequestHandler {
@@ -52,7 +54,7 @@ apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
   const isSuper = actor.role === 'super_admin';
   const adminLevel = isAdminLevel(actor.role);
 
-  const [settings, members, zones, demandes, users, importLogs, auditLogs] = await Promise.all([
+  const [settings, members, zones, demandes, reports, users, importLogs, auditLogs] = await Promise.all([
     settingsService.get(),
     memberService.list(),
     zoneService.list(),
@@ -63,14 +65,31 @@ apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
       logger.error(`bootstrap demandes indisponibles: ${e.message}`);
       return null;
     }),
-    // Gestion des utilisateurs et journal d'audit : super admin uniquement.
-    // Historique d'imports : niveau admin (l'onglet Import/Export reste admin).
-    isSuper ? userService.list() : Promise.resolve([] as AppUser[]),
+    // Reportings hebdomadaires : tout pour les niveaux admin, uniquement les
+    // siennes pour un référent. Tolérant tant que 006_weekly_reports.sql
+    // n'a pas été exécutée (reports: null => cache local conservé).
+    (adminLevel
+      ? reportingService.list()
+      : actor.role === 'referent'
+      ? reportingService.listForReferent(actor)
+      : Promise.resolve([] as WeeklyReport[])
+    ).catch((e: Error) => {
+      logger.error(`bootstrap reportings indisponibles: ${e.message}`);
+      return null;
+    }),
+    // Gestion des utilisateurs : liste complète pour le super admin ; liste
+    // MINIMALE (identité/rôle/actif, jamais de secret) pour l'admin, afin de
+    // fiabiliser la liaison membre <-> compte (désignation des référents).
+    isSuper
+      ? userService.list()
+      : adminLevel
+      ? userService.listMinimal()
+      : Promise.resolve([] as AppUser[]),
     adminLevel ? excelService.listImportLogs() : Promise.resolve([]),
     isSuper ? auditService.list() : Promise.resolve([])
   ]);
 
-  res.json({ settings, members, zones, demandes, users, importLogs, auditLogs, currentUser: actor });
+  res.json({ settings, members, zones, demandes, reports, users, importLogs, auditLogs, currentUser: actor });
 }));
 
 // --------------------------------------------------------------------------
@@ -167,6 +186,34 @@ apiRouter.put('/demandes', requireAuth, asyncHandler(async (req, res) => {
   const parsed = demandesArraySchema.safeParse(req.body);
   if (!parsed.success) return badRequest(res, 'Payload demandes invalide.');
   await demandeService.bulkUpsert(parsed.data as DemandeMember[], req.appUser as AppUser);
+  res.status(204).end();
+}));
+
+// --------------------------------------------------------------------------
+// Reportings hebdomadaires des référents
+// --------------------------------------------------------------------------
+apiRouter.get('/reportings', requireAuth, asyncHandler(async (req, res) => {
+  const actor = req.appUser as AppUser;
+  if (isAdminLevel(actor.role)) {
+    res.json(await reportingService.list());
+    return;
+  }
+  if (actor.role === 'referent') {
+    res.json(await reportingService.listForReferent(actor));
+    return;
+  }
+  res.json([]);
+}));
+
+apiRouter.put('/reportings', requireAuth, asyncHandler(async (req, res) => {
+  const parsed = weeklyReportsArraySchema.safeParse(req.body);
+  if (!parsed.success) return badRequest(res, 'Payload reportings invalide.');
+  await reportingService.bulkUpsert(parsed.data as WeeklyReport[], req.appUser as AppUser);
+  res.status(204).end();
+}));
+
+apiRouter.delete('/reportings/:id', requireAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+  await reportingService.remove(req.params.id as string);
   res.status(204).end();
 }));
 

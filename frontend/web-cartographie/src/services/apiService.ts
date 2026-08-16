@@ -1,4 +1,4 @@
-import { Member, AppUser, CustomZone, AuditLog, ImportLog, AppSettings, DemandeMember } from '../types';
+import { Member, AppUser, CustomZone, AuditLog, ImportLog, AppSettings, DemandeMember, WeeklyReport } from '../types';
 
 /**
  * Client HTTP du backend Express + Supabase (couche données uniquement).
@@ -29,6 +29,7 @@ export interface BootstrapData {
   members: Member[];
   zones: CustomZone[];
   demandes: DemandeMember[] | null;   // null si la table demandes n'existe pas encore
+  reports: WeeklyReport[] | null;     // null si la table weekly_reports n'existe pas encore
   users: AppUser[];
   importLogs: ImportLog[];
   auditLogs: AuditLog[];
@@ -203,6 +204,7 @@ export class ApiService {
     snapshots.members = JSON.stringify(data.members);
     snapshots.zones = JSON.stringify(data.zones);
     snapshots.demandes = JSON.stringify(data.demandes ?? []);
+    snapshots.reports = JSON.stringify(data.reports ?? []);
     snapshots.users = JSON.stringify(data.users);
     snapshots.importLogs = JSON.stringify(data.importLogs);
     bootstrapped = true;
@@ -287,6 +289,34 @@ export class ApiService {
     } catch {
       return null;
     }
+  }
+
+  static syncReports(reports: WeeklyReport[]): void {
+    scheduleSync('reports', '/reportings', reports);
+  }
+
+  /**
+   * Rafraîchit les reportings depuis le serveur (les remontées des référents
+   * arrivent d'autres appareils ; le bureau répond depuis le sien).
+   * Alimente le snapshot anti-écho ; null si API indisponible / pas de session.
+   */
+  static async fetchReports(): Promise<WeeklyReport[] | null> {
+    if (!loadTokens()) return null;
+    try {
+      const res = await request('/reportings');
+      if (!res.ok) return null;
+      const reports = (await res.json()) as WeeklyReport[];
+      snapshots.reports = JSON.stringify(reports);
+      return reports;
+    } catch {
+      return null;
+    }
+  }
+
+  static deleteReport(id: string): void {
+    request(`/reportings/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(e =>
+      console.warn('[ApiService] deleteReport impossible', e)
+    );
   }
 
   static syncUsers(users: AppUser[]): void {

@@ -570,20 +570,19 @@ export class ReportingService {
     return 'NORMAL';
   }
 
+  /**
+   * Cache local des reportings. Aucune donnée de démonstration n'est injectée :
+   * la vérité partagée est Supabase (synchronisation via ApiService dans
+   * App.tsx) — le localStorage sert au démarrage instantané / mode offline.
+   */
   static getReports(): WeeklyReport[] {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_REPORTINGS_KEY) || localStorage.getItem('mbok_de_france_weekly_reports_v2');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const map = new Map<string, WeeklyReport>();
-          
-          INITIAL_WEEKLY_REPORTS.forEach((r) => {
-            map.set(r.id, r);
-          });
-          
-          parsed.forEach((r: WeeklyReport) => {
-            const enriched: WeeklyReport = {
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((r: WeeklyReport): WeeklyReport => ({
               ...r,
               caseNumber: r.caseNumber || `#${r.id.replace(/\D/g, '').slice(-3) || '101'}`,
               priority: r.priority || this.getPriorityFromUrgence(r.urgenceLevel || 1),
@@ -591,22 +590,15 @@ export class ReportingService {
               lastActivityAt: r.lastActivityAt || r.updatedAt || r.createdAt,
               reponses: r.reponses || [],
               actionHistory: r.actionHistory || []
-            };
-            map.set(r.id, enriched);
-          });
-
-          const merged = Array.from(map.values()).sort((a, b) => {
-            return (b.createdAt || '').localeCompare(a.createdAt || '');
-          });
-
-          return merged;
+            }))
+            .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         }
       }
     } catch (e) {
       console.error('Erreur chargement reports:', e);
     }
 
-    return INITIAL_WEEKLY_REPORTS;
+    return [];
   }
 
   static saveReports(reports: WeeklyReport[]): void {

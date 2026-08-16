@@ -68,6 +68,22 @@ export const userService = {
   },
 
   /**
+   * Liste MINIMALE pour les admins (non super) : uniquement l'identité, le
+   * rôle, l'activité et les zones attribuées — de quoi fiabiliser la liaison
+   * membre <-> compte lors de la désignation des référents, sans exposer la
+   * gestion des utilisateurs (réservée au super admin).
+   */
+  async listMinimal(): Promise<AppUser[]> {
+    const supabase = supabaseAdmin();
+    const { data, error } = await supabase
+      .from('app_users')
+      .select('id, nom, prenom, name, email, username, role, active, assigned_zone_ids')
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(`Lecture des utilisateurs: ${error.message}`);
+    return (data ?? []).map((row) => appUserFromDb({ ...row, last_login: '', region: null, created_at_str: null }));
+  },
+
+  /**
    * Upsert en masse (admin uniquement — imposé par la route).
    * Les mots de passe entrants sont routés vers l'Auth Admin API de Supabase,
    * jamais stockés dans app_users. Chaque utilisateur est traité isolément :

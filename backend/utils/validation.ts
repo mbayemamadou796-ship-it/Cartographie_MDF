@@ -147,6 +147,74 @@ export const publicDemandeSchema = demandeSchema
     photo: z.string().max(7_000_000).optional()
   });
 
+const reportAttachmentSchema = z.object({
+  id: z.string().max(120).optional(),
+  name: z.string().max(500),
+  size: z.number().nonnegative().optional(),
+  type: z.string().max(200).optional(),
+  url: z.string().optional(),               // data-URL possible
+  uploadedAt: z.string().max(60).optional()
+});
+
+const reportResponseSchema = z.object({
+  id: z.string().max(120),
+  authorId: z.string().max(120).optional(),
+  authorName: z.string().max(300),
+  authorRole: z.enum(['bureau', 'referent', 'admin']),
+  content: z.string().max(10000),
+  createdAt: z.string().max(60),
+  piecesJointes: z.array(reportAttachmentSchema).max(20).optional()
+});
+
+const reportActionLogSchema = z.object({
+  id: z.string().max(120),
+  date: z.string().max(60),
+  authorName: z.string().max(300),
+  authorRole: z.string().max(50).optional(),
+  action: z.string().max(300),
+  previousStatus: z.enum(['NOUVEAU', 'EN_COURS', 'TRAITE']).optional(),
+  newStatus: z.enum(['NOUVEAU', 'EN_COURS', 'TRAITE']).optional(),
+  details: z.string().max(5000).optional()
+});
+
+export const weeklyReportSchema = z.object({
+  id: z.string().min(1).max(120),
+  caseNumber: z.union([z.string().max(60), z.number()]).optional(),
+  referentId: z.string().max(120).default(''),
+  referentName: z.string().max(300).default(''),
+  email: z.string().max(320).default(''),
+  telephone: z.string().max(100).optional(),
+  zone: z.string().max(200).default(''),
+  zoneId: z.string().max(120).optional(),
+  type: z.enum(['PERIODIQUE', 'PONCTUEL']).optional(),
+  sujet: z.string().max(500).optional(),
+  priority: z.enum(['NORMAL', 'IMPORTANT', 'URGENT']).optional(),
+  semaineLundi: z.string().max(60).default(''),
+  nouveauxContactes: z.string().max(10000).optional(),
+  situationsPrioritaires: z.string().max(10000).optional(),
+  activitesLocales: z.string().max(10000).optional(),
+  besoinRetourBureau: z.boolean().default(false),
+  detailsDemandeRetour: z.string().max(10000).optional(),
+  urgenceLevel: z.number().int().min(1).max(5).default(1),
+  status: z.enum(['NOUVEAU', 'EN_COURS', 'TRAITE']),
+  bureauNotes: z.string().max(10000).optional(),
+  piecesJointes: z.array(reportAttachmentSchema).max(20).optional(),
+  responsableId: z.string().max(120).optional(),
+  responsableName: z.string().max(300).optional(),
+  datePriseEnCharge: z.string().max(60).optional(),
+  dateReponse: z.string().max(60).optional(),
+  dateTraitement: z.string().max(60).optional(),
+  reponses: z.array(reportResponseSchema).max(200).optional(),
+  actionHistory: z.array(reportActionLogSchema).max(500).optional(),
+  createdAt: z.string().max(60),
+  updatedAt: z.string().max(60).optional(),
+  lastActivityAt: z.string().max(60).optional(),
+  reviewedBy: z.string().max(300).optional(),
+  reviewedAt: z.string().max(60).optional()
+});
+
+export const weeklyReportsArraySchema = z.array(weeklyReportSchema).max(20000);
+
 export const importLogSchema = z.object({
   id: z.string().min(1).max(120),
   filename: z.string().max(500),

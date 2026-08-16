@@ -9,7 +9,7 @@
  * - les dates affichées (timestamp fr-FR, lastLogin, createdAt ISO...) sont
  *   des chaînes stockées telles quelles, jamais converties.
  */
-import { Member, CustomZone, AppUser, AuditLog, ImportLog, AppSettings, CustomField, UserRole, AuditLogCategory, DemandeMember, DemandeType, DemandeStatus } from '../../shared/types/index';
+import { Member, CustomZone, AppUser, AuditLog, ImportLog, AppSettings, CustomField, UserRole, AuditLogCategory, DemandeMember, DemandeType, DemandeStatus, WeeklyReport, ReportingStatus, ReportingType, ReportingPriority, ReportAttachment, ReportResponse, ReportActionLog } from '../../shared/types/index';
 
 type Row = Record<string, unknown>;
 
@@ -237,6 +237,96 @@ export function demandeToDb(d: DemandeMember): Row {
     longitude: d.longitude ?? null,
     champs_personnalises: d.champsPersonnalises ?? [],
     notes: d.notes ?? null
+  };
+}
+
+// ---------------------------------------------------------------------------
+// WeeklyReport (reporting hebdomadaire des référents)
+// ---------------------------------------------------------------------------
+
+function optNumStrict(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+}
+
+export function reportFromDb(row: Row): WeeklyReport {
+  return compact({
+    id: str(row.id),
+    caseNumber: optStr(row.case_number),
+    referentId: str(row.referent_id),
+    referentName: str(row.referent_name),
+    email: str(row.email),
+    telephone: optStr(row.telephone),
+    zone: str(row.zone),
+    zoneId: optStr(row.zone_id),
+    type: optStr(row.type) as ReportingType | undefined,
+    sujet: optStr(row.sujet),
+    priority: optStr(row.priority) as ReportingPriority | undefined,
+    semaineLundi: str(row.semaine_lundi),
+    nouveauxContactes: optStr(row.nouveaux_contactes),
+    situationsPrioritaires: optStr(row.situations_prioritaires),
+    activitesLocales: optStr(row.activites_locales),
+    besoinRetourBureau: row.besoin_retour_bureau === true,
+    detailsDemandeRetour: optStr(row.details_demande_retour),
+    urgenceLevel: optNumStrict(row.urgence_level) ?? 1,
+    status: (str(row.status) || 'NOUVEAU') as ReportingStatus,
+    bureauNotes: optStr(row.bureau_notes),
+    piecesJointes: Array.isArray(row.pieces_jointes) && row.pieces_jointes.length > 0
+      ? (row.pieces_jointes as ReportAttachment[])
+      : undefined,
+    responsableId: optStr(row.responsable_id),
+    responsableName: optStr(row.responsable_name),
+    datePriseEnCharge: optStr(row.date_prise_en_charge),
+    dateReponse: optStr(row.date_reponse),
+    dateTraitement: optStr(row.date_traitement),
+    reponses: Array.isArray(row.reponses) && row.reponses.length > 0
+      ? (row.reponses as ReportResponse[])
+      : undefined,
+    actionHistory: Array.isArray(row.action_history) && row.action_history.length > 0
+      ? (row.action_history as ReportActionLog[])
+      : undefined,
+    createdAt: str(row.created_at_iso),
+    updatedAt: optStr(row.updated_at_iso),
+    lastActivityAt: optStr(row.last_activity_at),
+    reviewedBy: optStr(row.reviewed_by),
+    reviewedAt: optStr(row.reviewed_at)
+  }) as WeeklyReport;
+}
+
+export function reportToDb(r: WeeklyReport): Row {
+  return {
+    id: r.id,
+    case_number: r.caseNumber != null ? String(r.caseNumber) : null,
+    referent_id: r.referentId ?? '',
+    referent_name: r.referentName ?? '',
+    email: r.email ?? '',
+    telephone: r.telephone ?? null,
+    zone: r.zone ?? '',
+    zone_id: r.zoneId ?? null,
+    type: r.type ?? 'PERIODIQUE',
+    sujet: r.sujet ?? null,
+    priority: r.priority ?? null,
+    semaine_lundi: r.semaineLundi ?? '',
+    nouveaux_contactes: r.nouveauxContactes ?? null,
+    situations_prioritaires: r.situationsPrioritaires ?? null,
+    activites_locales: r.activitesLocales ?? null,
+    besoin_retour_bureau: r.besoinRetourBureau === true,
+    details_demande_retour: r.detailsDemandeRetour ?? null,
+    urgence_level: r.urgenceLevel ?? 1,
+    status: r.status ?? 'NOUVEAU',
+    bureau_notes: r.bureauNotes ?? null,
+    pieces_jointes: r.piecesJointes ?? [],
+    responsable_id: r.responsableId ?? null,
+    responsable_name: r.responsableName ?? null,
+    date_prise_en_charge: r.datePriseEnCharge ?? null,
+    date_reponse: r.dateReponse ?? null,
+    date_traitement: r.dateTraitement ?? null,
+    reponses: r.reponses ?? [],
+    action_history: r.actionHistory ?? [],
+    created_at_iso: r.createdAt ?? new Date().toISOString(),
+    updated_at_iso: r.updatedAt ?? null,
+    last_activity_at: r.lastActivityAt ?? null,
+    reviewed_by: r.reviewedBy ?? null,
+    reviewed_at: r.reviewedAt ?? null
   };
 }
 

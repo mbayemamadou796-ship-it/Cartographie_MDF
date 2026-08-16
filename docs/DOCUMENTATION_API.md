@@ -90,7 +90,25 @@ Alimente le module « Demandes » de l'espace bureau et le formulaire public
 | `GET /api/demandes` | authentifié | Liste complète, plus récentes d'abord. Aussi incluse dans `/api/bootstrap` (`demandes`, `null` si la migration 003 n'a pas été exécutée). |
 | `PUT /api/demandes` (`DemandeMember[]`) | admin (non-admin : no-op 204) | Upsert bulk (validation / refus depuis l'espace bureau). → 204 |
 
-## 10. Paramètres
+## 10. Reportings hebdomadaires des référents
+
+Alimente l'onglet « Reporting / Remontées Référents ». Table `weekly_reports`
+(migration `006_weekly_reports.sql`). Incluse dans `/api/bootstrap` (`reports`,
+`null` si la migration n'a pas été exécutée) : tout pour les niveaux admin,
+uniquement les siennes pour un référent, `[]` pour un utilisateur.
+
+| Route | Accès | Comportement |
+|---|---|---|
+| `GET /api/reportings` | authentifié | admin/super admin : liste complète ; referent : uniquement ses remontées (par id de compte ou e-mail) ; user : `[]`. |
+| `PUT /api/reportings` (`WeeklyReport[]`) | authentifié | Upsert bulk, jamais de suppression. referent : limité à SES remontées (un id existant appartenant à un autre référent est ignoré) ; user : no-op. → 204 |
+| `DELETE /api/reportings/:id` | admin, super admin | Supprime la remontée. → 204 |
+
+> Bootstrap — comptes utilisateurs : le super admin reçoit la liste complète ;
+> l'**admin reçoit une liste minimale** (identité, rôle, actif, zones attribuées,
+> jamais de secret) pour fiabiliser la liaison membre ⇄ compte lors de la
+> désignation des référents. La gestion des comptes reste super admin.
+
+## 11. Paramètres
 
 ### `PUT /api/settings` — super admin (admin : seul `lastUpdateDate` est appliqué ; autres rôles : no-op 204)
 `Partial<AppSettings> & { lastUpdateDate?: string }` — merge sur la ligne unique. `logoUrl` accepte une data-URL base64 (limite globale de payload : 50 Mo). → 204.

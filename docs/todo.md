@@ -28,5 +28,6 @@
 - [x] Intégration du reporting hebdomadaire des référents (module `reportings`, Recharts, restriction des demandes aux admins) depuis Cartographie_MDF1.
 - [x] La zone devient l'élément central de l'affectation des référents : désignation parmi les MEMBRES de la zone (plusieurs référents possibles, `referent_member_ids`), flux inverse depuis Utilisateurs & Droits (zone cible → membre), identité membre distincte du compte utilisateur.
 - [ ] ⚠️ Exécuter `backend/database/migrations/005_zone_referents.sql` dans Supabase > SQL Editor (sans cela, la synchronisation des zones échoue : colonne `referent_member_ids` absente).
-- [ ] ⚠️ Le reporting fonctionne en **localStorage uniquement** : les remontées d'un référent ne sont pas visibles depuis un autre appareil. À brancher sur Supabase (table `weekly_reports` + endpoints), comme cela a été fait pour les demandes.
+- [x] Reporting hebdomadaire branché sur Supabase : table `weekly_reports` (006), GET/PUT/DELETE `/api/reportings` avec périmètre référent, bootstrap + synchronisation frontend (plus de données de démo injectées). Liste minimale des comptes exposée aux admins pour la liaison membre⇄compte.
+- [ ] ⚠️ Exécuter `backend/database/migrations/006_weekly_reports.sql` dans Supabase > SQL Editor (sans cela, les reportings restent en localStorage local à chaque poste).
 - [ ] Exécuter des tests de charge sur les imports massifs Excel (> 5000 enregistrements).
