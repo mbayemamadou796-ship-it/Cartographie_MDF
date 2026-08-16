@@ -18,7 +18,7 @@ export const GoogleFormRegistration: React.FC<GoogleFormRegistrationProps> = ({
     email: '',
     ville: '',
     departement: '',
-    situationProfessionnelle: 'Employé(e)',
+    situationProfessionnelle: 'Employé',
     domaineEtude: '',
     organisation: '',
     fonction: '',
@@ -87,7 +87,7 @@ export const GoogleFormRegistration: React.FC<GoogleFormRegistrationProps> = ({
       email: '',
       ville: '',
       departement: '',
-      situationProfessionnelle: 'Employé(e)',
+      situationProfessionnelle: 'Employé',
       domaineEtude: '',
       organisation: '',
       fonction: '',
@@ -368,8 +368,8 @@ export const GoogleFormRegistration: React.FC<GoogleFormRegistrationProps> = ({
             </label>
             <div className="space-y-2 pt-1">
               {[
-                'Employé(e) / Salarié(e)',
-                'Étudiant(e)',
+                'Employé / Salarié',
+                'Étudiant',
                 'Entrepreneur / Indépendant',
                 'En recherche d\'emploi',
                 'Autre'

@@ -168,6 +168,12 @@ export const VILLES_PAR_ZONE: Record<string, string[]> = {
   'Outre-Mer (DROM-COM)': ['Pointe-à-Pitre', 'Fort-de-France', 'Cayenne', 'Saint-Denis (Réunion)', 'Mamoudzou']
 };
 
+/** Département d'une ville connue du dictionnaire hors-ligne (ex: 'Val-d'Oise (95)'). */
+export function getDepartementForVille(ville?: string): string | undefined {
+  const normalized = (ville || '').trim().toLowerCase();
+  return CITY_COORDINATES[normalized]?.dept;
+}
+
 /** Villes proposées pour une zone MDF ; toutes les villes connues si zone vide/inconnue. */
 export function getVillesForZone(zone?: string): string[] {
   const z = (zone || '').trim();

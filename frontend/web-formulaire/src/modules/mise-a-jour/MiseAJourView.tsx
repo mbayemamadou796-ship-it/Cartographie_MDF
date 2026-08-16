@@ -15,7 +15,7 @@ export const MiseAJourView: React.FC<MiseAJourViewProps> = ({ onNavigate }) => {
     telephone: '',
     ville: '',
     departement: '',
-    situationProfessionnelle: 'Employé(e)',
+    situationProfessionnelle: 'Employé',
     domaineEtude: '',
     organisation: '',
     fonction: '',

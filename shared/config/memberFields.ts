@@ -96,8 +96,8 @@ export const BASE_MEMBER_FIELDS: FormFieldSchema[] = [
     required: false,
     section: 'parcours',
     options: [
-      'Salarié(e) / Employé(e)',
-      'Étudiant(e)',
+      'Salarié / Employé',
+      'Étudiant',
       'Entrepreneur / Indépendant',
       'En recherche d\'emploi',
       'Cadre / Dirigeant',

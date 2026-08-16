@@ -140,6 +140,11 @@ apiRouter.delete('/users/:id', requireAuth, requireRole('super_admin'), asyncHan
 apiRouter.post('/public/demandes', publicDemandeRateLimiter, asyncHandler(async (req, res) => {
   const parsed = publicDemandeSchema.safeParse(req.body);
   if (!parsed.success) return badRequest(res, 'Payload demande invalide.');
+  // Anti-doublon : une seule demande EN_ATTENTE par e-mail/téléphone.
+  if (await demandeService.hasPendingDemande(parsed.data.email, parsed.data.telephone)) {
+    res.status(409).json({ error: 'Vous avez déjà envoyé votre demande. Elle est en cours de traitement.' });
+    return;
+  }
   const created = await demandeService.createPublic(parsed.data as DemandeMember);
   res.status(201).json(created);
 }));

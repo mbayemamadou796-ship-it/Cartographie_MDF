@@ -574,7 +574,14 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     </label>
                     <select
                       value={formRegion}
-                      onChange={(e) => setFormRegion(e.target.value)}
+                      onChange={(e) => {
+                        const region = e.target.value;
+                        setFormRegion(region);
+                        // Ville incompatible avec la nouvelle zone : on la réinitialise
+                        if (formVille && !getVillesForZone(region).includes(formVille)) {
+                          setFormVille('');
+                        }
+                      }}
                       className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs cursor-pointer"
                     >
                       {FRENCH_ZONES.map((z) => (
@@ -590,20 +597,22 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                     <label className="block font-bold text-slate-700 mb-1">
                       Ville de résidence <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       required
-                      list="villes-zone-utilisateur"
                       value={formVille}
                       onChange={(e) => setFormVille(e.target.value)}
-                      placeholder={`Villes de la zone ${formRegion || 'sélectionnée'}...`}
-                      className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs"
-                    />
-                    <datalist id="villes-zone-utilisateur">
-                      {getVillesForZone(formRegion).map((v) => (
-                        <option key={v} value={v} />
+                      className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium text-xs cursor-pointer"
+                    >
+                      <option value="" disabled>
+                        {formRegion ? `-- Villes de la zone ${formRegion} --` : '-- Sélectionner une ville --'}
+                      </option>
+                      {[
+                        ...(formVille && !getVillesForZone(formRegion).includes(formVille) ? [formVille] : []),
+                        ...getVillesForZone(formRegion)
+                      ].map((v) => (
+                        <option key={v} value={v}>{v}</option>
                       ))}
-                    </datalist>
+                    </select>
                     <p className="text-[10px] text-slate-400 mt-1">
                       Nécessaire pour la fiche membre : la géolocalisation est calculée automatiquement à partir de la ville.
                     </p>

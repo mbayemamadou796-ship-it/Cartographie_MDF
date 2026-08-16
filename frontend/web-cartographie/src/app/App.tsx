@@ -35,7 +35,7 @@ import { FRENCH_ZONES } from '../modules/membres/AdminMemberFormModal';
 import { geocodeVille, calculateCityOffsetCoordinates } from '../services/geocodingService';
 import { ReportingsView } from '../modules/reportings/ReportingsView';
 import { ReportingService } from '../services/reportingService';
-import { CheckCircle2, MapPin, Users, ArrowRight, Layers, FileText, ExternalLink, ClipboardList } from 'lucide-react';
+import { CheckCircle2, MapPin, Users, ArrowRight, Layers, FileText, ClipboardList } from 'lucide-react';
 
 // URL de l'application Formulaire publique. Les deux applications sont servies
 // séparément : Bureau/Cartographie sur le port 3000, Formulaire sur le 3002.
@@ -426,7 +426,7 @@ export default function App() {
       return ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'users', 'quality', 'import_export', 'audit_logs', 'settings'];
     }
     if (role === 'admin') {
-      return ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'import_export'];
+      return ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'quality', 'import_export'];
     }
     return ['dashboard', 'directory', 'zones', 'reportings'];
   };
@@ -1805,34 +1805,6 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f0f8f3] text-slate-800 font-['Plus_Jakarta_Sans',sans-serif]">
       
-      {/* Top Application Mode Switcher Banner */}
-      <div className="bg-slate-900 text-slate-200 py-1.5 px-4 text-xs flex items-center justify-between border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 font-bold text-emerald-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Espace Bureau Administrateur — Cartographie MDF
-          </span>
-          {pendingDemandesCount > 0 && (
-            <span
-              onClick={() => setActiveTab('demandes')}
-              className="bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full text-[10px] cursor-pointer hover:bg-amber-400 transition-colors animate-pulse"
-            >
-              {pendingDemandesCount} demande(s) en attente
-            </span>
-          )}
-        </div>
-
-        <a
-          href={FORMULAIRE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-white bg-slate-800 hover:bg-emerald-800 text-emerald-300 font-bold px-3 py-1 rounded-lg border border-emerald-700/50 transition-all flex items-center gap-1.5 text-[11px] cursor-pointer"
-        >
-          <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Ouvrir l'application Formulaire</span>
-        </a>
-      </div>
-
       {/* Top Header */}
       <Header
         userRole={userRole}

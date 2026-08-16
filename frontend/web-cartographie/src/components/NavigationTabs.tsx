@@ -86,14 +86,14 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   ];
 
   // super_admin : tous les onglets. admin : sans Utilisateurs & Droits,
-  // Maintenance & Qualité, Journaux d'activité et Paramètres.
+  // Journaux d'activité et Paramètres.
   // Les Demandes d'inscription sont réservées aux niveaux admin ;
   // l'onglet Reporting est visible par tous (saisie référent / suivi bureau).
   const visibleTabs =
     userRole === 'super_admin'
       ? tabs
       : userRole === 'admin'
-      ? tabs.filter((t) => ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'import_export'].includes(t.id))
+      ? tabs.filter((t) => ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'quality', 'import_export'].includes(t.id))
       : tabs.filter((t) => ['dashboard', 'directory', 'zones', 'reportings'].includes(t.id));
 
   return (

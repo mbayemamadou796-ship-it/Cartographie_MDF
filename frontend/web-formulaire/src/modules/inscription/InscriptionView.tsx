@@ -16,7 +16,7 @@ export const InscriptionView: React.FC<InscriptionViewProps> = ({ onNavigate }) 
     ville: '',
     departement: '',
     pays: 'France',
-    situationProfessionnelle: 'Employé(e)',
+    situationProfessionnelle: 'Employé',
     domaineEtude: '',
     anneeArriveeFrance: new Date().getFullYear().toString(),
     organisation: '',
@@ -247,8 +247,8 @@ export const InscriptionView: React.FC<InscriptionViewProps> = ({ onNavigate }) 
                 onChange={(e) => setFormData({ ...formData, situationProfessionnelle: e.target.value })}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="Employé(e)">Employé(e) / Salarié(e)</option>
-                <option value="Étudiant(e)">Étudiant(e)</option>
+                <option value="Employé">Employé / Salarié</option>
+                <option value="Étudiant">Étudiant</option>
                 <option value="Entrepreneur / Indépendant">Entrepreneur / Indépendant</option>
                 <option value="Recherche d'emploi">En recherche d'emploi</option>
                 <option value="Autre">Autre</option>

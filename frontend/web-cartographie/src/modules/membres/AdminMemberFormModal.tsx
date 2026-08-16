@@ -20,8 +20,8 @@ export const FRENCH_ZONES = [
 ];
 
 export const SITUATION_PROFESSIONNELLE_OPTIONS = [
-  'Salarié(e) / Employé(e)',
-  'Étudiant(e)',
+  'Salarié / Employé',
+  'Étudiant',
   'Entrepreneur / Indépendant',
   'En recherche d\'emploi',
   'Cadre / Dirigeant',
@@ -117,7 +117,7 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
         telephone: '',
         email: '',
         zone: targetZoneName || defaultGeo?.region || '',
-        situationProfessionnelle: 'Salarié(e) / Employé(e)',
+        situationProfessionnelle: 'Salarié / Employé',
         domaineEtude: 'Informatique',
         anneeArriveeFrance: '',
         fonction: 'Membre Mbok de France',

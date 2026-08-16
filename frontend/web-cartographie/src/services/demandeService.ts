@@ -52,6 +52,48 @@ export class DemandeService {
     return newDemande;
   }
 
+  /** Vrai si une demande EN_ATTENTE avec le même e-mail ou téléphone existe déjà localement. */
+  static hasPendingLocalDemande(email: string, telephone: string): boolean {
+    const normEmail = (email || '').trim().toLowerCase();
+    const normTel = (telephone || '').replace(/\s/g, '');
+    return this.getDemandes().some(
+      (d) =>
+        d.status === 'EN_ATTENTE' &&
+        ((normEmail && (d.email || '').trim().toLowerCase() === normEmail) ||
+          (normTel && (d.telephone || '').replace(/\s/g, '') === normTel))
+    );
+  }
+
+  /**
+   * Soumission avec vérification anti-doublon : refuse si une demande est déjà
+   * en attente pour le même e-mail/téléphone (cache local ou serveur — 409).
+   * Hors ligne, la demande est conservée localement ('offline').
+   */
+  static async submitDemandeVerified(
+    demandeData: Omit<DemandeMember, 'id' | 'status' | 'createdAt'>
+  ): Promise<{ status: 'ok' | 'duplicate' | 'offline'; demande: DemandeMember | null }> {
+    if (this.hasPendingLocalDemande(demandeData.email, demandeData.telephone)) {
+      return { status: 'duplicate', demande: null };
+    }
+
+    const newDemande: DemandeMember = {
+      ...demandeData,
+      id: `dem-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      status: 'EN_ATTENTE',
+      createdAt: new Date().toISOString()
+    };
+
+    const result = await ApiService.submitPublicDemande(newDemande);
+    if (result.duplicate) {
+      return { status: 'duplicate', demande: null };
+    }
+
+    const existing = this.getDemandes();
+    existing.unshift(result.demande ?? newDemande);
+    this.saveDemandes(existing);
+    return { status: result.ok ? 'ok' : 'offline', demande: result.demande ?? newDemande };
+  }
+
   static updateDemandeStatus(id: string, status: 'VALIDEE' | 'REFUSEE', validatedBy?: string, rejectionReason?: string): DemandeMember[] {
     const demandes = this.getDemandes();
     const index = demandes.findIndex(d => d.id === id);

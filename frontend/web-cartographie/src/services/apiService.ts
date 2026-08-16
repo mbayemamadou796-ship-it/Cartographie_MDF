@@ -246,24 +246,31 @@ export class ApiService {
 
   /**
    * Soumission d'une demande depuis le formulaire public (aucune
-   * authentification requise). Renvoie la demande enregistrée par le serveur,
-   * ou null si l'API est injoignable (le localStorage sert alors de secours).
+   * authentification requise).
+   * - ok: enregistrée côté serveur ;
+   * - duplicate: le serveur a détecté une demande déjà en attente (409) ;
+   * - ni ok ni duplicate : API injoignable (le localStorage sert de secours).
    */
-  static async submitPublicDemande(demande: DemandeMember): Promise<DemandeMember | null> {
+  static async submitPublicDemande(
+    demande: DemandeMember
+  ): Promise<{ ok: boolean; duplicate: boolean; demande: DemandeMember | null }> {
     try {
       const res = await fetch(`${API_URL}/api/public/demandes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(demande)
       });
+      if (res.status === 409) {
+        return { ok: false, duplicate: true, demande: null };
+      }
       if (!res.ok) {
         console.warn(`[ApiService] Soumission de demande refusée (${res.status})`);
-        return null;
+        return { ok: false, duplicate: false, demande: null };
       }
-      return (await res.json()) as DemandeMember;
+      return { ok: true, duplicate: false, demande: (await res.json()) as DemandeMember };
     } catch (e) {
       console.warn('[ApiService] Soumission de demande impossible (API hors ligne ?)', e);
-      return null;
+      return { ok: false, duplicate: false, demande: null };
     }
   }
 

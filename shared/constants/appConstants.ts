@@ -44,11 +44,11 @@ export const DOMAINES_ETUDE_OPTIONS = [
 ];
 
 export const SITUATION_PRO_OPTIONS = [
-  'Salarié(e)',
-  'Étudiant(e)',
+  'Salarié',
+  'Étudiant',
   'Indépendant(e) / Entrepreneur',
   'Cadre / Dirigeant',
   'Recherche d\'emploi',
-  'Retraité(e)',
+  'Retraité',
   'Autre'
 ];

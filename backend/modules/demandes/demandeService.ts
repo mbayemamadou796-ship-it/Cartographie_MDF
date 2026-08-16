@@ -41,6 +41,30 @@ export const demandeService = {
   },
 
   /**
+   * Vrai si une demande EN_ATTENTE existe déjà pour cet e-mail ou ce téléphone
+   * (anti-doublon du formulaire public, insensible à la casse/espaces).
+   */
+  async hasPendingDemande(email?: string, telephone?: string): Promise<boolean> {
+    const supabase = supabaseAdmin();
+    const normEmail = (email || '').trim();
+    if (normEmail) {
+      const { data, error } = await supabase
+        .from('demandes').select('id').eq('status', 'EN_ATTENTE')
+        .ilike('email', normEmail).limit(1);
+      if (error) throw new Error(`Vérification anti-doublon: ${error.message}`);
+      if ((data ?? []).length > 0) return true;
+    }
+    const normTel = (telephone || '').replace(/\s/g, '');
+    if (normTel) {
+      const { data, error } = await supabase
+        .from('demandes').select('id, telephone').eq('status', 'EN_ATTENTE');
+      if (error) throw new Error(`Vérification anti-doublon: ${error.message}`);
+      if ((data ?? []).some(r => ((r.telephone as string) || '').replace(/\s/g, '') === normTel)) return true;
+    }
+    return false;
+  },
+
+  /**
    * Création depuis le formulaire public (non authentifié) : le statut et les
    * champs de validation sont forcés — seul un admin peut les faire évoluer
    * ensuite via bulkUpsert. Renvoie la demande telle qu'enregistrée.

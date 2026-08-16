@@ -8,7 +8,7 @@ import {
 import { DemandeMember, CustomField } from '@shared/types';
 import { DemandeService } from '../../../web-cartographie/src/services/demandeService';
 import { ApiService } from '../../../web-cartographie/src/services/apiService';
-import { getVillesForZone } from '../../../web-cartographie/src/utils/geocoding';
+import { getVillesForZone, getDepartementForVille } from '../../../web-cartographie/src/utils/geocoding';
 import { LogoMbok } from '../../../web-cartographie/src/modules/parametres/LogoMbok';
 import { 
   UserPlus, 
@@ -100,7 +100,7 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
     email: '',
     photo: '',
     zone: 'Île-de-France',
-    situationProfessionnelle: 'Salarié(e) / Employé(e)',
+    situationProfessionnelle: 'Salarié / Employé',
     domaineEtude: '',
     organisation: '',
     fonction: '',
@@ -112,7 +112,9 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
   });
 
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [autreStatut, setAutreStatut] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedDemande, setSubmittedDemande] = useState<DemandeMember | null>(null);
   
@@ -146,7 +148,7 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
   const handleAddCustomField = () => {
     const newField: CustomField = {
       id: `field-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-      label: '',
+      label: 'Renseignement libre',
       value: ''
     };
     setCustomFields((prev) => [...prev, newField]);
@@ -171,13 +173,17 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
     else if (!formData.email.includes('@')) errs.email = 'Saisissez une adresse e-mail valide';
     if (!formData.ville.trim()) errs.ville = 'La ville de résidence est obligatoire';
     if (!formData.zone) errs.zone = 'La zone MDF régionale est obligatoire';
+    if (formData.situationProfessionnelle === 'Autre' && !autreStatut.trim()) {
+      errs.situationProfessionnelle = 'Veuillez préciser votre statut';
+    }
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
     if (!validate()) {
       window.scrollTo({ top: 150, behavior: 'smooth' });
       return;
@@ -185,13 +191,25 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
 
     setIsSubmitting(true);
     try {
-      const created = DemandeService.submitDemande({
+      const result = await DemandeService.submitDemandeVerified({
         type: activeTab === 'update' ? 'MISE_A_JOUR' : 'INSCRIPTION',
         ...formData,
-        champsPersonnalises: customFields.filter((cf) => cf.label.trim())
+        // « Autre » : le statut précisé par le membre remplace la valeur générique
+        situationProfessionnelle:
+          formData.situationProfessionnelle === 'Autre' && autreStatut.trim()
+            ? autreStatut.trim()
+            : formData.situationProfessionnelle,
+        champsPersonnalises: customFields.filter((cf) => cf.value.trim())
       });
 
-      setSubmittedDemande(created);
+      if (result.status === 'duplicate') {
+        setSubmitError('Vous avez déjà envoyé votre demande. Elle est en cours de traitement par le bureau — inutile d\'en soumettre une nouvelle.');
+        setIsSubmitting(false);
+        window.scrollTo({ top: 150, behavior: 'smooth' });
+        return;
+      }
+
+      setSubmittedDemande(result.demande);
       setIsSubmitting(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -243,7 +261,7 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
       email: '',
       photo: '',
       zone: 'Île-de-France',
-      situationProfessionnelle: 'Salarié(e) / Employé(e)',
+      situationProfessionnelle: 'Salarié / Employé',
       domaineEtude: '',
       organisation: '',
       fonction: '',
@@ -254,7 +272,9 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
       champsPersonnalises: []
     });
     setCustomFields([]);
+    setAutreStatut('');
     setErrors({});
+    setSubmitError('');
     setSubmittedDemande(null);
   };
 
@@ -563,13 +583,32 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
                     onChange={(e) => setFormData({ ...formData, situationProfessionnelle: e.target.value })}
                     className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium cursor-pointer"
                   >
-                    <option value="Salarié(e) / Employé(e)">Salarié(e) / Employé(e)</option>
-                    <option value="Étudiant(e)">Étudiant(e)</option>
+                    <option value="Salarié / Employé">Salarié / Employé</option>
+                    <option value="Étudiant">Étudiant</option>
                     <option value="Entrepreneur / Indépendant">Entrepreneur / Indépendant</option>
                     <option value="En recherche d'emploi">En recherche d'emploi</option>
                     <option value="Cadre / Dirigeant">Cadre / Dirigeant</option>
                     <option value="Autre">Autre</option>
                   </select>
+
+                  {/* Sous-champ affiché quand le statut est « Autre » */}
+                  {formData.situationProfessionnelle === 'Autre' && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Précisez votre statut (ex: Retraité, Volontaire...)"
+                        value={autreStatut}
+                        onChange={(e) => setAutreStatut(e.target.value)}
+                        className={`w-full bg-emerald-50/60 border rounded-xl px-3.5 py-2.5 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium ${
+                          errors.situationProfessionnelle ? 'border-rose-300 bg-rose-50' : 'border-emerald-300'
+                        }`}
+                      />
+                      {errors.situationProfessionnelle && (
+                        <p className="text-[11px] text-rose-600 mt-1 font-semibold">{errors.situationProfessionnelle}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -640,7 +679,15 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
                   <select
                     required
                     value={formData.ville}
-                    onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
+                    onChange={(e) => {
+                      const ville = e.target.value;
+                      // Le département se remplit automatiquement à partir de la ville
+                      setFormData({
+                        ...formData,
+                        ville,
+                        departement: getDepartementForVille(ville) ?? formData.departement
+                      });
+                    }}
                     className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium cursor-pointer ${
                       errors.ville ? 'border-rose-300 bg-rose-50' : 'border-emerald-200'
                     }`}
@@ -706,7 +753,7 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
 
               {customFields.length === 0 ? (
                 <p className="text-xs text-slate-500 italic bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  Avez-vous d'autres informations particulières à préciser (ex: Cotisation, Rôle, Disponibilité) ? Cliquez sur "Ajouter une information".
+                  Avez-vous d'autres informations particulières à préciser (ex: cotisation, rôle, disponibilité...) ? Cliquez sur "Ajouter une information".
                 </p>
               ) : (
                 <div className="space-y-2.5">
@@ -714,17 +761,10 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
                     <div key={cf.id} className="flex items-center gap-2 bg-emerald-50/50 p-2.5 rounded-2xl border border-emerald-200 text-xs">
                       <input
                         type="text"
-                        placeholder="Intitulé (ex: Spécialité, Disponibilité...)"
-                        value={cf.label}
-                        onChange={(e) => handleUpdateCustomField(cf.id, 'label', e.target.value)}
-                        className="w-1/2 bg-white border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:border-emerald-500 outline-none font-medium"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Valeur"
+                        placeholder="Votre information (ex: Cotisation à jour, Disponible le week-end...)"
                         value={cf.value}
                         onChange={(e) => handleUpdateCustomField(cf.id, 'value', e.target.value)}
-                        className="w-1/2 bg-white border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:border-emerald-500 outline-none font-medium"
+                        className="flex-1 bg-white border border-emerald-200 rounded-xl px-3 py-2 text-slate-800 focus:border-emerald-500 outline-none font-medium"
                       />
                       <button
                         type="button"
@@ -738,6 +778,14 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Message d'erreur de soumission (ex: demande déjà envoyée) */}
+            {submitError && (
+              <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl text-xs font-semibold flex items-start gap-2">
+                <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>{submitError}</span>
+              </div>
+            )}
 
             {/* Bottom Actions */}
             <div className="pt-2 flex items-center justify-between gap-4">
