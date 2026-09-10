@@ -32,7 +32,7 @@ export type SortOption = 'nom_asc' | 'nom_desc' | 'ville_asc' | 'organisation_as
 
 export type QualityFilter = 'all' | 'no_phone' | 'no_email' | 'no_location' | 'duplicates';
 
-export type ActiveTab = 'dashboard' | 'directory' | 'zones' | 'reportings' | 'demandes' | 'users' | 'quality' | 'import_export' | 'audit_logs' | 'settings';
+export type ActiveTab = 'dashboard' | 'directory' | 'zones' | 'reportings' | 'rencontres' | 'demandes' | 'mandats' | 'documents' | 'users' | 'quality' | 'import_export' | 'audit_logs' | 'settings';
 
 export type ReportingStatus = 'NOUVEAU' | 'EN_COURS' | 'TRAITE';
 export type ReportingType = 'PERIODIQUE' | 'PONCTUEL';
@@ -252,3 +252,195 @@ export interface AppUser {
   createdAt?: string;
   lastLogin: string;
 }
+
+// ==========================================
+// 🏛️ ARCHIVES DES MANDATS & RÉALISATIONS
+// ==========================================
+
+export type MandatStatus = 'EN_PREPARATION' | 'EN_COURS' | 'TERMINE' | 'ARCHIVE';
+
+export type RealisationCategory = 
+  | 'EVENEMENTS' 
+  | 'ACTIONS_SOCIALES' 
+  | 'COMMUNICATION' 
+  | 'ORGANISATION' 
+  | 'PARTENARIATS' 
+  | 'PROJETS_NUMERIQUES' 
+  | 'FORMATION' 
+  | 'VIE_ASSOCIATIVE' 
+  | 'AUTRE';
+
+export type RealisationStatus = 'A_FAIRE' | 'EN_COURS' | 'TERMINE' | 'ARCHIVE';
+
+export interface MandatDocument {
+  id: string;
+  name: string;
+  category?: 'COMPTE_RENDU' | 'RAPPORT' | 'BILAN' | 'PROCES_VERBAL' | 'PHOTO' | 'PRESENTATION' | 'FEUILLE_DE_ROUTE' | 'PROJET' | 'AUTRE';
+  url?: string;
+  type?: string;
+  size?: number;
+  dateAjout: string;
+  description?: string;
+  uploadedBy?: string;
+}
+
+export interface MandatRealisation {
+  id: string;
+  mandatId: string;
+  titre: string;
+  description: string;
+  date: string;
+  categorie: RealisationCategory;
+  responsable: string;
+  responsableId?: string;
+  statut: RealisationStatus;
+  documents?: MandatDocument[];
+  indicateurs?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface MandatBilan {
+  objectifsInitiaux?: string;
+  objectifsRealises?: string;
+  objectifsNonRealises?: string;
+  principalesRealisations?: string;
+  difficultes?: string;
+  resultats?: string;
+  recommandationsSuivant?: string;
+  dateBilan?: string;
+  redigePar?: string;
+  documentsBilan?: MandatDocument[];
+}
+
+export interface Mandat {
+  id: string;
+  intitule: string; // Ex: 'Mandat 2026 — 2028'
+  dateDebut: string; // YYYY-MM-DD
+  dateFin: string; // YYYY-MM-DD
+  description: string;
+  responsables: string[]; // Ex: ['Modou Mbaye (Président)', 'Amina Diop (SG)', 'Amadou Sy (Trésorier)']
+  statut: MandatStatus;
+  realisations: MandatRealisation[];
+  documents: MandatDocument[];
+  bilan?: MandatBilan;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// ==========================================
+// 📚 DOCUMENTS UTILES (RÉFÉRENTS & ADMIN)
+// ==========================================
+
+export type DocumentCategory = 
+  | 'PRESENTATION' 
+  | 'OFFICIELS' 
+  | 'GUIDE_ADHERENT' 
+  | 'INFOS_PRATIQUES' 
+  | 'FORMULAIRES' 
+  | 'AUTRE';
+
+export type DocumentPublishStatus = 'PUBLIE' | 'BROUILLON' | 'ARCHIVE';
+
+export interface DocumentVersion {
+  id: string;
+  version: string;
+  date: string;
+  notes?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  authorName?: string;
+}
+
+export interface UsefulDocument {
+  id: string;
+  name: string;
+  description: string;
+  category: DocumentCategory;
+  customCategoryName?: string;
+  fileUrl?: string;
+  fileName: string;
+  fileType: string;
+  fileSize?: number;
+  version: string; // Ex: '2.1'
+  datePublication: string;
+  dateMiseAJour: string;
+  statut: DocumentPublishStatus;
+  ordreAffichage?: number;
+  authorName?: string;
+  versionsHistorique?: DocumentVersion[];
+  tags?: string[];
+  content?: string;
+}
+
+// ==========================================
+// 🕌 RENCONTRES & SONDAGES (MDF RENCONTRES)
+// ==========================================
+
+export type RencontreStatut = 
+  | 'BROUILLON' 
+  | 'SONDAGE_OUVERT' 
+  | 'SONDAGE_FERME' 
+  | 'PREPARATION' 
+  | 'TERMINEE' 
+  | 'ARCHIVEE';
+
+export type RencontreParticipation = 'OUI' | 'NON' | 'INCERTAIN';
+
+export type RencontreDureePresence = 'TROIS_JOURS' | 'WEEK_END';
+
+export type RencontreDomaineAide = 
+  | 'LOGISTIQUE' 
+  | 'TRANSPORT' 
+  | 'INSTALLATION_RANGEMENT' 
+  | 'CUISINE_REPAS' 
+  | 'ACCUEIL' 
+  | 'COMMUNICATION' 
+  | 'AUTRE';
+
+export interface Rencontre {
+  id: string;
+  nom: string; // Ex: 'Rencontre MDF 2026'
+  annee: number; // Ex: 2026
+  description: string;
+  messageAccueil?: string;
+  dateDebut: string; // YYYY-MM-DD
+  dateFin: string; // YYYY-MM-DD
+  dateAffichage?: string; // Ex: 'Du 25 au 27 décembre 2026'
+  lieu: string; // Ex: 'Toulouse'
+  adresse: string; // Ex: '424 Montgay, 31560 Nailloux, Toulouse'
+  dateLimite: string; // YYYY-MM-DD (ex: '2026-11-30')
+  dateLimiteAffichage?: string; // Ex: '30 novembre 2026'
+  statut: RencontreStatut;
+  isDefault?: boolean;
+  bureauNotes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface RencontreResponse {
+  id: string;
+  rencontreId: string;
+  memberId?: string; // Linked directly to existing member id
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone: string;
+  zone: string;
+  referentName?: string;
+  ville?: string;
+  
+  // Sondage fields
+  participation: RencontreParticipation; // 'OUI' | 'NON' | 'INCERTAIN'
+  dureePresence?: RencontreDureePresence; // 'TROIS_JOURS' | 'WEEK_END' (si OUI)
+  aideOrganisation: boolean; // true = Oui, false = Non
+  domainesAide?: string[]; // ['Logistique', 'Transport', etc.]
+  autrePrecision?: string; // Si 'Autre' est sélectionné
+  
+  remarques?: string;
+  dateReponse: string; // ISO string / formatted date
+  createdAt: string;
+  updatedAt?: string;
+}
+

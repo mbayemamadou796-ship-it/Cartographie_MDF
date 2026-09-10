@@ -238,10 +238,17 @@ export const ReferentDashboardView: React.FC<ReferentDashboardViewProps> = ({
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100">
+          <div className="pt-2 border-t border-slate-100 space-y-2">
+            <button
+              onClick={() => onNavigate('documents')}
+              className="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <span>📚</span>
+              <span>Consulter les Documents utiles & Guides</span>
+            </button>
             <button
               onClick={() => onNavigate('zone')}
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
             >
               <MapPin className="w-3.5 h-3.5 text-emerald-400" />
               <span>Voir la cartographie de ma zone</span>

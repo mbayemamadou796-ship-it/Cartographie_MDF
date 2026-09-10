@@ -1,6 +1,20 @@
 import React from 'react';
 import { ActiveTab, UserRole } from '../types';
-import { LayoutDashboard, MapPin, Globe, Users, AlertTriangle, FileSpreadsheet, History, Settings, FileText, ClipboardList } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  MapPin, 
+  Globe, 
+  Users, 
+  AlertTriangle, 
+  FileSpreadsheet, 
+  History, 
+  Settings, 
+  FileText, 
+  ClipboardList,
+  FolderArchive,
+  BookOpen,
+  CalendarCheck2
+} from 'lucide-react';
 
 interface NavigationTabsProps {
   activeTab: ActiveTab;
@@ -9,6 +23,7 @@ interface NavigationTabsProps {
   qualityIssueCount: number;
   pendingDemandesCount?: number;
   pendingReportingsCount?: number;
+  activeRencontreResponsesCount?: number;
 }
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({
@@ -17,7 +32,8 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   userRole,
   qualityIssueCount,
   pendingDemandesCount = 0,
-  pendingReportingsCount = 0
+  pendingReportingsCount = 0,
+  activeRencontreResponsesCount = 0
 }) => {
   const tabs = [
     {
@@ -25,6 +41,13 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
       label: 'Tableau de bord',
       icon: LayoutDashboard,
       badge: null
+    },
+    {
+      id: 'rencontres' as ActiveTab,
+      label: 'Rencontres & Sondages',
+      icon: CalendarCheck2,
+      badge: activeRencontreResponsesCount > 0 ? activeRencontreResponsesCount : null,
+      badgeColor: 'bg-emerald-800 text-white'
     },
     {
       id: 'directory' as ActiveTab,
@@ -44,6 +67,18 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
       icon: ClipboardList,
       badge: pendingReportingsCount > 0 ? pendingReportingsCount : null,
       badgeColor: 'bg-emerald-700 text-white'
+    },
+    {
+      id: 'documents' as ActiveTab,
+      label: 'Documents utiles',
+      icon: BookOpen,
+      badge: null
+    },
+    {
+      id: 'mandats' as ActiveTab,
+      label: 'Archives Mandats',
+      icon: FolderArchive,
+      badge: null
     },
     {
       id: 'demandes' as ActiveTab,
@@ -86,15 +121,15 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   ];
 
   // super_admin : tous les onglets. admin : sans Utilisateurs & Droits,
-  // Journaux d'activité et Paramètres.
-  // Les Demandes d'inscription sont réservées aux niveaux admin ;
-  // l'onglet Reporting est visible par tous (saisie référent / suivi bureau).
+  // Journaux d'activité et Paramètres. Référents/utilisateurs : consultation
+  // (dont Rencontres, Reporting et Documents utiles) — Demandes, Mandats,
+  // Qualité et Import/Export restent réservés aux niveaux admin.
   const visibleTabs =
     userRole === 'super_admin'
       ? tabs
       : userRole === 'admin'
-      ? tabs.filter((t) => ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'quality', 'import_export'].includes(t.id))
-      : tabs.filter((t) => ['dashboard', 'directory', 'zones', 'reportings'].includes(t.id));
+      ? tabs.filter((t) => ['dashboard', 'rencontres', 'directory', 'zones', 'reportings', 'documents', 'mandats', 'demandes', 'quality', 'import_export'].includes(t.id))
+      : tabs.filter((t) => ['dashboard', 'rencontres', 'directory', 'zones', 'reportings', 'documents'].includes(t.id));
 
   return (
     <div className="bg-white border-b border-emerald-200 sticky top-[61px] z-20 shadow-2xs">

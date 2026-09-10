@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Search, Filter, Shield, ShieldCheck, Upload, Download, X, LogOut, User as UserIcon } from 'lucide-react';
-import { UserRole, AppUser } from '../types';
+import { Search, Filter, Shield, ShieldCheck, Upload, Download, X, LogOut, User as UserIcon, ExternalLink, Calendar } from 'lucide-react';
+import { UserRole, AppUser, ActiveTab } from '../types';
 import { LogoMbok } from './LogoMbok';
 
 interface HeaderProps {
@@ -15,7 +15,8 @@ interface HeaderProps {
   onEditLogoClick?: () => void;
   currentUser?: AppUser | null;
   onLogout?: () => void;
-  onSwitchPortal?: (portal: 'cartographie' | 'referent' | 'admin' | 'formulaire') => void;
+  onSwitchPortal?: (portal: 'cartographie' | 'referent' | 'admin' | 'formulaire' | 'rencontre') => void;
+  onNavigateToTab?: (tab: ActiveTab) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,17 +31,18 @@ export const Header: React.FC<HeaderProps> = ({
   onEditLogoClick,
   currentUser,
   onLogout,
-  onSwitchPortal
+  onSwitchPortal,
+  onNavigateToTab
 }) => {
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-emerald-200 shadow-xs transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-3 sm:gap-4">
           
           {/* Brand Logo & Name */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <LogoMbok
               size="md"
               showText={true}
@@ -55,6 +57,9 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Action Buttons & Profile (Right aligned) */}
           <div className="flex items-center gap-2 sm:gap-2.5">
 
+            {/* Aucun accès direct aux formulaires publics (web-formulaire,
+                web-rencontre) depuis le bureau — le partage du sondage se fait
+                par lien/QR depuis l'onglet Rencontres. */}
             {/* Export Dropdown */}
             <div className="relative">
               <button
@@ -153,3 +158,4 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+

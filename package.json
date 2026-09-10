@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "dev:formulaire": "vite --config frontend/web-formulaire/vite.config.ts",
+    "dev:rencontre": "vite --config frontend/web-rencontre/vite.config.ts",
     "dev:api": "tsx watch backend/api/server.ts",
     "seed": "tsx scripts/seed/index.ts",
     "build": "vite build",
     "build:formulaire": "vite build --config frontend/web-formulaire/vite.config.ts",
+    "build:rencontre": "vite build --config frontend/web-rencontre/vite.config.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",

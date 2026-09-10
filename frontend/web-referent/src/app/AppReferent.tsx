@@ -11,6 +11,9 @@ import { ReferentProfileView } from '../modules/profile/ReferentProfileView';
 import { ReportDetailModal } from '../../../web-cartographie/src/modules/reportings/ReportDetailModal';
 import { MemberModal } from '../../../web-cartographie/src/components/MemberModal';
 import { ReportingService } from '../../../web-cartographie/src/services/reportingService';
+import { DocumentsView } from '../../../web-cartographie/src/modules/documents/DocumentsView';
+import { RencontresView } from '../../../web-cartographie/src/modules/rencontres/RencontresView';
+import { RencontreService } from '../../../web-cartographie/src/services/rencontreService';
 
 interface AppReferentProps {
   currentUser: AppUser | null;
@@ -19,7 +22,7 @@ interface AppReferentProps {
   reports: WeeklyReport[];
   onUpdateReports: (reports: WeeklyReport[]) => void;
   onLogout: () => void;
-  onSwitchPortal: (portal: 'cartographie' | 'referent' | 'admin' | 'formulaire') => void;
+  onSwitchPortal: (portal: 'cartographie' | 'referent' | 'admin' | 'formulaire' | 'rencontre') => void;
 }
 
 export const AppReferent: React.FC<AppReferentProps> = ({
@@ -34,6 +37,14 @@ export const AppReferent: React.FC<AppReferentProps> = ({
   const [activeTab, setActiveTab] = useState<ReferentTab>('dashboard');
   const [selectedReport, setSelectedReport] = useState<WeeklyReport | null>(null);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((prev) => (prev === msg ? null : prev));
+    }, 3500);
+  };
 
   // User's assigned zone or fallback
   const currentZone = currentUser?.zone || 'Île-de-France';
@@ -56,6 +67,7 @@ export const AppReferent: React.FC<AppReferentProps> = ({
   const handleCreateReport = (reportData: Omit<WeeklyReport, 'id' | 'createdAt'>) => {
     const created = ReportingService.createReport(reportData, reports);
     onUpdateReports([created, ...reports]);
+    showToast('Nouveau reporting enregistré.');
     setActiveTab('my_reports');
   };
 
@@ -73,10 +85,19 @@ export const AppReferent: React.FC<AppReferentProps> = ({
     if (selectedReport && selectedReport.id === reportId) {
       setSelectedReport(updated.find(r => r.id === reportId) || null);
     }
+    showToast('Réponse ajoutée.');
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f0f8f3] text-slate-800 font-['Plus_Jakarta_Sans',sans-serif]">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-emerald-500/30 flex items-center gap-3 animate-in slide-in-from-bottom-5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span className="text-xs font-semibold">{toastMessage}</span>
+        </div>
+      )}
+
       {/* Referent Header */}
       <ReferentHeader
         currentUser={currentUser}
@@ -90,10 +111,24 @@ export const AppReferent: React.FC<AppReferentProps> = ({
         activeTab={activeTab}
         onTabChange={setActiveTab}
         pendingCount={pendingCount}
+        activeRencontreResponsesCount={RencontreService.getActiveRencontreResponsesCount()}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {activeTab === 'rencontres' && (
+          <RencontresView
+            userRole="referent"
+            currentUser={currentUser}
+            members={zoneMembers}
+            onShowToast={showToast}
+            onOpenPublicSurvey={() => {
+              onSwitchPortal('rencontre');
+            }}
+            onSelectMember={(m) => setSelectedMember(m)}
+          />
+        )}
+
         {activeTab === 'dashboard' && (
           <ReferentDashboardView
             currentUser={currentUser}
@@ -136,6 +171,14 @@ export const AppReferent: React.FC<AppReferentProps> = ({
             currentZone={currentZone}
             onSelectReport={(report) => setSelectedReport(report)}
             onNewReportClick={() => setActiveTab('new_report')}
+          />
+        )}
+
+        {activeTab === 'documents' && (
+          <DocumentsView
+            userRole="referent"
+            currentUser={currentUser}
+            onShowToast={showToast}
           />
         )}
 

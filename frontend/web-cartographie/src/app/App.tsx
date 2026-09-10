@@ -35,13 +35,24 @@ import { FRENCH_ZONES } from '../modules/membres/AdminMemberFormModal';
 import { geocodeVille, calculateCityOffsetCoordinates } from '../services/geocodingService';
 import { ReportingsView } from '../modules/reportings/ReportingsView';
 import { ReportingService } from '../services/reportingService';
+import { MandatsView } from '../modules/mandats/MandatsView';
+import { DocumentsView } from '../modules/documents/DocumentsView';
+import { RencontresView } from '../modules/rencontres/RencontresView';
+import { RencontreService } from '../services/rencontreService';
 import { CheckCircle2, MapPin, Users, ArrowRight, Layers, FileText, ClipboardList } from 'lucide-react';
 
-// URL de l'application Formulaire publique. Les deux applications sont servies
+// URL de l'application Formulaire publique. Les applications sont servies
 // séparément : Bureau/Cartographie sur le port 3000, Formulaire sur le 3002.
 const FORMULAIRE_URL: string =
   ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_FORMULAIRE_URL) ??
   `${window.location.protocol}//${window.location.hostname}:3002`;
+
+// URL de l'application publique du sondage Rencontre (servie séparément, 3003).
+// Utilisée uniquement pour générer le lien/QR à partager aux membres — le
+// bureau n'offre aucun accès direct aux formulaires publics.
+const RENCONTRE_URL: string =
+  ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_RENCONTRE_URL) ??
+  `${window.location.protocol}//${window.location.hostname}:3003`;
 
 const LOCAL_STORAGE_KEY = 'mbok_de_france_members_v1';
 const LOCAL_STORAGE_UPDATE_KEY = 'mbok_de_france_last_update_v1';
@@ -425,12 +436,12 @@ export default function App() {
    * référent / consultation et pilotage côté bureau). */
   const getAllowedTabs = (role: UserRole): string[] => {
     if (role === 'super_admin') {
-      return ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'users', 'quality', 'import_export', 'audit_logs', 'settings'];
+      return ['dashboard', 'rencontres', 'directory', 'zones', 'reportings', 'documents', 'mandats', 'demandes', 'users', 'quality', 'import_export', 'audit_logs', 'settings'];
     }
     if (role === 'admin') {
-      return ['dashboard', 'directory', 'zones', 'reportings', 'demandes', 'quality', 'import_export'];
+      return ['dashboard', 'rencontres', 'directory', 'zones', 'reportings', 'documents', 'mandats', 'demandes', 'quality', 'import_export'];
     }
-    return ['dashboard', 'directory', 'zones', 'reportings'];
+    return ['dashboard', 'rencontres', 'directory', 'zones', 'reportings', 'documents'];
   };
 
   // Keep role in sync with currentUser
@@ -440,12 +451,15 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // L'application Formulaire est désormais servée séparément (port 3002) :
-  // les anciens liens ?app=formulaire ou /formulaire sont redirigés vers elle.
+  // Les applications publiques sont servées séparément (Formulaire :3002,
+  // Sondage Rencontre :3003) : les anciens liens ?app=... sont redirigés.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('app') === 'formulaire' || window.location.pathname.includes('/formulaire')) {
       window.location.replace(FORMULAIRE_URL);
+    }
+    if (params.get('app') === 'rencontre' || window.location.pathname.includes('/rencontre')) {
+      window.location.replace(RENCONTRE_URL);
     }
   }, []);
 
@@ -476,8 +490,20 @@ export default function App() {
     const refresh = async () => {
       const serverDemandes = await ApiService.fetchDemandes();
       if (serverDemandes) {
-        DemandeService.saveDemandes(serverDemandes);
-        setDemandes(serverDemandes);
+        // Fusion par updatedAt : une validation/refus locale récente ne doit
+        // JAMAIS être écrasée par une réponse serveur partie avant le clic
+        // (sinon la demande « se remet en attente » le temps que le PUT
+        // débouncé parte). La version la plus récente gagne ; l'effet de
+        // synchronisation re-poussera la version locale au serveur.
+        const local = DemandeService.getDemandes();
+        const merged = serverDemandes.map((sd) => {
+          const ld = local.find((l) => l.id === sd.id);
+          return ld && (ld.updatedAt || '') > (sd.updatedAt || '') ? ld : sd;
+        });
+        const extraLocal = local.filter((l) => !serverDemandes.some((sd) => sd.id === l.id));
+        const finalList = [...extraLocal, ...merged];
+        DemandeService.saveDemandes(finalList);
+        setDemandes(finalList);
       }
     };
 
@@ -522,9 +548,24 @@ export default function App() {
     const refresh = async () => {
       const serverReports = await ApiService.fetchReports();
       if (serverReports) {
-        ReportingService.saveReports(serverReports);
-        setWeeklyReports(serverReports);
+        // Même protection anti-course que pour les demandes : fusion par
+        // dernière activité — un changement local récent n'est pas écrasé.
+        const local = ReportingService.getReports();
+        const activity = (r: WeeklyReport) => r.lastActivityAt || r.updatedAt || '';
+        const merged = serverReports.map((sr) => {
+          const lr = local.find((l) => l.id === sr.id);
+          return lr && activity(lr) > activity(sr) ? lr : sr;
+        });
+        const extraLocal = local.filter((l) => !serverReports.some((sr) => sr.id === l.id));
+        const finalList = [...extraLocal, ...merged];
+        ReportingService.saveReports(finalList);
+        setWeeklyReports(finalList);
       }
+
+      // Rencontres & réponses au sondage public : les réponses des membres
+      // arrivent de l'application web-rencontre (autre appareil) — la fusion
+      // par updatedAt est gérée dans le service, qui notifie les vues.
+      RencontreService.refreshFromServer().catch(() => {});
     };
 
     const interval = setInterval(refresh, 15000);
@@ -990,6 +1031,14 @@ export default function App() {
         if (Array.isArray(d.reports)) {
           ReportingService.saveReports(d.reports);
           setWeeklyReports(d.reports);
+        }
+        // Rencontres & réponses au sondage : le save notifie les vues
+        // abonnées (RencontresView) via les événements du service.
+        if (Array.isArray(d.rencontres) && d.rencontres.length > 0) {
+          RencontreService.saveRencontres(d.rencontres);
+        }
+        if (Array.isArray(d.rencontreResponses)) {
+          RencontreService.saveResponses(d.rencontreResponses);
         }
         if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
           setImportLogs(d.importLogs);
@@ -1937,6 +1986,10 @@ export default function App() {
         onEditLogoClick={() => setIsEditLogoModalOpen(true)}
         currentUser={currentUser}
         onLogout={handleLogout}
+        onNavigateToTab={(tab) => {
+          setActiveTab(tab);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
 
       {/* Navigation Tabs Bar */}
@@ -1947,11 +2000,13 @@ export default function App() {
           if (tab === 'directory') {
             setIsFiltersOpen(false);
           }
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         userRole={userRole}
         qualityIssueCount={qualityIssueCount}
         pendingDemandesCount={pendingDemandesCount}
         pendingReportingsCount={pendingReportingsCount}
+        activeRencontreResponsesCount={RencontreService.getActiveRencontreResponsesCount()}
       />
 
       {/* Collapsible Filters Panel (When opened in directory tab) */}
@@ -1969,6 +2024,17 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-6">
         
+        {/* Tab: Rencontres & Sondages (MDF Bureau & Référents) */}
+        {activeTab === 'rencontres' && (
+          <RencontresView
+            userRole={componentRole}
+            currentUser={currentUser}
+            members={scopedMembers}
+            onShowToast={showToast}
+            onSelectMember={(member) => setActiveDetailsMember(member)}
+          />
+        )}
+
         {/* Tab 1: Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-in fade-in duration-200">
@@ -1984,7 +2050,10 @@ export default function App() {
                 handleFilterChange({ qualityFilter: qf });
                 setActiveTab('directory');
               }}
-              onNavigateToTab={(tab) => setActiveTab(tab)}
+              onNavigateToTab={(tab) => {
+                setActiveTab(tab);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               onSelectMemberDetails={(member) => setActiveDetailsMember(member)}
             />
 
@@ -2119,6 +2188,26 @@ export default function App() {
             onSubmitReport={handleCreateWeeklyReport}
             onUpdateStatus={handleUpdateWeeklyReportStatus}
             onDeleteReport={handleDeleteWeeklyReport}
+          />
+        )}
+
+        {/* Tab: Documents Utiles (Référents & Admin) */}
+        {activeTab === 'documents' && (
+          <DocumentsView
+            userRole={componentRole}
+            currentUser={currentUser}
+            onShowToast={showToast}
+            onLogAudit={(category, action, details, severity) => addAuditLog(category, action, details, severity)}
+          />
+        )}
+
+        {/* Tab: Archives & Mandats (niveaux admin) */}
+        {activeTab === 'mandats' && isAdminLevel && (
+          <MandatsView
+            userRole={componentRole}
+            users={users}
+            onShowToast={showToast}
+            onLogAudit={(category, action, details, severity) => addAuditLog(category, action, details, severity)}
           />
         )}
 

@@ -1,4 +1,4 @@
-import { Member, AppUser, CustomZone, AuditLog, ImportLog, AppSettings, DemandeMember, WeeklyReport } from '../types';
+import { Member, AppUser, CustomZone, AuditLog, ImportLog, AppSettings, DemandeMember, WeeklyReport, Rencontre, RencontreResponse } from '../types';
 
 /**
  * Client HTTP du backend Express + Supabase (couche données uniquement).
@@ -30,6 +30,8 @@ export interface BootstrapData {
   zones: CustomZone[];
   demandes: DemandeMember[] | null;   // null si la table demandes n'existe pas encore
   reports: WeeklyReport[] | null;     // null si la table weekly_reports n'existe pas encore
+  rencontres: Rencontre[] | null;               // null si la table rencontres n'existe pas encore
+  rencontreResponses: RencontreResponse[] | null;
   users: AppUser[];
   importLogs: ImportLog[];
   auditLogs: AuditLog[];
@@ -205,6 +207,8 @@ export class ApiService {
     snapshots.zones = JSON.stringify(data.zones);
     snapshots.demandes = JSON.stringify(data.demandes ?? []);
     snapshots.reports = JSON.stringify(data.reports ?? []);
+    snapshots.rencontres = JSON.stringify(data.rencontres ?? []);
+    snapshots.rencontreResponses = JSON.stringify(data.rencontreResponses ?? []);
     snapshots.users = JSON.stringify(data.users);
     snapshots.importLogs = JSON.stringify(data.importLogs);
     bootstrapped = true;
@@ -316,6 +320,91 @@ export class ApiService {
   static deleteReport(id: string): void {
     request(`/reportings/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(e =>
       console.warn('[ApiService] deleteReport impossible', e)
+    );
+  }
+
+  static syncRencontres(rencontres: Rencontre[]): void {
+    scheduleSync('rencontres', '/rencontres', rencontres);
+  }
+
+  static syncRencontreResponses(responses: RencontreResponse[]): void {
+    scheduleSync('rencontreResponses', '/rencontres/responses', responses);
+  }
+
+  /** Rencontres + réponses depuis le serveur (bureau). null si API indisponible. */
+  static async fetchRencontres(): Promise<Rencontre[] | null> {
+    if (!loadTokens()) return null;
+    try {
+      const res = await request('/rencontres');
+      if (!res.ok) return null;
+      const rencontres = (await res.json()) as Rencontre[];
+      snapshots.rencontres = JSON.stringify(rencontres);
+      return rencontres;
+    } catch {
+      return null;
+    }
+  }
+
+  static async fetchRencontreResponses(): Promise<RencontreResponse[] | null> {
+    if (!loadTokens()) return null;
+    try {
+      const res = await request('/rencontres/responses');
+      if (!res.ok) return null;
+      const responses = (await res.json()) as RencontreResponse[];
+      snapshots.rencontreResponses = JSON.stringify(responses);
+      return responses;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Rencontres publiques pour l'application sondage (aucune authentification). */
+  static async fetchPublicRencontres(): Promise<Rencontre[] | null> {
+    try {
+      const res = await fetch(`${API_URL}/api/public/rencontres`);
+      if (!res.ok) return null;
+      return (await res.json()) as Rencontre[];
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Soumission publique d'une réponse au sondage Rencontre.
+   * duplicate = ce membre a déjà répondu (vérifié côté serveur, multi-appareils).
+   */
+  static async submitPublicRencontreResponse(
+    response: RencontreResponse
+  ): Promise<{ ok: boolean; duplicate: boolean; response: RencontreResponse | null }> {
+    try {
+      const res = await fetch(`${API_URL}/api/public/rencontres/responses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(response)
+      });
+      if (res.status === 409) {
+        return { ok: false, duplicate: true, response: null };
+      }
+      if (!res.ok) {
+        console.warn(`[ApiService] Soumission de réponse au sondage refusée (${res.status})`);
+        return { ok: false, duplicate: false, response: null };
+      }
+      return { ok: true, duplicate: false, response: (await res.json()) as RencontreResponse };
+    } catch (e) {
+      console.warn('[ApiService] Soumission de réponse au sondage impossible (API hors ligne ?)', e);
+      return { ok: false, duplicate: false, response: null };
+    }
+  }
+
+  static deleteRencontre(id: string): void {
+    request(`/rencontres/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(e =>
+      console.warn('[ApiService] deleteRencontre impossible', e)
+    );
+  }
+
+  static deleteRencontreResponse(id: string): void {
+    request(`/rencontres/responses/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(e =>
+      console.warn('[ApiService] deleteRencontreResponse impossible', e)
     );
   }
 

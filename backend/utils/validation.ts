@@ -215,6 +215,58 @@ export const weeklyReportSchema = z.object({
 
 export const weeklyReportsArraySchema = z.array(weeklyReportSchema).max(20000);
 
+export const rencontreSchema = z.object({
+  id: z.string().min(1).max(120),
+  nom: z.string().min(1).max(300),
+  annee: z.number().int().min(2000).max(2100),
+  description: z.string().max(5000).default(''),
+  messageAccueil: z.string().max(10000).optional(),
+  dateDebut: z.string().max(60).default(''),
+  dateFin: z.string().max(60).default(''),
+  dateAffichage: z.string().max(200).optional(),
+  lieu: z.string().max(300).default(''),
+  adresse: z.string().max(500).default(''),
+  dateLimite: z.string().max(60).default(''),
+  dateLimiteAffichage: z.string().max(200).optional(),
+  statut: z.enum(['BROUILLON', 'SONDAGE_OUVERT', 'SONDAGE_FERME', 'PREPARATION', 'TERMINEE', 'ARCHIVEE']),
+  isDefault: z.boolean().optional(),
+  bureauNotes: z.string().max(10000).optional(),
+  createdAt: z.string().max(60),
+  updatedAt: z.string().max(60).optional()
+});
+
+export const rencontresArraySchema = z.array(rencontreSchema).max(500);
+
+export const rencontreResponseSchema = z.object({
+  id: z.string().min(1).max(120),
+  rencontreId: z.string().min(1).max(120),
+  memberId: z.string().max(120).optional(),
+  nom: z.string().max(300).default(''),
+  prenom: z.string().max(300).default(''),
+  email: z.string().max(320).default(''),
+  telephone: z.string().max(100).default(''),
+  zone: z.string().max(200).default(''),
+  referentName: z.string().max(300).optional(),
+  ville: z.string().max(200).optional(),
+  participation: z.enum(['OUI', 'NON', 'INCERTAIN']),
+  dureePresence: z.enum(['TROIS_JOURS', 'WEEK_END']).optional(),
+  aideOrganisation: z.boolean().default(false),
+  domainesAide: z.array(z.string().max(200)).max(30).optional(),
+  autrePrecision: z.string().max(1000).optional(),
+  remarques: z.string().max(5000).optional(),
+  dateReponse: z.string().max(60).default(''),
+  createdAt: z.string().max(60),
+  updatedAt: z.string().max(60).optional()
+});
+
+export const rencontreResponsesArraySchema = z.array(rencontreResponseSchema).max(20000);
+
+/** Soumission du sondage public : identité minimale exigée. */
+export const publicRencontreResponseSchema = rencontreResponseSchema.extend({
+  nom: z.string().trim().min(1).max(300),
+  telephone: z.string().trim().min(1).max(100)
+});
+
 export const importLogSchema = z.object({
   id: z.string().min(1).max(120),
   filename: z.string().max(500),

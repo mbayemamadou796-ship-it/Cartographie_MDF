@@ -9,7 +9,8 @@ interface DashboardSummaryProps {
   lastUpdateDate: string;
   activeQualityFilter: QualityFilter;
   onSelectQualityFilter: (filter: QualityFilter) => void;
-  onNavigateToTab?: (tab: 'directory' | 'zones' | 'quality' | 'import_export') => void;
+  onNavigateToTab?: (tab: any) => void;
+  onOpenPublicRencontre?: () => void;
   userRole?: UserRole;
   referentZoneNames?: string[];
   referentUser?: AppUser | null;
@@ -23,6 +24,7 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
   activeQualityFilter,
   onSelectQualityFilter,
   onNavigateToTab,
+  onOpenPublicRencontre,
   userRole = 'admin',
   referentZoneNames = [],
   referentUser,
@@ -261,6 +263,50 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = ({
             </div>
           </>
         )}
+      </div>
+
+      {/* Rencontre MDF 2026 Highlight Banner */}
+      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 rounded-2xl p-4 sm:p-5 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
+        <div className="space-y-1 relative z-10">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider border border-emerald-400/30">
+              🕌 Événement Officiel MDF
+            </span>
+            <span className="text-[11px] text-emerald-200 font-bold">
+              25 - 27 Décembre 2026 • Toulouse
+            </span>
+          </div>
+          <h3 className="text-base sm:text-lg font-black tracking-tight text-white font-['Outfit']">
+            Rencontre Annuelle MDF 2026 — Sondage & Mobilisation en cours
+          </h3>
+          <p className="text-xs text-emerald-100/80 max-w-xl">
+            Suivez en temps réel les réponses au sondage, la liste des participants, et les bénévoles mobilisés par pôle (logistique, transport, cuisine, accueil).
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 relative z-10 shrink-0">
+          {onOpenPublicRencontre && (
+            <button
+              onClick={onOpenPublicRencontre}
+              className="px-4 py-2.5 bg-white hover:bg-emerald-50 text-emerald-950 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer border border-emerald-300"
+              title="Ouvrir l'application web-rencontre publique"
+            >
+              <span>🕌 Ouvrir Web-Rencontre</span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-md font-extrabold">Public</span>
+            </button>
+          )}
+
+          {onNavigateToTab && (
+            <button
+              onClick={() => onNavigateToTab('rencontres')}
+              className="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-emerald-950 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
+              title="Accéder au tableau de bord des réponses et participants"
+            >
+              <span>Gérer les réponses (Bureau)</span>
+              <Calendar className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Data Quality & Health Checks Section */}

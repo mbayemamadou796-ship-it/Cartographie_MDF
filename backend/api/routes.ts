@@ -6,6 +6,7 @@ import { logger } from '../utils/logger';
 import { memberService } from '../modules/membres/memberService';
 import { demandeService } from '../modules/demandes/demandeService';
 import { reportingService } from '../modules/reportings/reportingService';
+import { rencontreService } from '../modules/rencontres/rencontreService';
 import { zoneService } from '../modules/zones/zoneService';
 import { userService, IncomingAppUser } from '../modules/utilisateurs/userService';
 import { auditService } from '../modules/journaux/auditService';
@@ -20,9 +21,12 @@ import {
   settingsSchema,
   demandesArraySchema,
   publicDemandeSchema,
-  weeklyReportsArraySchema
+  weeklyReportsArraySchema,
+  rencontresArraySchema,
+  rencontreResponsesArraySchema,
+  publicRencontreResponseSchema
 } from '../utils/validation';
-import { AppUser, AuditLog, CustomZone, DemandeMember, Member, WeeklyReport } from '../../shared/types/index';
+import { AppUser, AuditLog, CustomZone, DemandeMember, Member, WeeklyReport, Rencontre, RencontreResponse } from '../../shared/types/index';
 
 /** Express 4 ne remonte pas les rejets de promesses : wrapper systématique. */
 function asyncHandler(fn: (req: AuthedRequest, res: Response) => Promise<void>): RequestHandler {
@@ -54,7 +58,7 @@ apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
   const isSuper = actor.role === 'super_admin';
   const adminLevel = isAdminLevel(actor.role);
 
-  const [settings, members, zones, demandes, reports, users, importLogs, auditLogs] = await Promise.all([
+  const [settings, members, zones, demandes, reports, rencontres, rencontreResponses, users, importLogs, auditLogs] = await Promise.all([
     settingsService.get(),
     memberService.list(),
     zoneService.list(),
@@ -77,6 +81,17 @@ apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
       logger.error(`bootstrap reportings indisponibles: ${e.message}`);
       return null;
     }),
+    // Rencontres & réponses au sondage : visibles par tous les rôles
+    // authentifiés (onglet Rencontres). Tolérant tant que 007_rencontres.sql
+    // n'a pas été exécutée (null => cache local conservé).
+    rencontreService.listRencontres().catch((e: Error) => {
+      logger.error(`bootstrap rencontres indisponibles: ${e.message}`);
+      return null;
+    }),
+    rencontreService.listResponses().catch((e: Error) => {
+      logger.error(`bootstrap réponses rencontres indisponibles: ${e.message}`);
+      return null;
+    }),
     // Gestion des utilisateurs : liste complète pour le super admin ; liste
     // MINIMALE (identité/rôle/actif, jamais de secret) pour l'admin, afin de
     // fiabiliser la liaison membre <-> compte (désignation des référents).
@@ -89,7 +104,7 @@ apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
     isSuper ? auditService.list() : Promise.resolve([])
   ]);
 
-  res.json({ settings, members, zones, demandes, reports, users, importLogs, auditLogs, currentUser: actor });
+  res.json({ settings, members, zones, demandes, reports, rencontres, rencontreResponses, users, importLogs, auditLogs, currentUser: actor });
 }));
 
 // --------------------------------------------------------------------------
@@ -214,6 +229,60 @@ apiRouter.put('/reportings', requireAuth, asyncHandler(async (req, res) => {
 
 apiRouter.delete('/reportings/:id', requireAuth, requireRole('admin'), asyncHandler(async (req, res) => {
   await reportingService.remove(req.params.id as string);
+  res.status(204).end();
+}));
+
+// --------------------------------------------------------------------------
+// Rencontres annuelles & sondage public (application web-rencontre)
+// --------------------------------------------------------------------------
+
+// Liste publique des rencontres pour le sondage : jamais les notes internes.
+apiRouter.get('/public/rencontres', publicTrackingRateLimiter, asyncHandler(async (_req, res) => {
+  res.json(await rencontreService.listRencontresPublic());
+}));
+
+// Soumission publique d'une réponse au sondage : rate-limitée, insert strict,
+// anti-doublon multi-appareils (membre / e-mail / téléphone par rencontre).
+apiRouter.post('/public/rencontres/responses', publicDemandeRateLimiter, asyncHandler(async (req, res) => {
+  const parsed = publicRencontreResponseSchema.safeParse(req.body);
+  if (!parsed.success) return badRequest(res, 'Payload réponse au sondage invalide.');
+  const created = await rencontreService.createPublicResponse(parsed.data as RencontreResponse);
+  if (created === 'duplicate') {
+    res.status(409).json({ error: 'Vous avez déjà répondu au sondage de cette rencontre.' });
+    return;
+  }
+  res.status(201).json(created);
+}));
+
+apiRouter.get('/rencontres', requireAuth, asyncHandler(async (_req, res) => {
+  res.json(await rencontreService.listRencontres());
+}));
+
+apiRouter.get('/rencontres/responses', requireAuth, asyncHandler(async (_req, res) => {
+  res.json(await rencontreService.listResponses());
+}));
+
+apiRouter.put('/rencontres', requireAuth, asyncHandler(async (req, res) => {
+  const parsed = rencontresArraySchema.safeParse(req.body);
+  if (!parsed.success) return badRequest(res, 'Payload rencontres invalide.');
+  await rencontreService.bulkUpsertRencontres(parsed.data as Rencontre[], req.appUser as AppUser);
+  res.status(204).end();
+}));
+
+apiRouter.put('/rencontres/responses', requireAuth, asyncHandler(async (req, res) => {
+  const parsed = rencontreResponsesArraySchema.safeParse(req.body);
+  if (!parsed.success) return badRequest(res, 'Payload réponses au sondage invalide.');
+  await rencontreService.bulkUpsertResponses(parsed.data as RencontreResponse[], req.appUser as AppUser);
+  res.status(204).end();
+}));
+
+apiRouter.delete('/rencontres/responses/:id', requireAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+  await rencontreService.removeResponse(req.params.id as string);
+  res.status(204).end();
+}));
+
+apiRouter.delete('/rencontres/:id', requireAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+  await rencontreService.removeRencontre(req.params.id as string);
   res.status(204).end();
 }));
 

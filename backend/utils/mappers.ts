@@ -9,7 +9,7 @@
  * - les dates affichées (timestamp fr-FR, lastLogin, createdAt ISO...) sont
  *   des chaînes stockées telles quelles, jamais converties.
  */
-import { Member, CustomZone, AppUser, AuditLog, ImportLog, AppSettings, CustomField, UserRole, AuditLogCategory, DemandeMember, DemandeType, DemandeStatus, WeeklyReport, ReportingStatus, ReportingType, ReportingPriority, ReportAttachment, ReportResponse, ReportActionLog } from '../../shared/types/index';
+import { Member, CustomZone, AppUser, AuditLog, ImportLog, AppSettings, CustomField, UserRole, AuditLogCategory, DemandeMember, DemandeType, DemandeStatus, WeeklyReport, ReportingStatus, ReportingType, ReportingPriority, ReportAttachment, ReportResponse, ReportActionLog, Rencontre, RencontreResponse, RencontreStatut, RencontreParticipation, RencontreDureePresence } from '../../shared/types/index';
 
 type Row = Record<string, unknown>;
 
@@ -327,6 +327,104 @@ export function reportToDb(r: WeeklyReport): Row {
     last_activity_at: r.lastActivityAt ?? null,
     reviewed_by: r.reviewedBy ?? null,
     reviewed_at: r.reviewedAt ?? null
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Rencontres annuelles & réponses au sondage public
+// ---------------------------------------------------------------------------
+
+export function rencontreFromDb(row: Row): Rencontre {
+  return compact({
+    id: str(row.id),
+    nom: str(row.nom),
+    annee: typeof row.annee === 'number' ? row.annee : 0,
+    description: str(row.description),
+    messageAccueil: optStr(row.message_accueil),
+    dateDebut: str(row.date_debut),
+    dateFin: str(row.date_fin),
+    dateAffichage: optStr(row.date_affichage),
+    lieu: str(row.lieu),
+    adresse: str(row.adresse),
+    dateLimite: str(row.date_limite),
+    dateLimiteAffichage: optStr(row.date_limite_affichage),
+    statut: (str(row.statut) || 'BROUILLON') as RencontreStatut,
+    isDefault: row.is_default === true,
+    bureauNotes: optStr(row.bureau_notes),
+    createdAt: str(row.created_at_iso),
+    updatedAt: optStr(row.updated_at_iso)
+  }) as Rencontre;
+}
+
+export function rencontreToDb(r: Rencontre): Row {
+  return {
+    id: r.id,
+    nom: r.nom ?? '',
+    annee: r.annee ?? 0,
+    description: r.description ?? '',
+    message_accueil: r.messageAccueil ?? null,
+    date_debut: r.dateDebut ?? '',
+    date_fin: r.dateFin ?? '',
+    date_affichage: r.dateAffichage ?? null,
+    lieu: r.lieu ?? '',
+    adresse: r.adresse ?? '',
+    date_limite: r.dateLimite ?? '',
+    date_limite_affichage: r.dateLimiteAffichage ?? null,
+    statut: r.statut ?? 'BROUILLON',
+    is_default: r.isDefault === true,
+    bureau_notes: r.bureauNotes ?? null,
+    created_at_iso: r.createdAt ?? new Date().toISOString(),
+    updated_at_iso: r.updatedAt ?? null
+  };
+}
+
+export function rencontreResponseFromDb(row: Row): RencontreResponse {
+  return compact({
+    id: str(row.id),
+    rencontreId: str(row.rencontre_id),
+    memberId: optStr(row.member_id),
+    nom: str(row.nom),
+    prenom: str(row.prenom),
+    email: str(row.email),
+    telephone: str(row.telephone),
+    zone: str(row.zone),
+    referentName: optStr(row.referent_name),
+    ville: optStr(row.ville),
+    participation: (str(row.participation) || 'INCERTAIN') as RencontreParticipation,
+    dureePresence: optStr(row.duree_presence) as RencontreDureePresence | undefined,
+    aideOrganisation: row.aide_organisation === true,
+    domainesAide: Array.isArray(row.domaines_aide) && row.domaines_aide.length > 0
+      ? (row.domaines_aide as string[])
+      : undefined,
+    autrePrecision: optStr(row.autre_precision),
+    remarques: optStr(row.remarques),
+    dateReponse: str(row.date_reponse),
+    createdAt: str(row.created_at_iso),
+    updatedAt: optStr(row.updated_at_iso)
+  }) as RencontreResponse;
+}
+
+export function rencontreResponseToDb(r: RencontreResponse): Row {
+  return {
+    id: r.id,
+    rencontre_id: r.rencontreId,
+    member_id: r.memberId ?? null,
+    nom: r.nom ?? '',
+    prenom: r.prenom ?? '',
+    email: r.email ?? '',
+    telephone: r.telephone ?? '',
+    zone: r.zone ?? '',
+    referent_name: r.referentName ?? null,
+    ville: r.ville ?? null,
+    participation: r.participation ?? 'INCERTAIN',
+    duree_presence: r.dureePresence ?? null,
+    aide_organisation: r.aideOrganisation === true,
+    domaines_aide: r.domainesAide ?? [],
+    autre_precision: r.autrePrecision ?? null,
+    remarques: r.remarques ?? null,
+    date_reponse: r.dateReponse ?? '',
+    created_at_iso: r.createdAt ?? new Date().toISOString(),
+    updated_at_iso: r.updatedAt ?? null
   };
 }
 

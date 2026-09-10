@@ -1,6 +1,6 @@
 {
   "name": "Cartographie MDF",
-  "description": "Application web de cartographie interactive, annuaire des membres et système de reporting hebdomadaire des référents de zone MDF.",
+  "description": "Plateforme globale MDF : Cartographie interactive, annuaire des membres, espace Référents, remontées périodiques, sondages et gestion des rencontres annuelles (web-rencontre), archives des mandats et documents utiles.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

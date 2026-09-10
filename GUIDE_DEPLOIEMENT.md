@@ -1,24 +1,25 @@
 # 🚀 Guide de déploiement — Cartographie MDF (Vercel + Render)
 
-Ce guide explique comment mettre en ligne les **deux applications** avec une URL publique chacune :
+Ce guide explique comment mettre en ligne les **trois applications** avec une URL publique chacune :
 
 | Application | Exemple d'URL publique | Hébergeur |
 | :--- | :--- | :--- |
 | **Bureau / Cartographie** (espace connecté) | `https://mdf-bureau.vercel.app` | Vercel |
 | **Formulaire public** (inscriptions membres) | `https://mdf-formulaire.vercel.app` | Vercel |
+| **Sondage Rencontre** (participation à la rencontre annuelle) | `https://mdf-rencontre.vercel.app` | Vercel |
 | **API backend** (Express) | `https://mdf-api.onrender.com` | Render |
 
 ## 🧠 Comprendre l'architecture en 30 secondes
 
-Le projet a 3 morceaux, et ils ne se déploient pas au même endroit :
+Le projet a 4 morceaux, et ils ne se déploient pas au même endroit :
 
 ```
-Bureau (Vercel, statique) ──┐
-                            ├──→  API Express (Render, serveur permanent)  ──→  Supabase (déjà en ligne)
-Formulaire (Vercel, statique) ┘
+Bureau (Vercel, statique) ────┐
+Formulaire (Vercel, statique) ├──→  API Express (Render, serveur permanent)  ──→  Supabase (déjà en ligne)
+Rencontre (Vercel, statique) ─┘
 ```
 
-- Les deux frontends sont des **sites statiques** (HTML/JS générés par `vite build`) → parfaits pour Vercel.
+- Les trois frontends sont des **sites statiques** (HTML/JS générés par `vite build`) → parfaits pour Vercel.
 - L'API Express est un **serveur qui tourne en continu** → Vercel ne sait pas l'héberger telle quelle ; Render (ou Railway) l'accepte sans modifier le code.
 - Supabase (la base de données) est déjà dans le cloud : **rien à faire**.
 
@@ -47,7 +48,8 @@ production. C'est manuel et ça prend 1 minute chacune :
 | `003_demandes.sql` | demandes d'inscription du formulaire public | ✅ déjà exécutée |
 | `004_super_admin.sql` | rôle super admin (bilal) | ✅ déjà exécutée |
 | `005_zone_referents.sql` | référents désignés par membre de zone | ✅ déjà exécutée |
-| `006_weekly_reports.sql` | **reporting hebdomadaire des référents** | ⚠️ **À EXÉCUTER** |
+| `006_weekly_reports.sql` | reporting hebdomadaire des référents | ✅ déjà exécutée |
+| `007_rencontres.sql` | **Rencontres annuelles + sondage public** | ⚠️ **À EXÉCUTER** |
 
 > Règle pour la suite : à chaque nouvelle migration `00X_*.sql` qui apparaît
 > dans un `git pull`, l'exécuter une fois dans le SQL Editor (les scripts sont
@@ -86,9 +88,9 @@ production. C'est manuel et ça prend 1 minute chacune :
 
 ---
 
-## Étape 2 — Créer les deux projets Vercel
+## Étape 2 — Créer les trois projets Vercel
 
-Un même repo GitHub peut alimenter plusieurs projets Vercel : on l'importe **deux fois**, avec des réglages de build différents.
+Un même repo GitHub peut alimenter plusieurs projets Vercel : on l'importe **trois fois**, avec des réglages de build différents.
 
 ### Projet n°1 : le Bureau / Cartographie
 
@@ -134,6 +136,31 @@ VITE_API_URL = https://mdf-api.onrender.com
 
 **Deploy** → tu obtiens `https://mdf-formulaire.vercel.app`.
 
+### Projet n°3 : le Sondage Rencontre
+
+Même démarche (**Add New… → Project**, réimporte le même repo une 3ᵉ fois) :
+
+| Champ | Valeur |
+| :--- | :--- |
+| **Project Name** | `mdf-rencontre` |
+| **Framework Preset** | Vite |
+| **Root Directory** | `./` (racine) |
+| **Build Command** (Override) | `npm run build:rencontre` |
+| **Output Directory** (Override) | `frontend/web-rencontre/dist` |
+
+Variable d'environnement :
+
+```
+VITE_API_URL = https://mdf-api.onrender.com
+```
+
+**Deploy** → tu obtiens `https://mdf-rencontre.vercel.app`.
+
+> De retour sur le **projet bureau** (`mdf-bureau`), ajoute la variable
+> `VITE_RENCONTRE_URL = https://mdf-rencontre.vercel.app` (sans `/` final) puis
+> **Redeploy** : le lien à copier et le QR code de l'onglet Rencontres
+> pointeront vers cette URL.
+
 ---
 
 ## Étape 3 — Boucler le CORS (obligatoire)
@@ -141,10 +168,10 @@ VITE_API_URL = https://mdf-api.onrender.com
 Sans cette étape, les navigateurs bloqueront tous les appels des frontends vers l'API (« Serveur inaccessible » au login, formulaire qui ne s'envoie pas).
 
 1. Retourne sur Render → service `mdf-api` → **Environment**.
-2. Renseigne `CORS_ORIGIN` avec **les deux URL Vercel exactes**, séparées par une virgule, sans espace ni `/` final :
+2. Renseigne `CORS_ORIGIN` avec **les trois URL Vercel exactes**, séparées par une virgule, sans espace ni `/` final :
 
    ```
-   CORS_ORIGIN = https://mdf-bureau.vercel.app,https://mdf-formulaire.vercel.app
+   CORS_ORIGIN = https://mdf-bureau.vercel.app,https://mdf-formulaire.vercel.app,https://mdf-rencontre.vercel.app
    ```
 
 3. Sauvegarde — Render redémarre l'API automatiquement.
@@ -155,18 +182,19 @@ Sans cette étape, les navigateurs bloqueront tous les appels des frontends vers
 
 1. **Formulaire** : ouvre `https://mdf-formulaire.vercel.app` → soumets une inscription de test → message de confirmation avec un identifiant `dem-...`. Resoumets avec le même e-mail → message « Vous avez déjà envoyé votre demande » (anti-doublon OK).
 2. **Bureau** : ouvre `https://mdf-bureau.vercel.app` → connecte-toi (super admin `bilal`) → onglet **Demandes Inscription** → la demande de test apparaît (patiente jusqu'à 15 s, le bureau se rafraîchit périodiquement).
-3. **Reporting** : onglet **Remontées Référents** → avec un compte référent, soumets un reporting de test → reconnecte-toi en super admin (autre navigateur ou onglet privé) → la remontée apparaît. Si elle ne traverse pas les appareils : la migration `006_weekly_reports.sql` n'a pas été exécutée (étape 0).
+3. **Sondage Rencontre** : ouvre `https://mdf-rencontre.vercel.app` → la Rencontre 2026 (Toulouse) s'affiche, réponds au sondage → sur le bureau, onglet **Rencontres & Sondages**, la réponse apparaît (≤ 15 s). Le QR code et le lien à copier de cet onglet pointent bien vers l'URL du sondage.
+4. **Reporting** : onglet **Remontées Référents** → avec un compte référent, soumets un reporting de test → reconnecte-toi en super admin (autre navigateur ou onglet privé) → la remontée apparaît. Si elle ne traverse pas les appareils : la migration `006_weekly_reports.sql` n'a pas été exécutée (étape 0).
 
 ## 🔄 Et ensuite ? C'est automatique
 
-Les trois services sont branchés sur la branche `main` : **chaque `git push` redéploie tout automatiquement** (les deux projets Vercel et Render détectent le commit). La seule chose qui reste manuelle : **exécuter les nouvelles migrations SQL** dans Supabase quand il y en a (étape 0).
+Les quatre services (3 Vercel + Render) sont branchés sur la branche `main` : **chaque `git push` redéploie tout automatiquement** (les deux projets Vercel et Render détectent le commit). La seule chose qui reste manuelle : **exécuter les nouvelles migrations SQL** dans Supabase quand il y en a (étape 0).
 
 ## ⚠️ Pièges connus & dépannage
 
 - **Les variables `VITE_*` sont figées au moment du build.** Si tu ajoutes/modifies `VITE_API_URL` ou `VITE_FORMULAIRE_URL` après coup, il faut relancer un déploiement : Vercel → projet → **Deployments** → `⋯` sur le dernier → **Redeploy**.
 - **Render Free s'endort après ~15 min d'inactivité** : le premier appel suivant prend ~30–60 s (login qui affiche « Serveur inaccessible » le temps du réveil — réessayer suffit). L'instance payante (~7 $/mois) supprime ce comportement.
 - **Erreur CORS dans la console du navigateur** (`blocked by CORS policy`) : `CORS_ORIGIN` sur Render ne correspond pas exactement aux URL Vercel (vérifie `https`, l'absence de `/` final, la virgule sans espace).
-- **Page blanche sur Vercel** : Build Command ou Output Directory incorrects — revérifie les overrides du tableau ci-dessus (c'est la seule différence entre les deux projets).
+- **Page blanche sur Vercel** : Build Command ou Output Directory incorrects — revérifie les overrides du tableau ci-dessus (c'est la seule différence entre les trois projets Vercel).
 - **`401` sur `/api/bootstrap`** : normal sans être connecté. **`500`** : clés Supabase mal recopiées dans Render.
 
 ## 🌐 Nom de domaine personnalisé (optionnel)

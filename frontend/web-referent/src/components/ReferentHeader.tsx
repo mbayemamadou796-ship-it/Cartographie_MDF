@@ -1,11 +1,11 @@
 import React from 'react';
 import { AppUser } from '@shared/types';
-import { MapPin, User, LogOut, ArrowLeftRight, Bell } from 'lucide-react';
+import { MapPin, User, LogOut, ArrowLeftRight, Bell, ExternalLink } from 'lucide-react';
 
 interface ReferentHeaderProps {
   currentUser: AppUser | null;
   onLogout: () => void;
-  onSwitchPortal: (portal: 'cartographie' | 'referent' | 'admin' | 'formulaire') => void;
+  onSwitchPortal: (portal: 'cartographie' | 'referent' | 'admin' | 'formulaire' | 'rencontre') => void;
   userZone?: string;
 }
 
@@ -36,11 +36,24 @@ export const ReferentHeader: React.FC<ReferentHeaderProps> = ({
           </div>
 
           {/* User Profile & Portal Switcher Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            
+            {/* Quick Link to Web-Rencontre */}
+            <button
+              onClick={() => onSwitchPortal('rencontre')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-black border border-emerald-400/40 shadow-xs transition cursor-pointer"
+              title="Accéder directement à l'application web-rencontre (Sondage 2026)"
+            >
+              <span>🕌</span>
+              <span className="hidden sm:inline font-['Outfit']">Web-Rencontre 2026</span>
+              <span className="sm:hidden font-['Outfit']">Rencontre</span>
+              <ExternalLink className="w-3 h-3 text-emerald-200 ml-0.5" />
+            </button>
+
             {/* Quick Switch Button to Cartographie */}
             <button
               onClick={() => onSwitchPortal('cartographie')}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition cursor-pointer"
               title="Retour à la Cartographie générale"
             >
               <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
@@ -50,7 +63,7 @@ export const ReferentHeader: React.FC<ReferentHeaderProps> = ({
             {currentUser?.role === 'admin' && (
               <button
                 onClick={() => onSwitchPortal('admin')}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-950 hover:bg-indigo-900 text-indigo-300 text-xs font-semibold border border-indigo-700/50 transition"
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-950 hover:bg-indigo-900 text-indigo-300 text-xs font-semibold border border-indigo-700/50 transition cursor-pointer"
                 title="Accéder au Portail Administration"
               >
                 <span>🏛️ Espace Admin</span>

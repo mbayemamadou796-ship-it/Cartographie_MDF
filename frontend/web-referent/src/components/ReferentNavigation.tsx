@@ -1,17 +1,19 @@
 import React from 'react';
 
-export type ReferentTab = 'dashboard' | 'zone' | 'members' | 'new_report' | 'my_reports' | 'profile';
+export type ReferentTab = 'dashboard' | 'rencontres' | 'zone' | 'members' | 'new_report' | 'my_reports' | 'documents' | 'profile';
 
 interface ReferentNavigationProps {
   activeTab: ReferentTab;
   onTabChange: (tab: ReferentTab) => void;
   pendingCount?: number;
+  activeRencontreResponsesCount?: number;
 }
 
 export const ReferentNavigation: React.FC<ReferentNavigationProps> = ({
   activeTab,
   onTabChange,
-  pendingCount = 0
+  pendingCount = 0,
+  activeRencontreResponsesCount = 0
 }) => {
   interface TabItem {
     id: ReferentTab;
@@ -22,10 +24,12 @@ export const ReferentNavigation: React.FC<ReferentNavigationProps> = ({
 
   const tabs: TabItem[] = [
     { id: 'dashboard', label: 'Tableau de bord', icon: '📊' },
+    { id: 'rencontres', label: 'Rencontre MDF', icon: '🕌', badge: activeRencontreResponsesCount > 0 ? activeRencontreResponsesCount : undefined },
     { id: 'zone', label: 'Ma zone', icon: '📍' },
     { id: 'members', label: 'Mes membres', icon: '👥' },
     { id: 'new_report', label: 'Nouveau reporting / Cas', icon: '✍️' },
     { id: 'my_reports', label: 'Mes remontées', icon: '📋', badge: pendingCount > 0 ? pendingCount : undefined },
+    { id: 'documents', label: 'Documents utiles & Guides', icon: '📚' },
     { id: 'profile', label: 'Mon Profil Référent', icon: '👤' },
   ];
 
@@ -39,7 +43,7 @@ export const ReferentNavigation: React.FC<ReferentNavigationProps> = ({
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
                   isActive
                     ? 'bg-emerald-700 text-white shadow-sm shadow-emerald-700/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50'

@@ -108,7 +108,24 @@ uniquement les siennes pour un référent, `[]` pour un utilisateur.
 > jamais de secret) pour fiabiliser la liaison membre ⇄ compte lors de la
 > désignation des référents. La gestion des comptes reste super admin.
 
-## 11. Paramètres
+## 11. Rencontres annuelles & sondage public
+
+Alimente l'onglet « Rencontres & Sondages » du bureau et l'application publique
+`web-rencontre` (port 3003). Tables `rencontres` + `rencontre_responses`
+(migration `007_rencontres.sql`, seed des rencontres 2025/2026). Incluses dans
+`/api/bootstrap` (`rencontres`, `rencontreResponses` — `null` si la migration
+n'a pas été exécutée).
+
+| Route | Accès | Comportement |
+|---|---|---|
+| `GET /api/public/rencontres` | **public**, rate-limité (60 / 15 min / IP) | Liste des rencontres SANS les notes internes du bureau. |
+| `POST /api/public/rencontres/responses` (`RencontreResponse`) | **public**, rate-limité (10 / 15 min / IP) | Soumission du sondage : insert strict, anti-doublon multi-appareils (membre / e-mail / téléphone par rencontre → 409). → 201 |
+| `GET /api/rencontres` · `GET /api/rencontres/responses` | authentifié | Listes complètes (bureau et référents). |
+| `PUT /api/rencontres` · `PUT /api/rencontres/responses` | niveaux admin (non-admin : no-op 204) | Upsert bulk, jamais de suppression. → 204 |
+| `DELETE /api/rencontres/:id` | niveaux admin | Supprime la rencontre **et** ses réponses. → 204 |
+| `DELETE /api/rencontres/responses/:id` | niveaux admin | Supprime une réponse. → 204 |
+
+## 12. Paramètres
 
 ### `PUT /api/settings` — super admin (admin : seul `lastUpdateDate` est appliqué ; autres rôles : no-op 204)
 `Partial<AppSettings> & { lastUpdateDate?: string }` — merge sur la ligne unique. `logoUrl` accepte une data-URL base64 (limite globale de payload : 50 Mo). → 204.
