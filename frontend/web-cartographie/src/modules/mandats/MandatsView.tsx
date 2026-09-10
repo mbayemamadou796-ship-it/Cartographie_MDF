@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Mandat, 
   MandatRealisation, 
@@ -58,6 +58,18 @@ export const MandatsView: React.FC<MandatsViewProps> = ({
   onLogAudit = (_category: any, _action: string, _details: string, _severity?: any) => {}
 }) => {
   const [mandats, setMandats] = useState<Mandat[]>(() => MandatService.getMandats());
+
+  // Synchronisation : recharge quand la liste change ailleurs (autre onglet,
+  // rafraîchissement serveur Supabase via mbok_mandats_updated).
+  useEffect(() => {
+    const handleSync = () => setMandats(MandatService.getMandats());
+    window.addEventListener('mbok_mandats_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('mbok_mandats_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
   const [selectedMandatId, setSelectedMandatId] = useState<string>(() => {
     const list = MandatService.getMandats();
     const active = list.find((m) => m.statut === 'EN_COURS');

@@ -9,7 +9,7 @@
  * - les dates affichées (timestamp fr-FR, lastLogin, createdAt ISO...) sont
  *   des chaînes stockées telles quelles, jamais converties.
  */
-import { Member, CustomZone, AppUser, AuditLog, ImportLog, AppSettings, CustomField, UserRole, AuditLogCategory, DemandeMember, DemandeType, DemandeStatus, WeeklyReport, ReportingStatus, ReportingType, ReportingPriority, ReportAttachment, ReportResponse, ReportActionLog, Rencontre, RencontreResponse, RencontreStatut, RencontreParticipation, RencontreDureePresence } from '../../shared/types/index';
+import { Member, CustomZone, AppUser, AuditLog, ImportLog, AppSettings, CustomField, UserRole, AuditLogCategory, DemandeMember, DemandeType, DemandeStatus, WeeklyReport, ReportingStatus, ReportingType, ReportingPriority, ReportAttachment, ReportResponse, ReportActionLog, Rencontre, RencontreResponse, RencontreStatut, RencontreParticipation, RencontreDureePresence, Mandat, MandatStatus, MandatRealisation, MandatDocument, MandatBilan, UsefulDocument, DocumentCategory, DocumentPublishStatus, DocumentVersion } from '../../shared/types/index';
 
 type Row = Record<string, unknown>;
 
@@ -425,6 +425,98 @@ export function rencontreResponseToDb(r: RencontreResponse): Row {
     date_reponse: r.dateReponse ?? '',
     created_at_iso: r.createdAt ?? new Date().toISOString(),
     updated_at_iso: r.updatedAt ?? null
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Mandats (réalisations, documents joints et bilan portés en jsonb)
+// ---------------------------------------------------------------------------
+
+export function mandatFromDb(row: Row): Mandat {
+  return compact({
+    id: str(row.id),
+    intitule: str(row.intitule),
+    dateDebut: str(row.date_debut),
+    dateFin: str(row.date_fin),
+    description: str(row.description),
+    responsables: Array.isArray(row.responsables) ? (row.responsables as string[]) : [],
+    statut: (str(row.statut) || 'EN_PREPARATION') as MandatStatus,
+    realisations: Array.isArray(row.realisations) ? (row.realisations as MandatRealisation[]) : [],
+    documents: Array.isArray(row.documents) ? (row.documents as MandatDocument[]) : [],
+    bilan: row.bilan && typeof row.bilan === 'object' && !Array.isArray(row.bilan)
+      ? (row.bilan as MandatBilan)
+      : undefined,
+    createdAt: str(row.created_at_iso),
+    updatedAt: optStr(row.updated_at_iso)
+  }) as Mandat;
+}
+
+export function mandatToDb(m: Mandat): Row {
+  return {
+    id: m.id,
+    intitule: m.intitule ?? '',
+    date_debut: m.dateDebut ?? '',
+    date_fin: m.dateFin ?? '',
+    description: m.description ?? '',
+    responsables: m.responsables ?? [],
+    statut: m.statut ?? 'EN_PREPARATION',
+    realisations: m.realisations ?? [],
+    documents: m.documents ?? [],
+    bilan: m.bilan ?? null,
+    created_at_iso: m.createdAt ?? new Date().toISOString(),
+    updated_at_iso: m.updatedAt ?? null
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Documents utiles
+// ---------------------------------------------------------------------------
+
+export function usefulDocumentFromDb(row: Row): UsefulDocument {
+  return compact({
+    id: str(row.id),
+    name: str(row.name),
+    description: str(row.description),
+    category: (str(row.category) || 'AUTRE') as DocumentCategory,
+    customCategoryName: optStr(row.custom_category_name),
+    fileUrl: optStr(row.file_url),
+    fileName: str(row.file_name),
+    fileType: str(row.file_type),
+    fileSize: optNum(row.file_size),
+    version: str(row.version) || '1.0',
+    datePublication: str(row.date_publication),
+    dateMiseAJour: str(row.date_mise_a_jour),
+    statut: (str(row.statut) || 'BROUILLON') as DocumentPublishStatus,
+    ordreAffichage: optNum(row.ordre_affichage),
+    authorName: optStr(row.author_name),
+    versionsHistorique: Array.isArray(row.versions_historique) && row.versions_historique.length > 0
+      ? (row.versions_historique as DocumentVersion[])
+      : undefined,
+    tags: Array.isArray(row.tags) && row.tags.length > 0 ? (row.tags as string[]) : undefined,
+    content: optStr(row.content)
+  }) as UsefulDocument;
+}
+
+export function usefulDocumentToDb(d: UsefulDocument): Row {
+  return {
+    id: d.id,
+    name: d.name ?? '',
+    description: d.description ?? '',
+    category: d.category ?? 'AUTRE',
+    custom_category_name: d.customCategoryName ?? null,
+    file_url: d.fileUrl ?? null,
+    file_name: d.fileName ?? '',
+    file_type: d.fileType ?? '',
+    file_size: d.fileSize ?? null,
+    version: d.version ?? '1.0',
+    date_publication: d.datePublication ?? '',
+    date_mise_a_jour: d.dateMiseAJour ?? '',
+    statut: d.statut ?? 'BROUILLON',
+    ordre_affichage: d.ordreAffichage ?? null,
+    author_name: d.authorName ?? null,
+    versions_historique: d.versionsHistorique ?? [],
+    tags: d.tags ?? [],
+    content: d.content ?? null
   };
 }
 

@@ -31,6 +31,7 @@
 - [x] Reporting hebdomadaire branché sur Supabase : table `weekly_reports` (006), GET/PUT/DELETE `/api/reportings` avec périmètre référent, bootstrap + synchronisation frontend (plus de données de démo injectées). Liste minimale des comptes exposée aux admins pour la liaison membre⇄compte.
 - [x] ⚠️ Migration 006 exécutée dans Supabase.
 - [x] Intégration Rencontres/Mandats/Documents depuis Cartographie_MDF1 (sauf carte) : 3ᵉ application publique `web-rencontre` (port 3003, `npm run dev:rencontre`), onglets bureau Rencontres & Sondages / Documents utiles / Archives Mandats, backend Supabase des rencontres (007) avec sondage public anti-doublon, aucun accès direct aux formulaires publics depuis le bureau (partage par lien/QR uniquement), correctif anti-course de la validation des demandes (fusion par updatedAt).
-- [ ] ⚠️ Exécuter `backend/database/migrations/007_rencontres.sql` dans Supabase > SQL Editor (sans cela, le sondage Rencontre reste local à chaque poste ; le bureau garde son cache).
-- [ ] Mandats et Documents fonctionnent en **localStorage uniquement** (mandatService/documentService) — à brancher sur Supabase si le partage entre postes devient nécessaire.
+- [x] ⚠️ Migration 007 exécutée dans Supabase.
+- [x] Mandats & Documents utiles branchés sur Supabase : tables `mandats` + `useful_documents` (008), GET/PUT/DELETE `/api/mandats` et `/api/documents`, bootstrap + services frontend hybrides (fusion par updatedAt/dateMiseAJour, contenu initial poussé automatiquement par le premier admin connecté).
+- [ ] ⚠️ Exécuter `backend/database/migrations/008_mandats_documents.sql` dans Supabase > SQL Editor (sans cela, mandats et documents restent locaux à chaque poste).
 - [ ] Exécuter des tests de charge sur les imports massifs Excel (> 5000 enregistrements).

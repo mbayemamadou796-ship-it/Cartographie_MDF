@@ -267,6 +267,93 @@ export const publicRencontreResponseSchema = rencontreResponseSchema.extend({
   telephone: z.string().trim().min(1).max(100)
 });
 
+const mandatDocumentSchema = z.object({
+  id: z.string().max(120),
+  name: z.string().max(500),
+  category: z.enum(['COMPTE_RENDU', 'RAPPORT', 'BILAN', 'PROCES_VERBAL', 'PHOTO', 'PRESENTATION', 'FEUILLE_DE_ROUTE', 'PROJET', 'AUTRE']).optional(),
+  url: z.string().optional(),               // data-URL possible
+  type: z.string().max(200).optional(),
+  size: z.number().nonnegative().optional(),
+  dateAjout: z.string().max(60),
+  description: z.string().max(2000).optional(),
+  uploadedBy: z.string().max(300).optional()
+});
+
+const mandatRealisationSchema = z.object({
+  id: z.string().max(120),
+  mandatId: z.string().max(120),
+  titre: z.string().max(500),
+  description: z.string().max(10000),
+  date: z.string().max(60),
+  categorie: z.enum(['EVENEMENTS', 'ACTIONS_SOCIALES', 'COMMUNICATION', 'ORGANISATION', 'PARTENARIATS', 'PROJETS_NUMERIQUES', 'FORMATION', 'VIE_ASSOCIATIVE', 'AUTRE']),
+  responsable: z.string().max(300),
+  responsableId: z.string().max(120).optional(),
+  statut: z.enum(['A_FAIRE', 'EN_COURS', 'TERMINE', 'ARCHIVE']),
+  documents: z.array(mandatDocumentSchema).max(50).optional(),
+  indicateurs: z.string().max(5000).optional(),
+  createdAt: z.string().max(60),
+  updatedAt: z.string().max(60).optional()
+});
+
+const mandatBilanSchema = z.object({
+  objectifsInitiaux: z.string().max(20000).optional(),
+  objectifsRealises: z.string().max(20000).optional(),
+  objectifsNonRealises: z.string().max(20000).optional(),
+  principalesRealisations: z.string().max(20000).optional(),
+  difficultes: z.string().max(20000).optional(),
+  resultats: z.string().max(20000).optional(),
+  recommandationsSuivant: z.string().max(20000).optional(),
+  dateBilan: z.string().max(60).optional(),
+  redigePar: z.string().max(300).optional(),
+  documentsBilan: z.array(mandatDocumentSchema).max(50).optional()
+});
+
+export const mandatSchema = z.object({
+  id: z.string().min(1).max(120),
+  intitule: z.string().min(1).max(300),
+  dateDebut: z.string().max(60).default(''),
+  dateFin: z.string().max(60).default(''),
+  description: z.string().max(10000).default(''),
+  responsables: z.array(z.string().max(300)).max(50).default([]),
+  statut: z.enum(['EN_PREPARATION', 'EN_COURS', 'TERMINE', 'ARCHIVE']),
+  realisations: z.array(mandatRealisationSchema).max(500).default([]),
+  documents: z.array(mandatDocumentSchema).max(200).default([]),
+  bilan: mandatBilanSchema.optional(),
+  createdAt: z.string().max(60),
+  updatedAt: z.string().max(60).optional()
+});
+
+export const mandatsArraySchema = z.array(mandatSchema).max(200);
+
+const documentVersionSchema = z.object({
+  id: z.string().max(120),
+  version: z.string().max(60),
+  date: z.string().max(60).default('')
+}).passthrough();
+
+export const usefulDocumentSchema = z.object({
+  id: z.string().min(1).max(120),
+  name: z.string().min(1).max(500),
+  description: z.string().max(5000).default(''),
+  category: z.enum(['PRESENTATION', 'OFFICIELS', 'GUIDE_ADHERENT', 'INFOS_PRATIQUES', 'FORMULAIRES', 'AUTRE']),
+  customCategoryName: z.string().max(300).optional(),
+  fileUrl: z.string().optional(),           // data-URL possible
+  fileName: z.string().max(500).default(''),
+  fileType: z.string().max(200).default(''),
+  fileSize: z.number().nonnegative().optional(),
+  version: z.string().max(60).default('1.0'),
+  datePublication: z.string().max(60).default(''),
+  dateMiseAJour: z.string().max(60).default(''),
+  statut: z.enum(['PUBLIE', 'BROUILLON', 'ARCHIVE']),
+  ordreAffichage: z.number().int().optional(),
+  authorName: z.string().max(300).optional(),
+  versionsHistorique: z.array(documentVersionSchema).max(200).optional(),
+  tags: z.array(z.string().max(100)).max(50).optional(),
+  content: z.string().max(500000).optional()
+});
+
+export const usefulDocumentsArraySchema = z.array(usefulDocumentSchema).max(2000);
+
 export const importLogSchema = z.object({
   id: z.string().min(1).max(120),
   filename: z.string().max(500),

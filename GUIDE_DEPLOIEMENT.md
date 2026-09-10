@@ -49,7 +49,8 @@ production. C'est manuel et ça prend 1 minute chacune :
 | `004_super_admin.sql` | rôle super admin (bilal) | ✅ déjà exécutée |
 | `005_zone_referents.sql` | référents désignés par membre de zone | ✅ déjà exécutée |
 | `006_weekly_reports.sql` | reporting hebdomadaire des référents | ✅ déjà exécutée |
-| `007_rencontres.sql` | **Rencontres annuelles + sondage public** | ⚠️ **À EXÉCUTER** |
+| `007_rencontres.sql` | Rencontres annuelles + sondage public | ✅ déjà exécutée |
+| `008_mandats_documents.sql` | **Archives des mandats + Documents utiles** | ⚠️ **À EXÉCUTER** |
 
 > Règle pour la suite : à chaque nouvelle migration `00X_*.sql` qui apparaît
 > dans un `git pull`, l'exécuter une fois dans le SQL Editor (les scripts sont

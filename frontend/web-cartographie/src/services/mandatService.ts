@@ -1,4 +1,5 @@
 import { Mandat, MandatRealisation, MandatDocument, MandatBilan, MandatStatus, RealisationStatus } from '../types';
+import { ApiService } from './apiService';
 
 const MANDATS_STORAGE_KEY = 'mbok_de_france_mandats_v1';
 
@@ -252,6 +253,8 @@ export class MandatService {
     } catch (e) {
       console.error('Erreur sauvegarde mandats', e);
     }
+    // Synchronisation Supabase (session bureau requise, no-op sinon)
+    ApiService.syncMandats(mandats);
   }
 
   static createMandat(data: Omit<Mandat, 'id' | 'createdAt' | 'realisations' | 'documents'>): Mandat {
@@ -283,10 +286,32 @@ export class MandatService {
     return mandats;
   }
 
+  /**
+   * Fusionne les mandats du serveur avec le cache local (par updatedAt : la
+   * version la plus récente gagne ; un mandat local absent du serveur est
+   * conservé — la synchronisation le re-poussera).
+   */
+  static mergeServerMandats(server: Mandat[]): void {
+    const local = this.getMandats();
+    const merged = server.map((sm) => {
+      const lm = local.find((l) => l.id === sm.id);
+      return lm && (lm.updatedAt || '') > (sm.updatedAt || '') ? lm : sm;
+    });
+    const extraLocal = local.filter((l) => !server.some((sm) => sm.id === l.id));
+    this.saveMandats([...extraLocal, ...merged]);
+  }
+
+  /** Rafraîchit les mandats depuis le serveur (bureau, niveaux admin). */
+  static async refreshFromServer(): Promise<void> {
+    const server = await ApiService.fetchMandats();
+    if (server) this.mergeServerMandats(server);
+  }
+
   static deleteMandat(id: string): Mandat[] {
     const mandats = this.getMandats().filter((m) => m.id !== id);
     this.saveMandats(mandats);
     return mandats;
+    if (ApiService.hasSession()) ApiService.deleteMandat(id);
   }
 
   // Realisations Sub-management

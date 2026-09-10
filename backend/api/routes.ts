@@ -7,6 +7,7 @@ import { memberService } from '../modules/membres/memberService';
 import { demandeService } from '../modules/demandes/demandeService';
 import { reportingService } from '../modules/reportings/reportingService';
 import { rencontreService } from '../modules/rencontres/rencontreService';
+import { mandatService } from '../modules/mandats/mandatService';
 import { zoneService } from '../modules/zones/zoneService';
 import { userService, IncomingAppUser } from '../modules/utilisateurs/userService';
 import { auditService } from '../modules/journaux/auditService';
@@ -24,9 +25,11 @@ import {
   weeklyReportsArraySchema,
   rencontresArraySchema,
   rencontreResponsesArraySchema,
-  publicRencontreResponseSchema
+  publicRencontreResponseSchema,
+  mandatsArraySchema,
+  usefulDocumentsArraySchema
 } from '../utils/validation';
-import { AppUser, AuditLog, CustomZone, DemandeMember, Member, WeeklyReport, Rencontre, RencontreResponse } from '../../shared/types/index';
+import { AppUser, AuditLog, CustomZone, DemandeMember, Member, WeeklyReport, Rencontre, RencontreResponse, Mandat, UsefulDocument } from '../../shared/types/index';
 
 /** Express 4 ne remonte pas les rejets de promesses : wrapper systématique. */
 function asyncHandler(fn: (req: AuthedRequest, res: Response) => Promise<void>): RequestHandler {
@@ -58,7 +61,7 @@ apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
   const isSuper = actor.role === 'super_admin';
   const adminLevel = isAdminLevel(actor.role);
 
-  const [settings, members, zones, demandes, reports, rencontres, rencontreResponses, users, importLogs, auditLogs] = await Promise.all([
+  const [settings, members, zones, demandes, reports, rencontres, rencontreResponses, mandats, usefulDocuments, users, importLogs, auditLogs] = await Promise.all([
     settingsService.get(),
     memberService.list(),
     zoneService.list(),
@@ -92,6 +95,16 @@ apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
       logger.error(`bootstrap réponses rencontres indisponibles: ${e.message}`);
       return null;
     }),
+    // Archives des mandats (niveaux admin) et Documents utiles (tous rôles).
+    // Tolérant tant que 008_mandats_documents.sql n'a pas été exécutée.
+    (adminLevel ? mandatService.listMandats() : Promise.resolve([] as Mandat[])).catch((e: Error) => {
+      logger.error(`bootstrap mandats indisponibles: ${e.message}`);
+      return null;
+    }),
+    mandatService.listDocuments().catch((e: Error) => {
+      logger.error(`bootstrap documents utiles indisponibles: ${e.message}`);
+      return null;
+    }),
     // Gestion des utilisateurs : liste complète pour le super admin ; liste
     // MINIMALE (identité/rôle/actif, jamais de secret) pour l'admin, afin de
     // fiabiliser la liaison membre <-> compte (désignation des référents).
@@ -104,7 +117,7 @@ apiRouter.get('/bootstrap', requireAuth, asyncHandler(async (req, res) => {
     isSuper ? auditService.list() : Promise.resolve([])
   ]);
 
-  res.json({ settings, members, zones, demandes, reports, rencontres, rencontreResponses, users, importLogs, auditLogs, currentUser: actor });
+  res.json({ settings, members, zones, demandes, reports, rencontres, rencontreResponses, mandats, usefulDocuments, users, importLogs, auditLogs, currentUser: actor });
 }));
 
 // --------------------------------------------------------------------------
@@ -283,6 +296,41 @@ apiRouter.delete('/rencontres/responses/:id', requireAuth, requireRole('admin'),
 
 apiRouter.delete('/rencontres/:id', requireAuth, requireRole('admin'), asyncHandler(async (req, res) => {
   await rencontreService.removeRencontre(req.params.id as string);
+  res.status(204).end();
+}));
+
+// --------------------------------------------------------------------------
+// Archives des mandats & Documents utiles
+// --------------------------------------------------------------------------
+apiRouter.get('/mandats', requireAuth, requireRole('admin'), asyncHandler(async (_req, res) => {
+  res.json(await mandatService.listMandats());
+}));
+
+apiRouter.put('/mandats', requireAuth, asyncHandler(async (req, res) => {
+  const parsed = mandatsArraySchema.safeParse(req.body);
+  if (!parsed.success) return badRequest(res, 'Payload mandats invalide.');
+  await mandatService.bulkUpsertMandats(parsed.data as Mandat[], req.appUser as AppUser);
+  res.status(204).end();
+}));
+
+apiRouter.delete('/mandats/:id', requireAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+  await mandatService.removeMandat(req.params.id as string);
+  res.status(204).end();
+}));
+
+apiRouter.get('/documents', requireAuth, asyncHandler(async (_req, res) => {
+  res.json(await mandatService.listDocuments());
+}));
+
+apiRouter.put('/documents', requireAuth, asyncHandler(async (req, res) => {
+  const parsed = usefulDocumentsArraySchema.safeParse(req.body);
+  if (!parsed.success) return badRequest(res, 'Payload documents utiles invalide.');
+  await mandatService.bulkUpsertDocuments(parsed.data as UsefulDocument[], req.appUser as AppUser);
+  res.status(204).end();
+}));
+
+apiRouter.delete('/documents/:id', requireAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+  await mandatService.removeDocument(req.params.id as string);
   res.status(204).end();
 }));
 

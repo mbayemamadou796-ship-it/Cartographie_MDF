@@ -1,4 +1,4 @@
-import { Member, AppUser, CustomZone, AuditLog, ImportLog, AppSettings, DemandeMember, WeeklyReport, Rencontre, RencontreResponse } from '../types';
+import { Member, AppUser, CustomZone, AuditLog, ImportLog, AppSettings, DemandeMember, WeeklyReport, Rencontre, RencontreResponse, Mandat, UsefulDocument } from '../types';
 
 /**
  * Client HTTP du backend Express + Supabase (couche données uniquement).
@@ -32,6 +32,8 @@ export interface BootstrapData {
   reports: WeeklyReport[] | null;     // null si la table weekly_reports n'existe pas encore
   rencontres: Rencontre[] | null;               // null si la table rencontres n'existe pas encore
   rencontreResponses: RencontreResponse[] | null;
+  mandats: Mandat[] | null;                     // null si la table mandats n'existe pas encore
+  usefulDocuments: UsefulDocument[] | null;
   users: AppUser[];
   importLogs: ImportLog[];
   auditLogs: AuditLog[];
@@ -209,6 +211,8 @@ export class ApiService {
     snapshots.reports = JSON.stringify(data.reports ?? []);
     snapshots.rencontres = JSON.stringify(data.rencontres ?? []);
     snapshots.rencontreResponses = JSON.stringify(data.rencontreResponses ?? []);
+    snapshots.mandats = JSON.stringify(data.mandats ?? []);
+    snapshots.usefulDocuments = JSON.stringify(data.usefulDocuments ?? []);
     snapshots.users = JSON.stringify(data.users);
     snapshots.importLogs = JSON.stringify(data.importLogs);
     bootstrapped = true;
@@ -405,6 +409,54 @@ export class ApiService {
   static deleteRencontreResponse(id: string): void {
     request(`/rencontres/responses/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(e =>
       console.warn('[ApiService] deleteRencontreResponse impossible', e)
+    );
+  }
+
+  static syncMandats(mandats: Mandat[]): void {
+    scheduleSync('mandats', '/mandats', mandats);
+  }
+
+  static syncDocuments(documents: UsefulDocument[]): void {
+    scheduleSync('usefulDocuments', '/documents', documents);
+  }
+
+  /** Mandats depuis le serveur (niveaux admin). null si API indisponible. */
+  static async fetchMandats(): Promise<Mandat[] | null> {
+    if (!loadTokens()) return null;
+    try {
+      const res = await request('/mandats');
+      if (!res.ok) return null;
+      const mandats = (await res.json()) as Mandat[];
+      snapshots.mandats = JSON.stringify(mandats);
+      return mandats;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Documents utiles depuis le serveur. null si API indisponible. */
+  static async fetchDocuments(): Promise<UsefulDocument[] | null> {
+    if (!loadTokens()) return null;
+    try {
+      const res = await request('/documents');
+      if (!res.ok) return null;
+      const documents = (await res.json()) as UsefulDocument[];
+      snapshots.usefulDocuments = JSON.stringify(documents);
+      return documents;
+    } catch {
+      return null;
+    }
+  }
+
+  static deleteMandat(id: string): void {
+    request(`/mandats/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(e =>
+      console.warn('[ApiService] deleteMandat impossible', e)
+    );
+  }
+
+  static deleteUsefulDocument(id: string): void {
+    request(`/documents/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(e =>
+      console.warn('[ApiService] deleteUsefulDocument impossible', e)
     );
   }
 

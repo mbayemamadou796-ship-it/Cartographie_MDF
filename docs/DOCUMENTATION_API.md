@@ -125,7 +125,23 @@ n'a pas été exécutée).
 | `DELETE /api/rencontres/:id` | niveaux admin | Supprime la rencontre **et** ses réponses. → 204 |
 | `DELETE /api/rencontres/responses/:id` | niveaux admin | Supprime une réponse. → 204 |
 
-## 12. Paramètres
+## 12. Archives des mandats & Documents utiles
+
+Alimente les onglets « Archives Mandats » (niveaux admin) et « Documents
+utiles » (tous rôles). Tables `mandats` + `useful_documents` (migration
+`008_mandats_documents.sql`, pas de seed SQL : le contenu initial du frontend
+est poussé par la synchronisation du premier administrateur connecté).
+Incluses dans `/api/bootstrap` (`mandats` — niveaux admin, `usefulDocuments`
+— tous rôles ; `null` si la migration n'a pas été exécutée).
+
+| Route | Accès | Comportement |
+|---|---|---|
+| `GET /api/mandats` | niveaux admin | Liste complète (réalisations, documents joints et bilan portés dans le mandat). |
+| `GET /api/documents` | authentifié | Bibliothèque complète des documents utiles. |
+| `PUT /api/mandats` · `PUT /api/documents` | niveaux admin (non-admin : no-op 204) | Upsert bulk, jamais de suppression. → 204 |
+| `DELETE /api/mandats/:id` · `DELETE /api/documents/:id` | niveaux admin | Suppression explicite. → 204 |
+
+## 13. Paramètres
 
 ### `PUT /api/settings` — super admin (admin : seul `lastUpdateDate` est appliqué ; autres rôles : no-op 204)
 `Partial<AppSettings> & { lastUpdateDate?: string }` — merge sur la ligne unique. `logoUrl` accepte une data-URL base64 (limite globale de payload : 50 Mo). → 204.

@@ -39,6 +39,8 @@ import { MandatsView } from '../modules/mandats/MandatsView';
 import { DocumentsView } from '../modules/documents/DocumentsView';
 import { RencontresView } from '../modules/rencontres/RencontresView';
 import { RencontreService } from '../services/rencontreService';
+import { MandatService } from '../services/mandatService';
+import { DocumentService } from '../services/documentService';
 import { CheckCircle2, MapPin, Users, ArrowRight, Layers, FileText, ClipboardList } from 'lucide-react';
 
 // URL de l'application Formulaire publique. Les applications sont servies
@@ -566,6 +568,10 @@ export default function App() {
       // arrivent de l'application web-rencontre (autre appareil) — la fusion
       // par updatedAt est gérée dans le service, qui notifie les vues.
       RencontreService.refreshFromServer().catch(() => {});
+
+      // Mandats & Documents utiles : partagés entre postes via Supabase.
+      MandatService.refreshFromServer().catch(() => {});
+      DocumentService.refreshFromServer().catch(() => {});
     };
 
     const interval = setInterval(refresh, 15000);
@@ -1039,6 +1045,14 @@ export default function App() {
         }
         if (Array.isArray(d.rencontreResponses)) {
           RencontreService.saveResponses(d.rencontreResponses);
+        }
+        // Mandats & Documents utiles : fusion avec le cache local (le contenu
+        // initial du frontend est conservé et poussé au premier lancement).
+        if (Array.isArray(d.mandats)) {
+          MandatService.mergeServerMandats(d.mandats);
+        }
+        if (Array.isArray(d.usefulDocuments)) {
+          DocumentService.mergeServerDocuments(d.usefulDocuments);
         }
         if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
           setImportLogs(d.importLogs);

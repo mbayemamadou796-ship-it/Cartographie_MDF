@@ -1,4 +1,5 @@
 import { UsefulDocument, DocumentCategory, DocumentPublishStatus, DocumentVersion } from '../types';
+import { ApiService } from './apiService';
 
 const DOCUMENTS_STORAGE_KEY = 'mbok_de_france_useful_docs_v1';
 
@@ -577,6 +578,8 @@ export class DocumentService {
     } catch (e) {
       console.error('Erreur sauvegarde documents', e);
     }
+    // Synchronisation Supabase (session bureau requise, no-op sinon)
+    ApiService.syncDocuments(docs);
   }
 
   static createDocument(docData: Omit<UsefulDocument, 'id' | 'datePublication' | 'dateMiseAJour'>): UsefulDocument {
@@ -669,10 +672,33 @@ export class DocumentService {
     return docs;
   }
 
+  /**
+   * Fusionne les documents du serveur avec le cache local (par dateMiseAJour :
+   * la version la plus récente gagne ; un document local absent du serveur —
+   * dont la bibliothèque initiale au tout premier lancement — est conservé et
+   * sera poussé par la synchronisation).
+   */
+  static mergeServerDocuments(server: UsefulDocument[]): void {
+    const local = this.getDocuments();
+    const merged = server.map((sd) => {
+      const ld = local.find((l) => l.id === sd.id);
+      return ld && (ld.dateMiseAJour || '') > (sd.dateMiseAJour || '') ? ld : sd;
+    });
+    const extraLocal = local.filter((l) => !server.some((sd) => sd.id === l.id));
+    this.saveDocuments([...extraLocal, ...merged]);
+  }
+
+  /** Rafraîchit les documents utiles depuis le serveur (bureau). */
+  static async refreshFromServer(): Promise<void> {
+    const server = await ApiService.fetchDocuments();
+    if (server) this.mergeServerDocuments(server);
+  }
+
   static deleteDocument(id: string): UsefulDocument[] {
     const docs = this.getDocuments().filter((d) => d.id !== id);
     this.saveDocuments(docs);
     return docs;
+    if (ApiService.hasSession()) ApiService.deleteUsefulDocument(id);
   }
 
   static togglePublishStatus(id: string): UsefulDocument[] {
