@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle2, QrCode, Share2, Calendar, MapPin, Check, Copy, Sparkles, ArrowRight, UserCheck } from 'lucide-react';
+import { CheckCircle2, QrCode, Calendar, MapPin, Check, Copy, Sparkles, ArrowRight, UserCheck } from 'lucide-react';
 import { Rencontre, RencontreResponse } from '@shared/types';
 
 interface RencontreSuccessModalProps {
@@ -29,12 +29,6 @@ export const RencontreSuccessModal: React.FC<RencontreSuccessModalProps> = ({
     if (response.participation === 'OUI') return 'bg-emerald-100 text-emerald-900 border-emerald-300';
     if (response.participation === 'NON') return 'bg-rose-100 text-rose-900 border-rose-300';
     return 'bg-amber-100 text-amber-900 border-amber-300';
-  };
-
-  const handleShareWhatsApp = () => {
-    const surveyUrl = window.location.href;
-    const text = `Assalamou 3aleykoum ! Je viens de répondre au sondage pour la *${rencontre.nom}* (${rencontre.lieu}). N'oubliez pas de donner votre réponse ici : ${surveyUrl}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   return (
@@ -99,32 +93,21 @@ export const RencontreSuccessModal: React.FC<RencontreSuccessModalProps> = ({
         </div>
 
         {/* Buttons */}
-        <div className="space-y-2.5">
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={handleShareWhatsApp}
-            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition cursor-pointer"
+            onClick={onEdit}
+            className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
           >
-            <Share2 className="w-4 h-4" />
-            <span>Partager le sondage à un autre frère / sœur (WhatsApp)</span>
+            Modifier ma réponse
           </button>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={onEdit}
-              className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
-            >
-              Modifier ma réponse
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-            >
-              Terminer
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+          >
+            Terminer
+          </button>
         </div>
 
       </div>
