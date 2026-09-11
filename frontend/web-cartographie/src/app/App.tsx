@@ -834,7 +834,9 @@ export default function App() {
       });
     });
 
-    // 4. Update demand status
+    // 4. Statut VALIDEE (conservé pour l'historique, le suivi public du membre
+    // et la synchronisation serveur) — la demande quitte la liste « En attente » ;
+    // l'admin peut la supprimer manuellement via la croix si besoin.
     const updatedDemandesList = DemandeService.updateDemandeStatus(
       demandeId,
       'VALIDEE',
@@ -855,6 +857,12 @@ export default function App() {
 
     recordDataUpdate();
     showToast(`Demande de ${newMember.prenom} ${newMember.nom} validée et intégrée à la Zone ${assignedZone} !`);
+  };
+
+  const handleDeleteDemande = (demandeId: string) => {
+    const updatedDemandesList = DemandeService.deleteDemande(demandeId);
+    setDemandes(updatedDemandesList);
+    showToast('Demande supprimée de la liste.');
   };
 
   const handleRefuserDemande = (demandeId: string, reason?: string) => {
@@ -2232,6 +2240,7 @@ export default function App() {
             userRole={componentRole}
             onValiderDemande={handleValiderDemande}
             onRefuserDemande={handleRefuserDemande}
+            onDeleteDemande={handleDeleteDemande}
           />
         )}
 

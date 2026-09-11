@@ -2,6 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Member, CustomField } from '../../types';
 import { X, Save, Compass, Loader2, Plus, Trash2, Sliders, Upload, Camera } from 'lucide-react';
 import { geocodeLocation, getVillesForZone } from '../../utils/geocoding';
+import {
+  isJobSeekingStatus,
+  normalizeCommuneName,
+  lookupFrenchCommune
+} from '@shared/utils/frenchCommunes';
 
 export const FRENCH_ZONES = [
   'Auvergne-Rhône-Alpes',
@@ -196,12 +201,15 @@ export const AdminMemberFormModal: React.FC<AdminMemberFormModalProps> = ({
     }
 
     // Ensure fallback fields match for backwards compatibility
+    const isSeeking = isJobSeekingStatus(formData.situationProfessionnelle);
+    const normalizedCity = normalizeCommuneName(formData.ville);
     const fonctionValue = formData.situationProfessionnelle || formData.fonction || 'Membre MDF';
-    const orgValue = formData.domaineEtude || formData.organisation || 'MDF';
+    const orgValue = isSeeking ? '' : (formData.domaineEtude || formData.organisation || 'MDF');
 
     onSave({
       ...(memberToEdit?.id ? { id: memberToEdit.id } : {}),
       ...formData,
+      ville: normalizedCity || formData.ville,
       latitude: finalLat,
       longitude: finalLng,
       zone: zoneValue,

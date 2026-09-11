@@ -89,6 +89,7 @@ Alimente le module « Demandes » de l'espace bureau et le formulaire public
 | `GET /api/public/demandes/:id` | **public**, rate-limité (60 / 15 min / IP) | Suivi par identifiant exact (`dem-...`) : sous-ensemble des champs (statut, motif de refus...), jamais la photo. → 200 ou 404 |
 | `GET /api/demandes` | authentifié | Liste complète, plus récentes d'abord. Aussi incluse dans `/api/bootstrap` (`demandes`, `null` si la migration 003 n'a pas été exécutée). |
 | `PUT /api/demandes` (`DemandeMember[]`) | admin (non-admin : no-op 204) | Upsert bulk (validation / refus depuis l'espace bureau). → 204 |
+| `DELETE /api/demandes/:id` | niveaux admin | Suppression explicite d'une demande de la liste (le suivi public renvoie alors 404). → 204 |
 
 ## 10. Reportings hebdomadaires des référents
 

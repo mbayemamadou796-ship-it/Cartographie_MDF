@@ -321,6 +321,12 @@ export class ApiService {
     }
   }
 
+  static deleteDemande(id: string): void {
+    request(`/demandes/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(e =>
+      console.warn('[ApiService] deleteDemande impossible', e)
+    );
+  }
+
   static deleteReport(id: string): void {
     request(`/reportings/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(e =>
       console.warn('[ApiService] deleteReport impossible', e)

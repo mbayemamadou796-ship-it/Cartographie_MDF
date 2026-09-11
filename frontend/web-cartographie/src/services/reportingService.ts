@@ -1,4 +1,5 @@
-import { WeeklyReport, ReportingStatus, ReportingPriority, ReportResponse, ReportActionLog } from '@shared/types';
+import { WeeklyReport, ReportingStatus, ReportingPriority, ReportResponse, ReportActionLog, ReportAttachment } from '@shared/types';
+import { saveAttachmentToDB } from '../utils/attachmentStorage';
 
 const LOCAL_STORAGE_REPORTINGS_KEY = 'mbok_de_france_weekly_reports_v3';
 
@@ -28,6 +29,16 @@ export const INITIAL_WEEKLY_REPORTS: WeeklyReport[] = [
     responsableName: 'Administrateur B (Pôle Logement)',
     datePriseEnCharge: '2026-08-11T09:30:00.000Z',
     dateReponse: '2026-08-11T14:20:00.000Z',
+    piecesJointes: [
+      {
+        id: 'att-rennes-1',
+        name: 'Fiche_Signalement_Urgence_Rennes.pdf',
+        size: 145000,
+        type: 'application/pdf',
+        uploadedAt: '2026-08-10T18:45:00.000Z',
+        url: 'data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA1OTUgODQyXQovQ29udGVudHMgNCAwIFIKL1Jlc291cmNlcyA8PAovRm9udCA8PAovRjEgNSAwIFIKPj4KPj4KPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCAxMjgKPj4Kc3RyZWFtCkJUCi9GMSAyNCBUZgoxMDAgNzUwIFRkCihNQk9LIERFIEZSQU5DRSAtIERPQ1VNRU5UIE9GRklDSUVMKSBUagovRjEgMTIgVGYKMDAgLTUwIFRkCihTaWduYWxlbWVudCBMb2dlbWVudCBkJ3VyZ2VuY2UgLSBSZW5uZXMgMjAyNikgVGoKRVQKZW5kc3RyZWFtCmVuZG9iago1IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9TdWJ0eXBlIC9UeXBlMQovQmFzZUZvbnQgL0hlbHZldGljYQo+PgplbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNjggMDAwMDAgbiAKMDAwMDAwMDEyNSAwMDAwMCBuIAowMDAwMDAwMjU1IDAwMDAwIG4gCjAwMDAwMDA0MzYgMDAwMDAgbiAKdHJhaWxlcgo8PAovU2l6ZSA2Ci9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgo1MTkKJSVFT0Y='
+      }
+    ],
     reponses: [
       {
         id: 'rep-resp-1',
@@ -602,13 +613,52 @@ export class ReportingService {
   }
 
   static saveReports(reports: WeeklyReport[]): void {
+    // Persist attachments in IndexedDB / memory cache asynchronously
+    try {
+      reports.forEach((r) => {
+        r.piecesJointes?.forEach((pj) => saveAttachmentToDB(pj));
+        r.reponses?.forEach((rep) => rep.piecesJointes?.forEach((pj) => saveAttachmentToDB(pj)));
+      });
+    } catch {
+      // Non-blocking
+    }
+
     try {
       localStorage.setItem(LOCAL_STORAGE_REPORTINGS_KEY, JSON.stringify(reports));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('mbok_reports_updated', { detail: reports }));
       }
     } catch (e) {
-      console.error('Erreur sauvegarde reports:', e);
+      console.warn('Erreur ou quota dépassé pour localStorage reports. Sauvegarde allégée...', e);
+      // Quota fallback: strip heavy base64 url from localStorage (url is safely in IndexedDB and memory cache)
+      try {
+        const lightweightReports = reports.map((r) => ({
+          ...r,
+          piecesJointes: r.piecesJointes?.map((pj) => ({
+            id: pj.id,
+            name: pj.name,
+            size: pj.size,
+            type: pj.type,
+            uploadedAt: pj.uploadedAt
+          })),
+          reponses: r.reponses?.map((rep) => ({
+            ...rep,
+            piecesJointes: rep.piecesJointes?.map((pj) => ({
+              id: pj.id,
+              name: pj.name,
+              size: pj.size,
+              type: pj.type,
+              uploadedAt: pj.uploadedAt
+            }))
+          }))
+        }));
+        localStorage.setItem(LOCAL_STORAGE_REPORTINGS_KEY, JSON.stringify(lightweightReports));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mbok_reports_updated', { detail: reports }));
+        }
+      } catch (err) {
+        console.error('Échec sauvegarde allégée reports:', err);
+      }
     }
   }
 
@@ -842,7 +892,8 @@ export class ReportingService {
     responseContent: string,
     authorName: string,
     authorRole: 'bureau' | 'referent' | 'admin' = 'bureau',
-    newStatus?: ReportingStatus
+    newStatus?: ReportingStatus,
+    piecesJointes?: ReportAttachment[]
   ): WeeklyReport[] {
     const reports = this.getReports();
     const now = new Date().toISOString();
@@ -854,6 +905,7 @@ export class ReportingService {
           authorName,
           authorRole,
           content: responseContent,
+          piecesJointes: piecesJointes && piecesJointes.length > 0 ? piecesJointes : undefined,
           createdAt: now
         };
 

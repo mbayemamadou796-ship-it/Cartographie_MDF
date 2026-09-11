@@ -1,33 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { 
   Rencontre, 
   RencontreResponse, 
   RencontreParticipation, 
-  RencontreDureePresence, 
-  Member 
+  RencontreDureePresence 
 } from '@shared/types';
 import { RencontreService } from '../../../web-cartographie/src/services/rencontreService';
-import { INITIAL_MEMBERS } from '../../../web-cartographie/src/data/initialMembers';
 import { FRENCH_ZONES } from '../../../web-cartographie/src/modules/membres/AdminMemberFormModal';
 import { 
-  UserCheck, 
-  CheckCircle2, 
-  HelpCircle, 
-  XCircle, 
-  Search, 
-  Calendar, 
-  MapPin, 
-  HeartHandshake, 
   Send, 
   ArrowLeft, 
   Check, 
   AlertCircle,
-  Truck,
   Utensils,
-  Megaphone,
-  Wrench,
-  PackageCheck,
-  UserPlus
+  PackageCheck
 } from 'lucide-react';
 
 interface RencontreSurveyFormProps {
@@ -45,22 +31,8 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
   onCancel,
   onDuplicateFound
 }) => {
-  // Members list from localStorage or fallback to initial members
-  const [membersList, setMembersList] = useState<Member[]>(() => {
-    try {
-      const saved = localStorage.getItem('mbok_de_france_members_v1');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_MEMBERS;
-  });
-
-  // Search query for member autocomplete
-  const [memberSearch, setMemberSearch] = useState('');
-  const [showMemberDropdown, setShowMemberDropdown] = useState(false);
-  const [isNewMemberMode, setIsNewMemberMode] = useState(false);
-
   // Form state
-  const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(
+  const [selectedMemberId] = useState<string | undefined>(
     existingResponseToEdit?.memberId || undefined
   );
   const [nom, setNom] = useState(existingResponseToEdit?.nom || '');
@@ -69,7 +41,7 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
   const [telephone, setTelephone] = useState(existingResponseToEdit?.telephone || '');
   const [zone, setZone] = useState(existingResponseToEdit?.zone || 'Île-de-France');
   const [ville, setVille] = useState(existingResponseToEdit?.ville || '');
-  const [referentName, setReferentName] = useState(existingResponseToEdit?.referentName || '');
+  const [referentName] = useState(existingResponseToEdit?.referentName || '');
 
   // Survey Questions State
   const [participation, setParticipation] = useState<RencontreParticipation>(
@@ -84,9 +56,6 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
   const [domainesAide, setDomainesAide] = useState<string[]>(
     existingResponseToEdit?.domainesAide || []
   );
-  const [autrePrecision, setAutrePrecision] = useState(
-    existingResponseToEdit?.autrePrecision || ''
-  );
   const [remarques, setRemarques] = useState(
     existingResponseToEdit?.remarques || ''
   );
@@ -94,40 +63,6 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
   // Error feedback
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Filtered members for autocomplete
-  const filteredMembers = useMemo(() => {
-    if (!memberSearch.trim()) return [];
-    const q = memberSearch.toLowerCase();
-    return membersList.filter(m => 
-      `${m.prenom} ${m.nom}`.toLowerCase().includes(q) ||
-      m.email.toLowerCase().includes(q) ||
-      m.telephone.includes(q) ||
-      (m.ville && m.ville.toLowerCase().includes(q))
-    ).slice(0, 6);
-  }, [memberSearch, membersList]);
-
-  // Handle member selection
-  const handleSelectMember = (member: Member) => {
-    setSelectedMemberId(member.id);
-    setNom(member.nom);
-    setPrenom(member.prenom);
-    setEmail(member.email || '');
-    setTelephone(member.telephone || '');
-    setZone(member.zone || member.region || 'Île-de-France');
-    setVille(member.ville || '');
-    setMemberSearch(`${member.prenom} ${member.nom}`);
-    setShowMemberDropdown(false);
-    setIsNewMemberMode(false);
-
-    // Check duplicate immediately if not in edit mode
-    if (!existingResponseToEdit) {
-      const duplicate = RencontreService.checkExistingResponse(rencontre.id, member.id, member.email, member.telephone);
-      if (duplicate) {
-        onDuplicateFound(duplicate);
-      }
-    }
-  };
 
   const handleToggleDomaine = (domaine: string) => {
     if (domainesAide.includes(domaine)) {
@@ -152,8 +87,10 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
       return;
     }
 
-    if (aideOrganisation && domainesAide.length === 0 && !autrePrecision.trim()) {
-      setErrorMessage("Veuillez sélectionner au moins un domaine d'aide ou préciser dans le champ Autre.");
+    const isOui = participation === 'OUI';
+
+    if (isOui && aideOrganisation && domainesAide.length === 0) {
+      setErrorMessage("Veuillez sélectionner au moins un domaine d'aide.");
       return;
     }
 
@@ -172,11 +109,10 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
         ville: ville.trim(),
         referentName: referentName || (zone === 'Bretagne' ? 'Modou Mbaye' : zone === 'Île-de-France' ? 'Aïssatou Diallo' : 'Bureau MDF'),
         participation,
-        dureePresence: participation === 'OUI' ? dureePresence : undefined,
-        aideOrganisation,
-        domainesAide: aideOrganisation ? domainesAide : [],
-        autrePrecision: aideOrganisation && domainesAide.includes('Autre') ? autrePrecision.trim() : undefined,
-        remarques: remarques.trim()
+        dureePresence: isOui ? dureePresence : undefined,
+        aideOrganisation: isOui ? aideOrganisation : false,
+        domainesAide: (isOui && aideOrganisation) ? domainesAide : [],
+        remarques: isOui ? remarques.trim() : ''
       };
 
       const result = RencontreService.submitResponse(responsePayload);
@@ -202,13 +138,18 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
   };
 
   const domainOptions = [
-    { id: 'Logistique', label: 'Logistique', icon: PackageCheck, desc: 'Matériel, gestion des flux, approvisionnement' },
-    { id: 'Transport', label: 'Transport & Covoiturage', icon: Truck, desc: 'Coordination covoiturages, navettes gares/aéroports' },
-    { id: 'Installation / rangement', label: 'Installation / rangement', icon: Wrench, desc: 'Aménagement de la salle, sono, rangement final' },
-    { id: 'Cuisine / repas', label: 'Cuisine / repas', icon: Utensils, desc: 'Préparation, service des repas et collations' },
-    { id: 'Accueil', label: 'Accueil & Émargement', icon: UserCheck, desc: 'Distribution des badges, orientation des participants' },
-    { id: 'Communication', label: 'Communication & Médias', icon: Megaphone, desc: 'Photos, vidéos, annonces et couverture de l’événement' },
-    { id: 'Autre', label: 'Autre domaine', icon: HeartHandshake, desc: 'Précisez votre compétence spécifique' }
+    { 
+      id: 'Logistique/installation/rangement', 
+      label: 'Logistique / installation / rangement', 
+      icon: PackageCheck, 
+      desc: 'Matériel, aménagement de la salle, sono et rangement final' 
+    },
+    { 
+      id: 'Cuisine / repas', 
+      label: 'Cuisine / repas', 
+      icon: Utensils, 
+      desc: 'Préparation, service des repas et collations' 
+    }
   ];
 
   return (
@@ -246,76 +187,11 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-6">
         
-        {/* SECTION 1: IDENTIFICATION DU MEMBRE */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">1</span>
-              <span>Identification du membre</span>
-            </h3>
-            {selectedMemberId && (
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                ✓ Profil rattaché à l’annuaire MDF
-              </span>
-            )}
-          </div>
-
-          {/* Autocomplete Member Search */}
-          {!existingResponseToEdit && (
-            <div className="relative">
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Rechercher votre profil dans l'annuaire MDF :
-              </label>
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={memberSearch}
-                  onChange={(e) => {
-                    setMemberSearch(e.target.value);
-                    setShowMemberDropdown(true);
-                  }}
-                  onFocus={() => setShowMemberDropdown(true)}
-                  placeholder="Tapez votre prénom ou nom (ex: Modou, Diallo...)"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 hover:bg-white focus:bg-white rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-xs font-medium text-slate-900 transition outline-none"
-                />
-              </div>
-
-              {/* Suggestions Dropdown */}
-              {showMemberDropdown && filteredMembers.length > 0 && (
-                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-emerald-100 overflow-hidden text-xs">
-                  <div className="p-2 bg-emerald-50/70 border-b border-emerald-100 text-[10px] font-bold text-emerald-900 uppercase tracking-wider">
-                    Membres trouvés dans l'annuaire MDF (cliquez pour sélectionner) :
-                  </div>
-                  <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
-                    {filteredMembers.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => handleSelectMember(m)}
-                        className="w-full text-left p-3 hover:bg-emerald-50/80 transition flex items-center justify-between cursor-pointer"
-                      >
-                        <div>
-                          <span className="font-extrabold text-slate-900 block">
-                            {m.prenom} {m.nom}
-                          </span>
-                          <span className="text-[11px] text-slate-500">
-                            {m.zone || m.region || 'Zone non renseignée'} {m.ville ? `• ${m.ville}` : ''}
-                          </span>
-                        </div>
-                        <span className="text-[11px] font-bold text-emerald-700">Sélectionner</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Member Details Inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        {/* VOS COORDONNÉES */}
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Prénom *</label>
               <input
@@ -323,7 +199,7 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
                 required
                 value={prenom}
                 onChange={(e) => setPrenom(e.target.value)}
-                placeholder="Ex: Aïssatou"
+                placeholder="Ex: Souleymane"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-xs font-medium outline-none"
               />
             </div>
@@ -367,7 +243,7 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
               <select
                 value={zone}
                 onChange={(e) => setZone(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-xs font-bold bg-white outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-xs font-bold bg-white outline-none cursor-pointer"
               >
                 {FRENCH_ZONES.map((z) => (
                   <option key={z} value={z}>{z}</option>
@@ -388,13 +264,8 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
           </div>
         </div>
 
-        {/* SECTION 2: QUESTION PRINCIPALE */}
+        {/* QUESTION PRINCIPALE */}
         <div className="space-y-4 pt-4 border-t border-slate-100">
-          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">2</span>
-            <span>Question principale</span>
-          </h3>
-
           <div className="bg-emerald-50/60 p-4 sm:p-5 rounded-2xl border border-emerald-200">
             <label className="block text-sm font-black text-slate-900 mb-3">
               Viendrez-vous à la rencontre ? *
@@ -429,6 +300,8 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
                 onClick={() => {
                   setParticipation('NON');
                   setAideOrganisation(false);
+                  setDomainesAide([]);
+                  setRemarques('');
                 }}
                 className={`p-3.5 rounded-2xl border text-left font-bold transition flex items-center gap-3 cursor-pointer ${
                   participation === 'NON'
@@ -451,7 +324,12 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
 
               <button
                 type="button"
-                onClick={() => setParticipation('INCERTAIN')}
+                onClick={() => {
+                  setParticipation('INCERTAIN');
+                  setAideOrganisation(false);
+                  setDomainesAide([]);
+                  setRemarques('');
+                }}
                 className={`p-3.5 rounded-2xl border text-left font-bold transition flex items-center gap-3 cursor-pointer ${
                   participation === 'INCERTAIN'
                     ? 'bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-300'
@@ -475,14 +353,9 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
           </div>
         </div>
 
-        {/* SECTION 3: DURÉE DE PRÉSENCE (Conditionnelle à "OUI") */}
+        {/* DURÉE DE PRÉSENCE (Conditionnelle à "OUI") */}
         {participation === 'OUI' && (
           <div className="space-y-4 pt-4 border-t border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">3</span>
-              <span>Durée de présence</span>
-            </h3>
-
             <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200">
               <label className="block text-xs sm:text-sm font-black text-slate-900 mb-3">
                 Quelle sera votre durée de présence ? *
@@ -547,120 +420,110 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
           </div>
         )}
 
-        {/* SECTION 4: AIDE À L'ORGANISATION */}
-        <div className="space-y-4 pt-4 border-t border-slate-100">
-          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">4</span>
-            <span>Aide à l'organisation</span>
-          </h3>
+        {/* AIDE À L'ORGANISATION & REMARQUES (Uniquement si "OUI") */}
+        {participation === 'OUI' && (
+          <>
+            {/* AIDE À L'ORGANISATION */}
+            <div className="space-y-4 pt-4 border-t border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+              <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <span>Aide à l'organisation</span>
+              </h3>
 
-          <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
-            <label className="block text-xs sm:text-sm font-black text-slate-900">
-              Souhaitez-vous aider à l'organisation de la rencontre ? *
-            </label>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setAideOrganisation(true)}
-                className={`py-3 px-4 rounded-xl border text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-                  aideOrganisation
-                    ? 'bg-emerald-800 text-white border-emerald-800 shadow-md'
-                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                }`}
-              >
-                <span>🤝</span>
-                <span>Oui, je souhaite aider</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setAideOrganisation(false);
-                  setDomainesAide([]);
-                  setAutrePrecision('');
-                }}
-                className={`py-3 px-4 rounded-xl border text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-                  !aideOrganisation
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-md'
-                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                }`}
-              >
-                <span>Non</span>
-              </button>
-            </div>
-
-            {/* Domaines d'aide (Si OUI) */}
-            {aideOrganisation && (
-              <div className="pt-3 border-t border-slate-200 space-y-3 animate-in fade-in zoom-in-95 duration-200">
-                <label className="block text-xs font-bold text-emerald-900">
-                  Dans quel domaine souhaitez-vous aider ? (plusieurs choix possibles) :
+              <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
+                <label className="block text-xs sm:text-sm font-black text-slate-900">
+                  Souhaitez-vous aider à l'organisation de la rencontre ? *
                 </label>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {domainOptions.map((opt) => {
-                    const Icon = opt.icon;
-                    const isChecked = domainesAide.includes(opt.id);
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => handleToggleDomaine(opt.id)}
-                        className={`p-3 rounded-xl border text-left text-xs transition flex items-start gap-2.5 cursor-pointer ${
-                          isChecked
-                            ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold shadow-2xs'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border ${
-                          isChecked ? 'bg-emerald-700 border-emerald-700 text-white' : 'border-slate-300 bg-white'
-                        }`}>
-                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                        </div>
-                        <div>
-                          <span className="block font-bold leading-tight">{opt.label}</span>
-                          <span className="text-[10px] text-slate-500 font-normal leading-tight block mt-0.5">
-                            {opt.desc}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAideOrganisation(true)}
+                    className={`py-3 px-4 rounded-xl border text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                      aideOrganisation
+                        ? 'bg-emerald-800 text-white border-emerald-800 shadow-md'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    <span>🤝</span>
+                    <span>Oui, je souhaite aider</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAideOrganisation(false);
+                      setDomainesAide([]);
+                    }}
+                    className={`py-3 px-4 rounded-xl border text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                      !aideOrganisation
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-md'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    <span>Non</span>
+                  </button>
                 </div>
 
-                {/* Champ autre précision */}
-                {domainesAide.includes('Autre') && (
-                  <div className="pt-2">
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Précisez votre aide :
+                {/* Domaines d'aide (Si OUI) */}
+                {aideOrganisation && (
+                  <div className="pt-3 border-t border-slate-200 space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                    <label className="block text-xs font-bold text-emerald-900">
+                      Dans quel domaine souhaitez-vous aider ? (plusieurs choix possibles) :
                     </label>
-                    <input
-                      type="text"
-                      value={autrePrecision}
-                      onChange={(e) => setAutrePrecision(e.target.value)}
-                      placeholder="Ex: matériel médical, sonorisation, traduction, atelier spécifique..."
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-xs outline-none bg-white font-medium"
-                    />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {domainOptions.map((opt) => {
+                        const Icon = opt.icon;
+                        const isChecked = domainesAide.includes(opt.id);
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => handleToggleDomaine(opt.id)}
+                            className={`p-3.5 rounded-xl border text-left text-xs transition flex items-start gap-3 cursor-pointer ${
+                              isChecked
+                                ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold shadow-2xs'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border ${
+                              isChecked ? 'bg-emerald-700 border-emerald-700 text-white' : 'border-slate-300 bg-white'
+                            }`}>
+                              {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5 font-bold leading-tight">
+                                <Icon className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                <span>{opt.label}</span>
+                              </div>
+                              <span className="text-[10px] text-slate-500 font-normal leading-tight block mt-1">
+                                {opt.desc}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* SECTION 5: REMARQUES OU INFORMATIONS COMPLÉMENTAIRES */}
-        <div className="space-y-2 pt-2">
-          <label className="block text-xs font-bold text-slate-700">
-            Remarques / Besoins particuliers (optionnel) :
-          </label>
-          <textarea
-            rows={2}
-            value={remarques}
-            onChange={(e) => setRemarques(e.target.value)}
-            placeholder="Ex: covoiturage proposé avec X places, contraintes horaires, hébergement..."
-            className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-xs outline-none bg-slate-50 focus:bg-white transition"
-          />
-        </div>
+            {/* REMARQUES OU INFORMATIONS COMPLÉMENTAIRES */}
+            <div className="space-y-2 pt-2 border-t border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+              <label className="block text-xs font-bold text-slate-700">
+                Remarques / Besoins particuliers (optionnel) :
+              </label>
+              <textarea
+                rows={2}
+                value={remarques}
+                onChange={(e) => setRemarques(e.target.value)}
+                placeholder="Ex: covoiturage proposé avec X places, contraintes horaires, hébergement..."
+                className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-xs outline-none bg-slate-50 focus:bg-white transition"
+              />
+            </div>
+          </>
+        )}
 
         {/* Submit Actions */}
         <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">

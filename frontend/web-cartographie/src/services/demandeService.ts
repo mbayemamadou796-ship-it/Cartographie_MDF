@@ -1,5 +1,6 @@
 import { DemandeMember } from '../types';
 import { ApiService } from './apiService';
+import { isJobSeekingStatus, normalizeCommuneName } from '@shared/utils/frenchCommunes';
 
 const DEMANDES_STORAGE_KEY = 'mbok_de_france_demandes_v1';
 
@@ -38,12 +39,23 @@ export class DemandeService {
 
   static submitDemande(demandeData: Omit<DemandeMember, 'id' | 'status' | 'createdAt'>): DemandeMember {
     const existing = this.getDemandes();
+    
+    // Backend rule 1: If job seeking, organisation MUST be null / undefined
+    const isJobSeeking = isJobSeekingStatus(demandeData.situationProfessionnelle);
+    const cleanedOrganisation = isJobSeeking ? undefined : (demandeData.organisation?.trim() || undefined);
+
+    // Backend rule 2: Normalized commune name
+    const normalizedCity = normalizeCommuneName(demandeData.ville || '');
+
     const newDemande: DemandeMember = {
       ...demandeData,
+      ville: normalizedCity || demandeData.ville,
+      organisation: cleanedOrganisation,
       id: `dem-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       status: 'EN_ATTENTE',
       createdAt: new Date().toISOString()
     };
+
     existing.unshift(newDemande);
     this.saveDemandes(existing);
     // Envoi vers le backend en arrière-plan : l'expérience du formulaire
@@ -76,8 +88,15 @@ export class DemandeService {
       return { status: 'duplicate', demande: null };
     }
 
+    // Règles métier (identiques à submitDemande) : pas d'organisation pour un
+    // demandeur d'emploi, et nom de commune normalisé.
+    const isJobSeeking = isJobSeekingStatus(demandeData.situationProfessionnelle);
+    const normalizedCity = normalizeCommuneName(demandeData.ville || '');
+
     const newDemande: DemandeMember = {
       ...demandeData,
+      ville: normalizedCity || demandeData.ville,
+      organisation: isJobSeeking ? undefined : (demandeData.organisation?.trim() || undefined),
       id: `dem-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       status: 'EN_ATTENTE',
       createdAt: new Date().toISOString()
@@ -110,4 +129,13 @@ export class DemandeService {
     }
     return demandes;
   }
+
+  static deleteDemande(id: string): DemandeMember[] {
+    const demandes = this.getDemandes().filter(d => d.id !== id);
+    this.saveDemandes(demandes);
+    // Suppression aussi côté serveur (la sync upsert-only ne supprime jamais)
+    if (ApiService.hasSession()) ApiService.deleteDemande(id);
+    return demandes;
+  }
 }
+

@@ -27,7 +27,7 @@ export const DemandesView: React.FC<DemandesViewProps> = ({
   onDeleteDemande
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'EN_ATTENTE' | 'VALIDEE' | 'REFUSEE'>('EN_ATTENTE');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'EN_ATTENTE' | 'REFUSEE'>('ALL');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'INSCRIPTION' | 'MISE_A_JOUR'>('ALL');
   
   // Selected demande for modal review
@@ -37,7 +37,6 @@ export const DemandesView: React.FC<DemandesViewProps> = ({
   const [rejectionReason, setRejectionReason] = useState('');
 
   const pendingCount = demandes.filter(d => d.status === 'EN_ATTENTE').length;
-  const validatedCount = demandes.filter(d => d.status === 'VALIDEE').length;
   const rejectedCount = demandes.filter(d => d.status === 'REFUSEE').length;
 
   const filteredDemandes = demandes.filter(d => {
@@ -119,7 +118,7 @@ export const DemandesView: React.FC<DemandesViewProps> = ({
       </div>
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <button
           onClick={() => setStatusFilter('ALL')}
           className={`p-4 rounded-xl border text-left transition-all ${
@@ -145,21 +144,6 @@ export const DemandesView: React.FC<DemandesViewProps> = ({
             <Clock className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-2xl font-black text-amber-600">{pendingCount}</div>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('VALIDEE')}
-          className={`p-4 rounded-xl border text-left transition-all ${
-            statusFilter === 'VALIDEE'
-              ? 'bg-emerald-50 border-emerald-300 text-emerald-950 ring-2 ring-emerald-500/20 shadow-md'
-              : 'bg-white text-slate-800 border-slate-200 hover:border-emerald-200'
-          }`}
-        >
-          <div className="text-xs font-bold uppercase text-emerald-700 mb-1 flex items-center justify-between">
-            <span>Validées</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600">{validatedCount}</div>
         </button>
 
         <button

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  WeeklyReport, CustomZone, ReportingStatus, UserRole, ReportingType, ReportingPriority, Member 
+  WeeklyReport, CustomZone, ReportingStatus, UserRole, ReportingType, ReportingPriority, Member, ReportAttachment 
 } from '@shared/types';
 import { 
   Search, Filter, Calendar, MapPin, AlertTriangle, CheckCircle2, 
@@ -8,11 +8,12 @@ import {
   Users, Activity, ChevronRight, ChevronDown, ShieldAlert, Sparkles, PlusCircle,
   LayoutGrid, ListFilter, Layers, Check, ExternalLink, Archive, History, FolderKanban,
   ArrowRight, ShieldCheck, Send, Zap, FileText, BarChart3, UserCheck, Inbox, CheckCheck,
-  Folder, FolderOpen
+  Folder, FolderOpen, Paperclip
 } from 'lucide-react';
 import { ReportingWorkflowStepper } from './ReportingWorkflowStepper';
 import { PriorityBadge, ReportTypeBadge } from './PriorityBadge';
 import { PilotageDashboardView } from './PilotageDashboardView';
+import { AttachmentPreviewModal } from './AttachmentPreviewModal';
 
 export type ReportingSubTab = 
   | 'LISTE'       // Toutes les remontées
@@ -59,6 +60,7 @@ export const AdminReportingView: React.FC<AdminReportingViewProps> = ({
   const [viewMode, setViewMode] = useState<ReportViewMode>('BY_MONTH');
   const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
   const [collapsedZones, setCollapsedZones] = useState<Record<string, boolean>>({});
+  const [adminPreviewAttachment, setAdminPreviewAttachment] = useState<ReportAttachment | null>(null);
 
   // Helper to extract formatted month label from date string
   const getMonthKeyAndLabel = (dateStr?: string) => {
@@ -326,6 +328,36 @@ export const AdminReportingView: React.FC<AdminReportingViewProps> = ({
                   <div>
                     <strong className="font-bold">Dernier retour Bureau :</strong> {report.bureauNotes}
                     {report.reviewedBy && <span className="text-[10px] text-emerald-700 ml-1">({report.reviewedBy})</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Pièces jointes direct access on card */}
+              {report.piecesJointes && report.piecesJointes.length > 0 && (
+                <div className="mt-2.5 bg-purple-50/70 border border-purple-200/80 rounded-xl p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-purple-950 font-bold">
+                    <span className="flex items-center gap-1.5">
+                      <Paperclip className="w-3.5 h-3.5 text-purple-600" />
+                      <span>{report.piecesJointes.length} pièce(s) jointe(s) transmise(s) :</span>
+                    </span>
+                    <span className="text-[10px] text-purple-700 font-semibold">Cliquer pour ouvrir</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {report.piecesJointes.map((doc, idx) => (
+                      <button
+                        key={doc.id || idx}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAdminPreviewAttachment(doc);
+                        }}
+                        className="px-2.5 py-1 bg-white hover:bg-purple-100 text-purple-950 border border-purple-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer group/btn"
+                        title={`Ouvrir ${doc.name}`}
+                      >
+                        <Eye className="w-3 h-3 text-purple-600 group-hover/btn:scale-110 transition-transform" />
+                        <span className="truncate max-w-[170px]">{doc.name}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -938,6 +970,13 @@ export const AdminReportingView: React.FC<AdminReportingViewProps> = ({
           />
         </div>
       )}
+
+      {/* Admin Attachment Preview Modal */}
+      <AttachmentPreviewModal
+        isOpen={!!adminPreviewAttachment}
+        attachment={adminPreviewAttachment}
+        onClose={() => setAdminPreviewAttachment(null)}
+      />
 
     </div>
   );

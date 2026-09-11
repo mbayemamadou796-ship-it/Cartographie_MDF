@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   getAllFormFields, 
   FormFieldSchema, 
@@ -6,6 +6,14 @@ import {
   getStoredCustomFieldsSchema 
 } from '@shared/config/memberFields';
 import { DemandeMember, CustomField } from '@shared/types';
+import { 
+  PROPOSED_COMMUNES, 
+  getProposedCommunesForZone,
+  lookupFrenchCommune, 
+  normalizeCommuneName, 
+  isJobSeekingStatus,
+  FrenchCommuneInfo 
+} from '../../../../shared/utils/frenchCommunes';
 import { DemandeService } from '../../../web-cartographie/src/services/demandeService';
 import { ApiService } from '../../../web-cartographie/src/services/apiService';
 import { getVillesForZone, getDepartementForVille } from '../../../web-cartographie/src/utils/geocoding';
@@ -28,7 +36,8 @@ import {
   ShieldCheck, 
   ExternalLink,
   ArrowRight,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react';
 
 interface FormulaireMemberViewProps {
@@ -111,6 +120,12 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
     champsPersonnalises: []
   });
 
+  // Hybrid City Selection State (Proposed vs Autre)
+  const [selectedCityMode, setSelectedCityMode] = useState<'proposed' | 'autre'>('proposed');
+  const [customCityInput, setCustomCityInput] = useState('');
+  const [isGeocodingCity, setIsGeocodingCity] = useState(false);
+  const [detectedCityInfo, setDetectedCityInfo] = useState<FrenchCommuneInfo | null>(null);
+
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [autreStatut, setAutreStatut] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -127,6 +142,101 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper boolean: is job seeking status
+  const isJobSeeking = isJobSeekingStatus(formData.situationProfessionnelle);
+
+  // Auto-geocoding for custom city input (with debounce)
+  useEffect(() => {
+    if (selectedCityMode !== 'autre') return;
+    if (!customCityInput.trim()) {
+      setDetectedCityInfo(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsGeocodingCity(true);
+      const info = await lookupFrenchCommune(customCityInput, formData.departement);
+      setIsGeocodingCity(false);
+
+      if (info) {
+        setDetectedCityInfo(info);
+        setFormData((prev) => ({
+          ...prev,
+          ville: info.nom,
+          departement: info.departement,
+          zone: info.zone || prev.zone,
+          codePostal: info.codePostal || prev.codePostal,
+          latitude: info.latitude,
+          longitude: info.longitude
+        }));
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [customCityInput, selectedCityMode]);
+
+  // Proposed Cities dynamically filtered by the selected Zone MDF Régionale
+  const proposedCitiesForCurrentZone = useMemo(() => {
+    return getProposedCommunesForZone(formData.zone);
+  }, [formData.zone]);
+
+  // Handle Zone MDF Region change
+  const handleZoneChange = (newZone: string) => {
+    setFormData((prev) => {
+      const zoneCities = getProposedCommunesForZone(newZone);
+      const isCustom = selectedCityMode === 'autre';
+      const isCityInNewZone = isCustom || (prev.ville && zoneCities.includes(prev.ville));
+
+      return {
+        ...prev,
+        zone: newZone,
+        region: newZone,
+        ville: isCityInNewZone ? prev.ville : ''
+      };
+    });
+  };
+
+  // Handle Situation Professionnelle change
+  const handleSituationChange = (newSituation: string) => {
+    const isSeeking = isJobSeekingStatus(newSituation);
+    setFormData((prev) => ({
+      ...prev,
+      situationProfessionnelle: newSituation,
+      organisation: isSeeking ? '' : prev.organisation
+    }));
+  };
+
+  // Handle Proposed City dropdown change
+  const handleProposedCityChange = async (val: string) => {
+    if (val === 'AUTRE') {
+      setSelectedCityMode('autre');
+      setCustomCityInput('');
+      setDetectedCityInfo(null);
+      setFormData((prev) => ({ ...prev, ville: '' }));
+    } else {
+      setSelectedCityMode('proposed');
+      setCustomCityInput('');
+      setIsGeocodingCity(true);
+      const info = await lookupFrenchCommune(val);
+      setIsGeocodingCity(false);
+
+      if (info) {
+        setDetectedCityInfo(info);
+        setFormData((prev) => ({
+          ...prev,
+          ville: info.nom,
+          departement: info.departement,
+          zone: info.zone || prev.zone,
+          codePostal: info.codePostal,
+          latitude: info.latitude,
+          longitude: info.longitude
+        }));
+      } else {
+        setFormData((prev) => ({ ...prev, ville: val }));
+      }
+    }
+  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -171,7 +281,13 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
     if (!formData.telephone.trim()) errs.telephone = 'Le numéro de téléphone est obligatoire';
     if (!formData.email.trim()) errs.email = 'L’adresse e-mail est obligatoire';
     else if (!formData.email.includes('@')) errs.email = 'Saisissez une adresse e-mail valide';
-    if (!formData.ville.trim()) errs.ville = 'La ville de résidence est obligatoire';
+    
+    if (selectedCityMode === 'autre' && !customCityInput.trim()) {
+      errs.ville = 'Veuillez préciser votre commune de résidence';
+    } else if (!formData.ville.trim()) {
+      errs.ville = 'La ville de résidence est obligatoire';
+    }
+
     if (!formData.zone) errs.zone = 'La zone MDF régionale est obligatoire';
     if (formData.situationProfessionnelle === 'Autre' && !autreStatut.trim()) {
       errs.situationProfessionnelle = 'Veuillez préciser votre statut';
@@ -191,10 +307,19 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
 
     setIsSubmitting(true);
     try {
+      const isSeeking = isJobSeekingStatus(formData.situationProfessionnelle);
+      const normalizedCity = normalizeCommuneName(
+        selectedCityMode === 'autre' ? customCityInput : formData.ville
+      );
+
+      // Soumission vérifiée : anti-doublon local + serveur (409) préservé,
+      // avec les règles métier de l'ami (commune normalisée, organisation
+      // vidée pour un demandeur d'emploi) et le sous-champ « Autre » du statut.
       const result = await DemandeService.submitDemandeVerified({
         type: activeTab === 'update' ? 'MISE_A_JOUR' : 'INSCRIPTION',
         ...formData,
-        // « Autre » : le statut précisé par le membre remplace la valeur générique
+        ville: normalizedCity || formData.ville,
+        organisation: isSeeking ? undefined : (formData.organisation?.trim() || undefined),
         situationProfessionnelle:
           formData.situationProfessionnelle === 'Autre' && autreStatut.trim()
             ? autreStatut.trim()
@@ -271,6 +396,9 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
       pays: 'France',
       champsPersonnalises: []
     });
+    setSelectedCityMode('proposed');
+    setCustomCityInput('');
+    setDetectedCityInfo(null);
     setCustomFields([]);
     setAutreStatut('');
     setErrors({});
@@ -302,6 +430,17 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
           <div className="flex items-center gap-4">
             <LogoMbok size="md" showText={true} showBadge={false} logoUrl={effectiveLogoUrl} />
           </div>
+
+          {onSwitchToBureau && (
+            <button
+              onClick={onSwitchToBureau}
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs rounded-xl border border-emerald-300 shadow-2xs transition-all active:scale-95 cursor-pointer"
+            >
+              <span>🗺️</span>
+              <span className="hidden sm:inline">Retour à la Cartographie</span>
+              <span className="sm:hidden">Cartographie</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -541,8 +680,8 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
 
             {/* Section 2: Zone & Parcours Professionnel/Académique */}
             <div className="bg-white rounded-3xl p-6 border border-emerald-200 shadow-sm space-y-4">
-              <h3 className="font-bold text-emerald-800 uppercase tracking-wider text-[11px] pb-1 border-b border-emerald-200">
-                2. Zone MDF, Parcours & Situation
+              <h3 className="font-bold text-emerald-800 uppercase tracking-wider text-[11px] pb-1 border-b border-emerald-200 flex items-center justify-between">
+                <span>2. Zone MDF, Parcours & Situation</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -553,18 +692,7 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
                   <select
                     required
                     value={formData.zone}
-                    onChange={(e) => {
-                      const zone = e.target.value;
-                      // Changement de zone : on ne conserve la ville que si elle
-                      // appartient à la nouvelle zone (le champ ville est un menu
-                      // déroulant alimenté par getVillesForZone).
-                      setFormData((prev) => ({
-                        ...prev,
-                        zone,
-                        region: zone,
-                        ville: getVillesForZone(zone).includes(prev.ville) ? prev.ville : ''
-                      }));
-                    }}
+                    onChange={(e) => handleZoneChange(e.target.value)}
                     className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium cursor-pointer"
                   >
                     <option value="" disabled>-- Sélectionner une zone --</option>
@@ -576,11 +704,11 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Situation professionnelle
+                    Situation professionnelle <span className="text-rose-600">*</span>
                   </label>
                   <select
                     value={formData.situationProfessionnelle}
-                    onChange={(e) => setFormData({ ...formData, situationProfessionnelle: e.target.value })}
+                    onChange={(e) => handleSituationChange(e.target.value)}
                     className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium cursor-pointer"
                   >
                     <option value="Salarié / Employé">Salarié / Employé</option>
@@ -625,15 +753,31 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Organisation / Entreprise / Université
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className={`block font-semibold ${isJobSeeking ? 'text-slate-400' : 'text-slate-700'}`}>
+                      Organisation / Entreprise / Université
+                    </label>
+                    {isJobSeeking && (
+                      <span className="text-[10px] text-amber-700 font-medium italic">
+                        Non applicable
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
-                    placeholder="Ex: Université de Rennes, Capgemini..."
-                    value={formData.organisation}
+                    disabled={isJobSeeking}
+                    placeholder={
+                      isJobSeeking
+                        ? "Non applicable (en recherche d'emploi)"
+                        : "Ex: Université de Rennes, Capgemini, Société Générale..."
+                    }
+                    value={isJobSeeking ? '' : formData.organisation}
                     onChange={(e) => setFormData({ ...formData, organisation: e.target.value })}
-                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
+                    className={`w-full rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all outline-none ${
+                      isJobSeeking
+                        ? 'bg-slate-100/90 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+                        : 'bg-slate-50 border border-emerald-200 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500'
+                    }`}
                   />
                 </div>
 
@@ -643,7 +787,7 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: Ingénieur, Analyste, Étudiant M2..."
+                    placeholder="Ex: Ingénieur, Analyste, Étudiant M2, Développeur..."
                     value={formData.fonction}
                     onChange={(e) => setFormData({ ...formData, fonction: e.target.value })}
                     className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
@@ -665,70 +809,112 @@ export const FormulaireMemberView: React.FC<FormulaireMemberViewProps> = ({
               </div>
             </div>
 
-            {/* Section 3: Ville de Résidence & Localisation Cartographique */}
+            {/* Section 3: Ville de Résidence & Géolocalisation Hybride */}
             <div className="bg-white rounded-3xl p-6 border border-emerald-200 shadow-sm space-y-4">
-              <h3 className="font-bold text-emerald-800 uppercase tracking-wider text-[11px] pb-1 border-b border-emerald-200">
-                3. Ville de Résidence & Localisation
-              </h3>
+              <div className="flex items-center justify-between pb-1 border-b border-emerald-200">
+                <h3 className="font-bold text-emerald-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-emerald-600" />
+                  <span>3. Ville de Résidence & Localisation Cartographique</span>
+                </h3>
+                <span className="text-[10px] text-slate-500 font-medium">
+                  Confidentialité préservée (coordonnées au centre de la commune)
+                </span>
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Ville de résidence (Commune) <span className="text-rose-600">*</span>
-                  </label>
-                  <select
-                    required
-                    value={formData.ville}
-                    onChange={(e) => {
-                      const ville = e.target.value;
-                      // Le département se remplit automatiquement à partir de la ville
-                      setFormData({
-                        ...formData,
-                        ville,
-                        departement: getDepartementForVille(ville) ?? formData.departement
-                      });
-                    }}
-                    className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium cursor-pointer ${
-                      errors.ville ? 'border-rose-300 bg-rose-50' : 'border-emerald-200'
-                    }`}
-                  >
-                    <option value="" disabled>
-                      {formData.zone ? `-- Villes de la zone ${formData.zone} --` : '-- Sélectionner une ville --'}
-                    </option>
-                    {/* La ville courante (pré-remplie hors liste) reste sélectionnable */}
-                    {[
-                      ...(formData.ville && !getVillesForZone(formData.zone).includes(formData.ville) ? [formData.ville] : []),
-                      ...getVillesForZone(formData.zone)
-                    ].map((v) => (
-                      <option key={v} value={v}>{v}</option>
-                    ))}
-                  </select>
-                  {errors.ville && <p className="text-[11px] text-rose-600 mt-1 font-semibold">{errors.ville}</p>}
+              <div className="space-y-4 text-xs">
+                {/* Hybrid City Selection */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Ville de résidence <span className="text-rose-600">*</span>
+                    </label>
+                    <select
+                      value={selectedCityMode === 'autre' ? 'AUTRE' : (formData.ville || '')}
+                      onChange={(e) => handleProposedCityChange(e.target.value)}
+                      className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-slate-800 focus:bg-white focus:border-emerald-500 outline-none font-medium cursor-pointer"
+                    >
+                      <option value="" disabled>-- Choisir une ville {formData.zone ? `(${formData.zone})` : ''} --</option>
+                      {proposedCitiesForCurrentZone.map((city) => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                      <option value="AUTRE" className="font-bold text-emerald-800 bg-emerald-50">
+                        ✨ Autre (Préciser manuellement votre ville)
+                      </option>
+                    </select>
+                  </div>
+
+                  {/* If Autre is selected: Show Mandatory Input Field with Live Geocoding */}
+                  {selectedCityMode === 'autre' && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-semibold text-emerald-900">
+                          Précisez votre ville de résidence <span className="text-rose-600">*</span>
+                        </label>
+                        {isGeocodingCity && (
+                          <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Recherche commune officielle...
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: Massy, Épinay-sur-Seine, Clamart..."
+                        value={customCityInput}
+                        onChange={(e) => setCustomCityInput(e.target.value)}
+                        className={`w-full bg-emerald-50/50 border rounded-xl px-3.5 py-2.5 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium ${
+                          errors.ville ? 'border-rose-300 bg-rose-50' : 'border-emerald-300'
+                        }`}
+                      />
+                      {errors.ville && <p className="text-[11px] text-rose-600 mt-1 font-semibold">{errors.ville}</p>}
+                    </div>
+                  )}
+
+                  {selectedCityMode !== 'autre' && (
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Département
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Essonne (91), Seine-Saint-Denis (93)..."
+                        value={formData.departement}
+                        onChange={(e) => setFormData({ ...formData, departement: e.target.value })}
+                        className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Département
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Seine-Saint-Denis (93), Ille-et-Vilaine (35)..."
-                    value={formData.departement}
-                    onChange={(e) => setFormData({ ...formData, departement: e.target.value })}
-                    className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                  />
-                </div>
+                {/* Additional Geo Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {selectedCityMode === 'autre' && (
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Département
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Essonne (91), Seine-Saint-Denis (93)..."
+                        value={formData.departement}
+                        onChange={(e) => setFormData({ ...formData, departement: e.target.value })}
+                        className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none font-medium"
+                      />
+                    </div>
+                  )}
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Pays
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.pays}
-                    disabled
-                    className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-600 font-medium"
-                  />
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Pays
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.pays}
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-600 font-medium"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

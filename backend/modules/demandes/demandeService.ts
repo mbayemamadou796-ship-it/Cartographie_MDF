@@ -97,6 +97,12 @@ export const demandeService = {
     return demande;
   },
 
+  /** Suppression d'une demande (niveaux admin — imposé par la route). */
+  async remove(id: string): Promise<void> {
+    const { error } = await supabaseAdmin().from('demandes').delete().eq('id', id);
+    if (error) throw new Error(`Suppression de la demande: ${error.message}`);
+  },
+
   /**
    * Upsert en masse depuis l'espace bureau — ne supprime jamais.
    * admin uniquement ; les autres rôles sont des no-op silencieux (la synchro

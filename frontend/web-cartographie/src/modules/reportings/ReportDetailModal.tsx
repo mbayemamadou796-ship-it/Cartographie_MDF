@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
-import { WeeklyReport, UserRole, ReportingStatus, ReportResponse } from '@shared/types';
+import React, { useState, useRef } from 'react';
+import { WeeklyReport, UserRole, ReportingStatus, ReportResponse, ReportAttachment } from '@shared/types';
 import { 
   X, Calendar, MapPin, User, Mail, Phone, AlertCircle, 
   CheckCircle2, Clock, MessageSquare, Send, ShieldAlert,
   HelpCircle, ArrowRight, Activity, Users, AlertTriangle, Sparkles, Check,
   RefreshCw, Paperclip, Zap, FileText, History, CornerDownRight, Plus,
-  ShieldCheck, ArrowUpRight
+  ShieldCheck, ArrowUpRight, Download, ExternalLink, Eye, UploadCloud, Trash2
 } from 'lucide-react';
 import { ReportingWorkflowStepper } from './ReportingWorkflowStepper';
 import { PriorityBadge, ReportTypeBadge } from './PriorityBadge';
 import { ReportingService } from '../../services/reportingService';
+import { AttachmentCard } from './AttachmentCard';
+import { AttachmentPreviewModal } from './AttachmentPreviewModal';
+import { downloadAttachment } from '../../utils/attachmentStorage';
 
 interface ReportDetailModalProps {
   report: WeeklyReport | null;
@@ -40,9 +43,38 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'DETAILS' | 'MESSAGES' | 'HISTORY'>('DETAILS');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<ReportAttachment | null>(null);
+  const [replyAttachments, setReplyAttachments] = useState<ReportAttachment[]>([]);
+  const replyFileInputRef = useRef<HTMLInputElement>(null);
 
   const lastActivity = report.lastActivityAt || report.updatedAt || report.createdAt;
   const caseIdDisplay = report.caseNumber || `#${report.id.replace('rep-', '')}`;
+
+  const handleReplyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      Array.from(e.target.files).forEach((file: File) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const newDoc: ReportAttachment = {
+            id: `att-reply-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url: event.target?.result as string,
+            uploadedAt: new Date().toISOString()
+          };
+          setReplyAttachments((prev) => [...prev, newDoc]);
+        };
+        reader.readAsDataURL(file);
+      });
+      if (replyFileInputRef.current) replyFileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveReplyAttachment = (id?: string) => {
+    if (!id) return;
+    setReplyAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
 
   const handleSaveBureauNotes = (newStatus?: ReportingStatus) => {
     setIsSaving(true);
@@ -62,19 +94,22 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   };
 
   const handleSendNewMessage = (newStatus?: ReportingStatus) => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && replyAttachments.length === 0) return;
     setIsSaving(true);
     const authorName = currentUserName || (userRole === 'admin' ? 'Bureau National MDF' : report.referentName);
     const authorRole = userRole === 'admin' ? 'bureau' : 'referent';
     
+    const sentAttachments = [...replyAttachments];
+
     if (onAddResponse) {
       onAddResponse(report.id, newMessage.trim(), newStatus);
     } else {
-      ReportingService.addBureauResponse(report.id, newMessage.trim(), authorName, authorRole, newStatus);
+      ReportingService.addBureauResponse(report.id, newMessage.trim(), authorName, authorRole, newStatus, sentAttachments);
       onUpdateStatus(report.id, newStatus || selectedStatus, newMessage.trim());
     }
 
     setNewMessage('');
+    setReplyAttachments([]);
     setIsSaving(false);
     setSaveSuccessMsg(true);
     setTimeout(() => setSaveSuccessMsg(false), 3000);
@@ -328,17 +363,23 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
 
               {/* Attachments Section if present */}
               {report.piecesJointes && report.piecesJointes.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-4.5 space-y-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-slate-900 font-bold text-xs uppercase tracking-wide">
-                    <Paperclip className="w-4 h-4 text-purple-600" />
-                    <span>Pièces jointes & Documents ({report.piecesJointes.length})</span>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4.5 space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-2 text-slate-900 font-bold text-xs uppercase tracking-wide">
+                      <Paperclip className="w-4 h-4 text-purple-600" />
+                      <span>Pièces jointes & Documents ({report.piecesJointes.length})</span>
+                    </div>
+                    <span className="text-[11px] text-purple-700 bg-purple-50 font-bold px-2.5 py-0.5 rounded-lg border border-purple-200">
+                      Cliquer pour ouvrir / prévisualiser
+                    </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                     {report.piecesJointes.map((doc, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs text-slate-700">
-                        <Paperclip className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="font-semibold truncate">{doc.name}</span>
-                      </div>
+                      <AttachmentCard
+                        key={doc.id || idx}
+                        attachment={doc}
+                        onPreview={setPreviewAttachment}
+                      />
                     ))}
                   </div>
                 </div>
@@ -350,6 +391,29 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
           {activeTab === 'MESSAGES' && (
             <div className="space-y-4">
               
+              {/* Linked report attachments reminder */}
+              {report.piecesJointes && report.piecesJointes.length > 0 && (
+                <div className="bg-purple-50/70 border border-purple-200 rounded-2xl p-3.5 space-y-2 text-xs text-purple-950 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-bold">
+                      <Paperclip className="w-4 h-4 text-purple-600" />
+                      <span>Documents transmis avec ce cas ({report.piecesJointes.length})</span>
+                    </div>
+                    <span className="text-[10px] text-purple-700 font-bold">Accessible à tout moment</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {report.piecesJointes.map((doc, idx) => (
+                      <AttachmentCard
+                        key={doc.id || idx}
+                        attachment={doc}
+                        compact
+                        onPreview={setPreviewAttachment}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Thread history */}
               <div className="space-y-3">
                 {allResponses.length === 0 ? (
@@ -362,7 +426,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                   allResponses.map((resp, idx) => (
                     <div 
                       key={resp.id || idx}
-                      className={`p-4 rounded-2xl border text-xs leading-relaxed space-y-1.5 ${
+                      className={`p-4 rounded-2xl border text-xs leading-relaxed space-y-2 ${
                         resp.authorRole === 'bureau'
                           ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950 ml-4'
                           : 'bg-blue-50/80 border-blue-200 text-blue-950 mr-4'
@@ -381,6 +445,26 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                         <span className="text-[10px] text-slate-400">{formatFullDateTime(resp.createdAt)}</span>
                       </div>
                       <p className="pl-4 whitespace-pre-wrap font-medium">{resp.content}</p>
+
+                      {/* Attachments inside message */}
+                      {resp.piecesJointes && resp.piecesJointes.length > 0 && (
+                        <div className="pt-2 pl-4 border-t border-slate-200/60 space-y-1.5">
+                          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+                            <Paperclip className="w-3 h-3 text-purple-600" />
+                            <span>Pièce(s) jointe(s) ({resp.piecesJointes.length}) :</span>
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {resp.piecesJointes.map((doc, docIdx) => (
+                              <AttachmentCard
+                                key={doc.id || docIdx}
+                                attachment={doc}
+                                compact
+                                onPreview={setPreviewAttachment}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -398,6 +482,16 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                   </span>
                 </div>
 
+                {/* Hidden input for reply attachments */}
+                <input
+                  ref={replyFileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleReplyFileUpload}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.zip"
+                  className="hidden"
+                />
+
                 <textarea
                   rows={3}
                   value={newMessage}
@@ -405,6 +499,32 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                   placeholder="Écrivez votre message officiel ou vos indications..."
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-500 outline-none resize-none font-medium"
                 />
+
+                {/* Reply Attachments preview in composer */}
+                {replyAttachments.length > 0 && (
+                  <div className="bg-purple-50/50 p-2.5 rounded-xl border border-purple-200 space-y-1.5">
+                    <p className="text-[10px] font-bold text-purple-900">Documents qui seront joints au message :</p>
+                    <div className="flex flex-wrap gap-2">
+                      {replyAttachments.map((att) => (
+                        <div
+                          key={att.id}
+                          className="bg-white border border-purple-300 px-2 py-1 rounded-lg text-xs font-bold text-slate-800 flex items-center gap-1.5 shadow-2xs"
+                        >
+                          <Paperclip className="w-3 h-3 text-purple-600" />
+                          <span className="truncate max-w-[150px]">{att.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveReplyAttachment(att.id)}
+                            className="text-slate-400 hover:text-red-600 p-0.5 transition"
+                            title="Retirer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Quick Presets for Bureau */}
                 {userRole === 'admin' && (
@@ -428,39 +548,52 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                 )}
 
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                  {userRole === 'admin' ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSendNewMessage('EN_COURS')}
-                        disabled={!newMessage.trim() || isSaving}
-                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1"
-                      >
-                        <Clock className="w-3 h-3" />
-                        <span>Répondre & Passer En cours</span>
-                      </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => replyFileInputRef.current?.click()}
+                      className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                    >
+                      <Paperclip className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Joindre un fichier</span>
+                    </button>
+                  </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleSendNewMessage('TRAITE')}
-                        disabled={!newMessage.trim() || isSaving}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1"
-                      >
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Répondre & Clôturer Traité</span>
-                      </button>
-                    </div>
-                  ) : <div />}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {userRole === 'admin' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleSendNewMessage('EN_COURS')}
+                          disabled={(!newMessage.trim() && replyAttachments.length === 0) || isSaving}
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1"
+                        >
+                          <Clock className="w-3 h-3" />
+                          <span>En cours</span>
+                        </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSendNewMessage()}
-                    disabled={!newMessage.trim() || isSaving}
-                    className="px-4 py-1.5 bg-slate-900 hover:bg-emerald-950 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Envoyer le message</span>
-                  </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendNewMessage('TRAITE')}
+                          disabled={(!newMessage.trim() && replyAttachments.length === 0) || isSaving}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Traité ✓</span>
+                        </button>
+                      </>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendNewMessage()}
+                      disabled={(!newMessage.trim() && replyAttachments.length === 0) || isSaving}
+                      className="px-4 py-1.5 bg-slate-900 hover:bg-emerald-950 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Envoyer</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -551,6 +684,13 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
         </div>
 
       </div>
+
+      {/* Attachment Preview Modal */}
+      <AttachmentPreviewModal
+        isOpen={!!previewAttachment}
+        attachment={previewAttachment}
+        onClose={() => setPreviewAttachment(null)}
+      />
     </div>
   );
 };

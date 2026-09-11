@@ -34,4 +34,5 @@
 - [x] ⚠️ Migration 007 exécutée dans Supabase.
 - [x] Mandats & Documents utiles branchés sur Supabase : tables `mandats` + `useful_documents` (008), GET/PUT/DELETE `/api/mandats` et `/api/documents`, bootstrap + services frontend hybrides (fusion par updatedAt/dateMiseAJour, contenu initial poussé automatiquement par le premier admin connecté).
 - [ ] ⚠️ Exécuter `backend/database/migrations/008_mandats_documents.sql` dans Supabase > SQL Editor (sans cela, mandats et documents restent locaux à chaque poste).
+- [x] Intégration MDF1 du 11/09 (sauf carte et bouton d'accès formulaire) : dictionnaire des communes françaises (geo.api.gouv.fr + repli hors-ligne), formulaire public à sélection de ville hybride (proposées/Autre géocodée), règle « demandeur d'emploi sans organisation », pièces jointes du reporting (IndexedDB local + partage via la sync Supabase), suppression manuelle des demandes (DELETE /api/demandes/:id).
 - [ ] Exécuter des tests de charge sur les imports massifs Excel (> 5000 enregistrements).

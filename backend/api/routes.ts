@@ -217,6 +217,11 @@ apiRouter.put('/demandes', requireAuth, asyncHandler(async (req, res) => {
   res.status(204).end();
 }));
 
+apiRouter.delete('/demandes/:id', requireAuth, requireRole('admin'), asyncHandler(async (req, res) => {
+  await demandeService.remove(req.params.id as string);
+  res.status(204).end();
+}));
+
 // --------------------------------------------------------------------------
 // Reportings hebdomadaires des référents
 // --------------------------------------------------------------------------
