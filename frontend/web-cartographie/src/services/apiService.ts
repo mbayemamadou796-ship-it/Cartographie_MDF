@@ -15,9 +15,15 @@ import { Member, AppUser, CustomZone, AuditLog, ImportLog, AppSettings, DemandeM
 
 const TOKENS_STORAGE_KEY = 'mbok_de_france_auth_tokens_v1';
 
+// L'API est servie sur le port 3001 de la même machine que le frontend :
+// depuis un autre appareil (téléphone via QR code, autre PC du réseau),
+// « localhost » désignerait l'appareil du visiteur — on reprend donc l'hôte
+// de la page, comme pour FORMULAIRE_URL / RENCONTRE_URL.
 const API_URL: string =
   ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_URL) ??
-  'http://localhost:3001';
+  (typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.hostname}:3001`
+    : 'http://localhost:3001');
 
 interface AuthTokens {
   accessToken: string;
