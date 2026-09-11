@@ -465,14 +465,22 @@ export default function App() {
     }
   }, []);
 
+  /**
+   * Une demande VALIDÉE disparaît de la partie « Demandes d'inscription »
+   * (le membre est déjà intégré dans sa zone). Elle reste en base pour le
+   * suivi public du demandeur et l'historique — seul l'affichage la filtre.
+   */
+  const activesOnly = (list: DemandeMember[]): DemandeMember[] =>
+    list.filter((d) => d.status !== 'VALIDEE');
+
   // Demandes State — cache localStorage au démarrage, vérité serveur ensuite
-  const [demandes, setDemandes] = useState<DemandeMember[]>(() => DemandeService.getDemandes());
+  const [demandes, setDemandes] = useState<DemandeMember[]>(() => activesOnly(DemandeService.getDemandes()));
 
   // Synchronisation temps réel même navigateur (formulaire public -> bureau) :
   // 'storage' couvre les autres onglets, 'mbok_demandes_updated' l'onglet courant.
   useEffect(() => {
     const syncDemandesFromStorage = () => {
-      setDemandes(DemandeService.getDemandes());
+      setDemandes(activesOnly(DemandeService.getDemandes()));
     };
 
     window.addEventListener('storage', syncDemandesFromStorage);
@@ -505,7 +513,7 @@ export default function App() {
         const extraLocal = local.filter((l) => !serverDemandes.some((sd) => sd.id === l.id));
         const finalList = [...extraLocal, ...merged];
         DemandeService.saveDemandes(finalList);
-        setDemandes(finalList);
+        setDemandes(activesOnly(finalList));
       }
     };
 
@@ -513,9 +521,11 @@ export default function App() {
     return () => clearInterval(interval);
   }, [currentUser?.id]);
 
-  // Synchronisation backend des changements d'état (validation, refus...)
+  // Synchronisation backend des changements d'état (validation, refus...).
+  // On pousse le CACHE complet (validées incluses) et non l'état affiché,
+  // qui exclut les validées : le serveur garde ainsi l'historique complet.
   useEffect(() => {
-    ApiService.syncDemandes(demandes);
+    ApiService.syncDemandes(DemandeService.getDemandes());
   }, [demandes]);
 
   const pendingDemandesCount = useMemo(() => {
@@ -842,7 +852,7 @@ export default function App() {
       'VALIDEE',
       currentUser?.name || 'Administrateur MDF'
     );
-    setDemandes(updatedDemandesList);
+    setDemandes(activesOnly(updatedDemandesList));
 
     // 5. Audit Log (envoyé aussi au backend via addAuditLog)
     addAuditLog(
@@ -861,7 +871,7 @@ export default function App() {
 
   const handleDeleteDemande = (demandeId: string) => {
     const updatedDemandesList = DemandeService.deleteDemande(demandeId);
-    setDemandes(updatedDemandesList);
+    setDemandes(activesOnly(updatedDemandesList));
     showToast('Demande supprimée de la liste.');
   };
 
@@ -872,7 +882,7 @@ export default function App() {
       currentUser?.name || 'Administrateur MDF',
       reason
     );
-    setDemandes(updatedDemandesList);
+    setDemandes(activesOnly(updatedDemandesList));
 
     addAuditLog(
       'member',
@@ -1040,7 +1050,7 @@ export default function App() {
         setCustomZones(d.zones);
         if (Array.isArray(d.demandes)) {
           DemandeService.saveDemandes(d.demandes);
-          setDemandes(d.demandes);
+          setDemandes(activesOnly(d.demandes));
         }
         if (Array.isArray(d.reports)) {
           ReportingService.saveReports(d.reports);
