@@ -72,7 +72,7 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -115,7 +115,9 @@ export const RencontreSurveyForm: React.FC<RencontreSurveyFormProps> = ({
         remarques: isOui ? remarques.trim() : ''
       };
 
-      const result = RencontreService.submitResponse(responsePayload);
+      // Attendu volontairement : la confirmation ne doit s'afficher que si le
+      // bureau MDF a bien reçu la réponse.
+      const result = await RencontreService.submitResponse(responsePayload);
 
       if (!result.success) {
         if (result.isDuplicate && result.response) {

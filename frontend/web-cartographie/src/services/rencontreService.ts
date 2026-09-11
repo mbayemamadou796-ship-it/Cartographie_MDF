@@ -532,13 +532,21 @@ export class RencontreService {
   }
 
   /**
-   * Enregistre une nouvelle réponse ou met à jour une réponse existante
-   * Retourne un objet de résultat avec validation anti-doublon
+   * Enregistre une nouvelle réponse ou met à jour une réponse existante.
+   *
+   * Depuis l'application publique du sondage, le serveur fait foi et sa
+   * réponse est ATTENDUE avant d'annoncer quoi que ce soit au visiteur : une
+   * réponse qui n'atteint pas le backend n'existe que dans le navigateur du
+   * membre, le bureau ne la verra jamais et elle sera perdue. Confirmer un
+   * enregistrement qui n'a pas eu lieu est le pire des scénarios — le membre
+   * est compté comme présent par personne, et croit s'être inscrit.
    */
-  static submitResponse(response: Omit<RencontreResponse, 'id' | 'createdAt' | 'dateReponse'> & { id?: string }): { success: boolean; isDuplicate?: boolean; response?: RencontreResponse; error?: string } {
+  static async submitResponse(
+    response: Omit<RencontreResponse, 'id' | 'createdAt' | 'dateReponse'> & { id?: string }
+  ): Promise<{ success: boolean; isDuplicate?: boolean; unreachable?: boolean; response?: RencontreResponse; error?: string }> {
     const responses = this.getResponses();
 
-    // Check duplicate if no specific id to edit
+    // Anti-doublon local (cache de ce navigateur) — sauf modification ciblée.
     if (!response.id) {
       const existing = this.checkExistingResponse(response.rencontreId, response.memberId, response.email, response.telephone);
       if (existing) {
@@ -552,44 +560,56 @@ export class RencontreService {
     }
 
     const now = new Date().toISOString();
-    let savedRecord: RencontreResponse;
+    const isEdition = Boolean(response.id);
+    const existingIndex = response.id ? responses.findIndex(r => r.id === response.id) : -1;
 
-    if (response.id) {
-      // Update existing
-      const index = responses.findIndex(r => r.id === response.id);
-      if (index >= 0) {
-        savedRecord = {
-          ...responses[index],
-          ...response,
-          updatedAt: now
-        } as RencontreResponse;
-        responses[index] = savedRecord;
+    let savedRecord: RencontreResponse =
+      existingIndex >= 0
+        ? ({ ...responses[existingIndex], ...response, updatedAt: now } as RencontreResponse)
+        : ({
+            ...response,
+            id: response.id || `resp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            createdAt: now,
+            dateReponse: now
+          } as RencontreResponse);
+
+    // Application publique (aucune session bureau) : transmission au backend
+    // AVANT l'écriture locale, comme pour les demandes d'adhésion. Une nouvelle
+    // réponse non transmise est signalée au membre, qui peut réessayer.
+    // (Les modifications d'une réponse déjà enregistrée restent envoyées sans
+    // attente : l'endpoint public ne sait pas encore mettre à jour — voir
+    // docs/todo.md.)
+    if (!ApiService.hasSession()) {
+      if (isEdition) {
+        ApiService.submitPublicRencontreResponse(savedRecord);
       } else {
-        savedRecord = {
-          ...response,
-          id: response.id,
-          createdAt: now,
-          dateReponse: now
-        } as RencontreResponse;
-        responses.unshift(savedRecord);
+        const result = await ApiService.submitPublicRencontreResponse(savedRecord);
+        if (result.duplicate) {
+          return {
+            success: false,
+            isDuplicate: true,
+            error: 'Vous avez déjà répondu au sondage de cette rencontre depuis un autre appareil.'
+          };
+        }
+        if (!result.ok) {
+          return {
+            success: false,
+            unreachable: true,
+            error:
+              "Votre réponse n'a pas pu être transmise au bureau MDF. Vérifiez votre connexion internet puis réessayez — sans cet envoi, votre participation ne sera pas enregistrée."
+          };
+        }
+        savedRecord = result.response ?? savedRecord;
       }
+    }
+
+    if (existingIndex >= 0) {
+      responses[existingIndex] = savedRecord;
     } else {
-      // Create new
-      savedRecord = {
-        ...response,
-        id: `resp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        createdAt: now,
-        dateReponse: now
-      } as RencontreResponse;
       responses.unshift(savedRecord);
     }
-
     this.saveResponses(responses);
-    // Application publique (aucune session bureau) : la réponse part vers le
-    // backend via l'endpoint public — le serveur re-vérifie l'anti-doublon.
-    if (!ApiService.hasSession()) {
-      ApiService.submitPublicRencontreResponse(savedRecord);
-    }
+
     return { success: true, response: savedRecord };
   }
 

@@ -166,9 +166,9 @@ VITE_API_URL = https://mdf-api.onrender.com
 
 ## Étape 3 — Boucler le CORS (obligatoire)
 
-Sans cette étape, les navigateurs bloqueront tous les appels des frontends vers l'API (« Serveur inaccessible » au login, formulaire qui ne s'envoie pas).
+Sans cette étape, les navigateurs bloqueront les appels du **bureau** vers l'API (« Serveur inaccessible » au login).
 
-1. Retourne sur Render → service `mdf-api` → **Environment**.
+1. Retourne sur Render → service de l'API → **Environment**.
 2. Renseigne `CORS_ORIGIN` avec **les trois URL Vercel exactes**, séparées par une virgule, sans espace ni `/` final :
 
    ```
@@ -176,6 +176,20 @@ Sans cette étape, les navigateurs bloqueront tous les appels des frontends vers
    ```
 
 3. Sauvegarde — Render redémarre l'API automatiquement.
+
+> **⚠️ À refaire à chaque nouvelle application ou changement d'URL.** Oublier
+> une URL ici rend l'application concernée **totalement muette** : elle
+> fonctionne à l'écran, mais plus rien n'arrive en base. C'est arrivé le
+> 11/09/2026 — l'URL du sondage `mdf-rencontre` manquait, et toutes les
+> réponses au sondage étaient perdues alors que le message « Vos informations
+> ont bien été enregistrées » s'affichait.
+>
+> Depuis le correctif du 12/09/2026, les **formulaires publics**
+> (`/api/public/*` : demande d'adhésion et sondage Rencontre) ne dépendent
+> plus de cette liste — ils acceptent toutes les origines, car y restreindre
+> le CORS n'apportait aucune sécurité (ces routes sont appelables hors
+> navigateur de toute façon) tout en bloquant les vrais visiteurs.
+> `CORS_ORIGIN` reste indispensable pour le **bureau**.
 
 ---
 
@@ -194,7 +208,19 @@ Les quatre services (3 Vercel + Render) sont branchés sur la branche `main` : *
 
 - **Les variables `VITE_*` sont figées au moment du build.** Si tu ajoutes/modifies `VITE_API_URL` ou `VITE_FORMULAIRE_URL` après coup, il faut relancer un déploiement : Vercel → projet → **Deployments** → `⋯` sur le dernier → **Redeploy**.
 - **Render Free s'endort après ~15 min d'inactivité** : le premier appel suivant prend ~30–60 s (login qui affiche « Serveur inaccessible » le temps du réveil — réessayer suffit). L'instance payante (~7 $/mois) supprime ce comportement.
-- **Erreur CORS dans la console du navigateur** (`blocked by CORS policy`) : `CORS_ORIGIN` sur Render ne correspond pas exactement aux URL Vercel (vérifie `https`, l'absence de `/` final, la virgule sans espace).
+- **Erreur CORS dans la console du navigateur** (`blocked by CORS policy`, ou onglet Réseau affichant `CORS error`) : `CORS_ORIGIN` sur Render ne correspond pas exactement aux URL Vercel (vérifie `https`, l'absence de `/` final, la virgule sans espace, et qu'**aucune des trois URL ne manque**).
+
+  **Comment savoir en 10 secondes quelle URL est acceptée** — remplace l'URL de l'API et l'origine à tester, puis lance dans un terminal :
+
+  ```bash
+  curl -s -i -X OPTIONS https://<ton-api>.onrender.com/api/bootstrap \
+    -H "Origin: https://<url-a-tester>.vercel.app" \
+    -H "Access-Control-Request-Method: GET" | grep -i "access-control-allow-origin"
+  ```
+
+  Si la commande **n'affiche rien**, cette origine est bloquée : ajoute-la à `CORS_ORIGIN`. Si elle affiche `access-control-allow-origin: https://...`, l'origine est acceptée et le problème est ailleurs.
+
+- **Une application déployée n'envoie rien en base alors qu'elle affiche une confirmation** : vérifie d'abord quelle adresse d'API a été compilée dedans (les variables `VITE_*` sont figées au build). Ouvre l'application, puis dans la console du navigateur (F12 → Réseau) regarde vers quel domaine partent les appels. Si c'est `localhost:3001`, c'est que `VITE_API_URL` n'était pas renseignée sur Vercel au moment du build → renseigne-la puis **Redeploy**.
 - **Page blanche sur Vercel** : Build Command ou Output Directory incorrects — revérifie les overrides du tableau ci-dessus (c'est la seule différence entre les trois projets Vercel).
 - **`401` sur `/api/bootstrap`** : normal sans être connecté. **`500`** : clés Supabase mal recopiées dans Render.
 
